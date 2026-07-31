@@ -85,8 +85,12 @@ target, not the current state.** Nothing has been scaffolded yet.
 - **`localStorage` is the only copy of the user's practice data.** Clearing site data destroys
   it. JSON export/import is a requirement, not a nicety. Never write code that can wipe the store
   without an explicit user action.
-- **Trackman integration is unresolved** (see OQ-1 in `docs/roadmap.md`). Don't assume an API
-  exists or write code that depends on one. Manual entry is the baseline and must always work.
+- **Trackman integration is resolved but undocumented** (OQ-1, closed 2026-07-31). A GraphQL API at
+  `api.trackmangolf.com/graphql` works with the player's own token — see `docs/architecture.md` §4.
+  It is unofficial and **must be assumed to break without notice**: never let it block app load, and
+  keep manual entry working as the baseline.
+- **Club path is meaningless without a club.** Store it per club and never chart a blended average —
+  a mixed-club mean tracks club selection, not swing change (OQ-7 / issue #14).
 - **Don't redesign.** The user explicitly likes the current look. Extend the system; don't
   replace it.
 

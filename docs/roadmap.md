@@ -123,39 +123,53 @@ store — the design decisions will be wrong.
 
 [#6](https://github.com/RichardWhitfield/golf/issues/6)
 
-**Blocked on OQ-1 below.** Do not start until the investigation concludes.
+**Unblocked (2026-07-31).** OQ-1 resolved — a data path and a reusable headless credential both
+exist.
 
-If a data path exists: build it behind the `TrackmanSource` interface, add a scheduled GitHub
-Actions workflow, keep credentials in Actions secrets, and ensure it degrades silently to manual
-entry on failure.
+Build it behind the `TrackmanSource` interface as `ApiSource`, driven by a scheduled GitHub Actions
+workflow, degrading silently to manual entry on failure.
 
-If no data path exists: close the phase, keep manual entry, and consider reducing friction
-instead (a fast phone-optimised entry form, an iOS Shortcut).
+- **Endpoint:** `POST https://api.trackmangolf.com/graphql`, `Authorization: Bearer <token>`.
+- **Query:** `me.activities(kinds: [VIRTUAL_RANGE], timeFrom:, timeTo:)` — Monday sessions arrive as
+  `VirtualRangeSessionActivity`. `timeFrom`/`timeTo` maps directly onto `fetchSince()`.
+- **KPI:** `aggregatedMeasurement(clubs:)` returns per-club averages server-side, so
+  `averageClubPath` is a single field. Store it **per club**, never blended — see OQ-7.
+- **Auth:** refresh-token grant against the public mobile client
+  `old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae` (PKCE, no client secret). The refresh token is
+  **non-rotating and reusable**, so a single static `TRACKMAN_REFRESH_TOKEN` Actions secret needs no
+  write-back. Access tokens last 14 days.
+- **Workflow triggers:** `schedule` and `workflow_dispatch` **only**. Never `pull_request_target` or
+  `workflow_run` — this repo is public and those triggers expose secrets to fork PRs.
+
+**Watch out:** ~17% of strokes carry no club data and return `null` measurements — filter them, they
+are not zeros. Units are SI (m/s, metres, degrees). `club` is returned as `7Iron` but filtered as
+`IRON7`.
+
+**Depends on** Phases 2 and 3 — ingest writes into that model, and manual entry must be proven
+before anything automatic is trusted.
 
 ---
 
 ## Open questions
 
-### OQ-1 · Is TrackMan data programmatically accessible? — **blocking Phase 5**
+### OQ-1 · Is TrackMan data programmatically accessible? — **resolved 2026-07-31**
 
-[#1](https://github.com/RichardWhitfield/golf/issues/1)
+[#1](https://github.com/RichardWhitfield/golf/issues/1) · closed
 
-TrackMan's documented API is a facility/partner product; there is no published API for individual
-golfers. Data currently reaches the player only through the phone app.
+**Yes.** Verified end to end against a real account. There is no user-facing export in the portal —
+TrackMan Performance Studio exports a CSV but only the facility can run it — and no facility email
+route was needed. The answer is an undocumented but publicly reachable GraphQL API with schema
+introspection enabled, plus a public mobile OAuth client that yields a reusable refresh token. The
+design is summarised under Phase 5 above; the full findings are on the issue.
 
-To determine:
-1. Does the TrackMan phone app or web portal offer any export (CSV, PDF, share link)?
-2. Does the facility's booking or bay system provide session reports by email?
-3. Is there an official personal-data export (a GDPR subject-access request is a legitimate route
-   and may reveal the underlying data shape)?
-4. Failing all of the above: how does the app authenticate, and is there a stable endpoint?
+A **13-month backfill** was taken at the same time: 91 sessions, 5,877 strokes, 4,901 with a
+measured club path, 2025-07-03 → 2026-07-27. It is held locally and **deliberately not committed** —
+the repo root is served publicly on `golf.whitfield.life`. This retires the "don't build charts
+against an empty store" risk on Phase 4.
 
-**Constraints on any answer:** it must be the player's own data, credentials must live only in
-Actions secrets, the integration must never block app load, and it must be assumed breakable at
-any time.
-
-**Note:** an emailed report or PDF is *not* a reliable parsing target. If that's the only route,
-manual entry of two numbers is more honest than a brittle parser.
+**Residual risks** (carried into Phase 5, not resolved): the interface is undocumented and can break
+without notice; the refresh token's absolute lifetime is unknown, though it does not rotate. Manual
+entry remains the baseline — decision D6 in `architecture.md` is unchanged.
 
 ### OQ-2 · What happens after week three?
 
@@ -207,6 +221,22 @@ naturally once Phase 2 introduces storage. **Cheap and high value — do it earl
 The plan mentions the step drill as an on-course reset, and "score how many stay left of a
 slice". Whether actual rounds are tracked is undecided. **Out of scope until Phase 4 ships** —
 it's a third session type and would widen the app considerably.
+
+### OQ-7 · Which club is the KPI scoped to? — **blocking Phase 4**
+
+[#14](https://github.com/RichardWhitfield/golf/issues/14)
+
+Raised by the OQ-1 backfill. `content.md` defines the KPI as "one number: club path" and never says
+which club. Against real data that is not measurable — a blended average tracks club selection as
+much as swing change. In 2025-11 the blended figure was the best in the series (`-3.27`) while the
+driver was the worst to that point (`-7.79`), purely because more seven-irons were hit. Over the
+same 13 months the driver worsened (`-4.01` → `-7.50`) while the 4-iron improved (`-7.19` → `-4.73`)
+— opposite trends a single series cannot show.
+
+Recommendation: scope the KPI to the **driver**, store `club` on every path value, chart per-club
+small multiples with `n` visible, and decide whether the `−2°`/`+2°` target band is itself per-club
+(the driver sits systematically shallower than the irons throughout the data). **Decide before
+Phase 4.**
 
 ---
 

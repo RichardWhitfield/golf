@@ -154,11 +154,14 @@ the version.
 **Requirement:** automatic pull, ideally triggered by new data appearing, falling back to a
 weekly (Monday) scheduled pull.
 
-**Reality:** TrackMan publishes no public API for individual golfers — their documented API is a
-facility/partner product. Data currently reaches the player only through the phone app. Whether a
-programmatic path exists is **unresolved and requires investigation** (see `roadmap.md`).
+**Reality:** TrackMan's *documented* API is a facility/partner product (bay control, tournaments) and
+is not usable by an individual golfer. However, an **undocumented GraphQL API at
+`https://api.trackmangolf.com/graphql` is reachable with the player's own credentials**, and OQ-1
+confirmed it end to end on 2026-07-31. Schema introspection is enabled, so the surface is
+verifiable rather than guessed.
 
-Because of that uncertainty, ingest is defined as an interface with swappable implementations:
+Ingest remains an interface with swappable implementations — the API path works today but is
+undocumented and must be assumed breakable:
 
 ```ts
 interface TrackmanSource {
@@ -173,10 +176,18 @@ Candidate implementations, in order of confidence:
 | Source | Confidence | Notes |
 |---|---|---|
 | `ManualSource` | Certain | A form. Always present. The app is fully functional with only this. |
-| `FileImportSource` | Likely | If any CSV/report export exists, drop the file in and parse it. |
-| `ApiSource` | Unknown | Depends entirely on what the investigation finds. |
+| `ApiSource` | **Confirmed** | GraphQL, `me.activities(kinds: [VIRTUAL_RANGE], timeFrom:, timeTo:)`. Undocumented; assume it breaks. |
+| `FileImportSource` | Unnecessary | No player-accessible export exists. Superseded by `ApiSource`. |
 
-### If automated pull becomes possible
+`activities(timeFrom:, timeTo:)` maps directly onto `fetchSince()` — the interface above was
+specified before the API was known and needs no change.
+
+**Data notes for any implementation:** units are SI (m/s, metres, degrees). Roughly 17% of strokes
+carry no club data and return `null` measurements — filter them, they are not zeros. `club` is
+returned as a display string (`7Iron`) but filtered by enum (`IRON7`). `aggregatedMeasurement(clubs:)`
+computes per-club averages server-side; **store club path per club, never blended** (see OQ-7).
+
+### Automated pull
 
 A browser cannot poll on a schedule — it only runs while a tab is open. Automated pull therefore
 requires something running without the user:
@@ -188,6 +199,16 @@ history of the data for free.
 
 **Credentials must be GitHub Actions secrets — never committed, never shipped to the client
 bundle.** Anything in `dist/` is public on `golf.whitfield.life`.
+
+**Auth design (confirmed):** refresh-token grant against the **public** mobile OAuth client
+`old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae` (authorization_code + PKCE, no client secret).
+The refresh token is **non-rotating and reusable**, so a single static `TRACKMAN_REFRESH_TOKEN`
+secret is set once and never written back — there is no rotation failure mode. Access tokens last
+14 days. The portal's own client is confidential and BFF-backed, so it is *not* usable from CI.
+
+**Workflow triggers must be `schedule` and `workflow_dispatch` only.** Never `pull_request_target`
+or `workflow_run`: this repo is public, and those triggers run with secret access under
+attacker-influenced conditions.
 
 **Fragility warning:** any integration built on an undocumented, non-public interface can break
 without notice. It must degrade to manual entry, and never block the app from loading.
