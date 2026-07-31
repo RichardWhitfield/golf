@@ -55,7 +55,7 @@
 <style>
   .today{
     margin:40px 0 0;padding:24px 26px 26px;border-radius:16px;
-    background:linear-gradient(100deg,var(--panel),#193a2b);
+    background:linear-gradient(100deg,var(--panel),var(--panel-2));
     border:1px solid var(--line);border-left:3px solid var(--ball);
   }
   .today-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
@@ -66,8 +66,13 @@
   .today .more{
     display:inline-block;margin-top:16px;font-family:'Space Mono',monospace;
     font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--ball);text-decoration:none;border-bottom:1px solid #5a4d1f;padding-bottom:2px;
+    color:var(--ball);text-decoration:none;border-bottom:1px solid var(--ball-dim);padding-bottom:2px;
+    position:relative;
   }
+  /* ~21px of text, and this gets tapped outdoors. Expand the hit area to 44px with a
+     pseudo-element rather than min-height, so the ported layout is untouched. The 16px
+     margin above and the panel's 26px bottom padding both absorb the overhang. */
+  .today .more::after{content:'';position:absolute;inset:-11px 0}
   .today .more:hover{border-bottom-color:var(--ball)}
 
   /* ---- day bar ---- */
@@ -78,20 +83,31 @@
     border-radius:100px;padding:10px 16px;min-height:44px;cursor:pointer;
     transition:color .18s ease,border-color .18s ease;
   }
-  .daybar button:hover{color:var(--chalk);border-color:#3c6650}
+  .daybar button:hover{color:var(--chalk);border-color:var(--line-hover)}
   .daybar button[aria-pressed="true"]{color:var(--bg);background:var(--ball);border-color:var(--ball);font-weight:700}
-  .daybar button.is-today{border-color:#5a4d1f;color:var(--ball)}
+  .daybar button.is-today{border-color:var(--ball-dim);color:var(--ball)}
   .daybar button.is-today[aria-pressed="true"]{color:var(--bg)}
   .today-reset{
     background:none;border:none;color:var(--dim);cursor:pointer;padding:4px 0;
     font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.08em;
     text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;
+    position:relative;
   }
+  /* ~26px of text. Expanded downward only: the daybar sits directly above with no gap, so a
+     symmetric overhang would swallow taps meant for the bottom row of day buttons. The 20px
+     margin above `.grid` gives the room this needs. */
+  .today-reset::after{content:'';position:absolute;inset:0 0 -18px}
   .today-reset:hover{color:var(--ball)}
   .today-reset[hidden]{display:none}
 
   @media (max-width:760px){
     /* `.wrap` becomes a flex column at this width (app.css) — today jumps to the top. */
     .today{order:-1;margin-top:0}
+  }
+
+  /* Scoped for the same specificity reason as DrillCard. Colour still changes on hover;
+     only the easing is removed. */
+  @media (prefers-reduced-motion:reduce){
+    .daybar button{transition:none}
   }
 </style>

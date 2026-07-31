@@ -27,7 +27,7 @@
 </section>
 
 <style>
-  .warn{border:1px solid var(--flag);border-radius:14px;padding:26px 28px;background:rgba(224,83,59,.06)}
+  .warn{border:1px solid var(--flag);border-radius:14px;padding:26px 28px;background:var(--flag-wash)}
   .warn .eyebrow{color:var(--flag)}
   .warn ul{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:14px}
   .warn li{padding-left:22px;position:relative;font-size:.98rem}

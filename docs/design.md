@@ -46,23 +46,29 @@ Three greens, getting lighter as they come forward: `--bg` → `--panel` → `--
 fourth level. If something needs to feel more prominent, use a border or the accent colour, not
 a new shade.
 
-### Non-tokenised colours (known debt)
+### Supporting shades
 
-These are currently hardcoded and should become tokens during the rebuild:
+Tokenised 2026-08-01, clearing the debt carried through the Phase 1 port. Each is a tint of a
+core token used for exactly one job. **They are not a fourth surface level** — the
+`--bg` → `--panel` → `--card` rule above still holds.
 
-| Value | Where | Suggested token |
+| Token | Value | Purpose |
 |---|---|---|
-| `#1a3d2c` | Body radial-gradient glow | `--glow` |
-| `#193a2b` | KPI band gradient end | `--panel-2` |
-| `#3c6650` | Drill hover border | `--line-hover` |
-| `#5a4d1f` | `.tag.sim` border | `--ball-dim` |
-| `#8fd0a6` / `#2f5a3f` | `.tag.home` text / border | `--home` / `--home-dim` |
-| `rgba(224,83,59,.06)` | Watch-outs panel background | `--flag-wash` |
+| `--glow` | `#1a3d2c` | Body radial-gradient glow. |
+| `--glow-fade` | `rgba(26,61,44,0)` | `--glow` at zero alpha, so the gradient ramps out through its own hue rather than through grey. |
+| `--panel-2` | `#193a2b` | Gradient end for the KPI band and the Today panel. |
+| `--line-hover` | `#3c6650` | Border on hover — drill cards, day buttons. |
+| `--ball-dim` | `#5a4d1f` | Muted `--ball` for borders that shouldn't shout: `.tag.sim`, today's day button, the "all drills" underline. |
+| `--home` | `#8fd0a6` | `.tag.home` text. The only green that carries meaning rather than depth. |
+| `--home-dim` | `#2f5a3f` | `.tag.home` border. |
+| `--flag-wash` | `rgba(224,83,59,.06)` | Watch-outs panel background. `--flag` at 6%. |
 
-Additionally, the hero SVG repeats token values as literal hex (`#294A3A`, `#E0533B`,
-`#EFC64B`, `#F4F2E9`, `#A9BEB0`) because inline SVG presentation attributes don't read CSS
-variables. When the SVG becomes a component, drive these through `fill`/`stroke` in CSS rather
-than attributes so they follow the tokens.
+**The hero SVG carries no colour of its own.** It used to hardcode `#294A3A`, `#E0533B`,
+`#EFC64B`, `#F4F2E9` and `#A9BEB0` as presentation attributes — literal copies of `--line`,
+`--flag`, `--ball`, `--chalk` and `--dim` that would silently desync the moment a token moved.
+Every shape now carries a class (`.target`, `.trace.slice`, `.trace.goal`, `.tee`, `.lbl.note`)
+and takes its `fill`/`stroke` from the scoped stylesheet. Keep it that way: no colour attributes
+in the markup.
 
 ---
 
@@ -216,11 +222,22 @@ length or the animation will look wrong.
 
 ### Reduced motion — non-negotiable
 
+The entrance animations are global, so their override lives in `app.css`:
+
 ```css
 @media (prefers-reduced-motion: reduce){
   .reveal,.trace{animation:none;opacity:1;transform:none;stroke-dashoffset:0}
 }
 ```
+
+**Hover motion is overridden inside the component that owns it**, not here — `DrillCard.svelte`
+and `TodayPanel.svelte` each carry their own `prefers-reduced-motion` block. This is not a style
+preference: Svelte compiles `.drill` to `.drill.svelte-xxx`, so a global override targeting
+`.drill` loses the specificity contest and silently does nothing. A reduced-motion rule must sit
+in the same layer as the rule it is cancelling.
+
+Suppress the *movement*, not the *feedback*. Both overrides drop the `transform` and the
+`transition` while leaving the border and colour change intact, so hover remains perceivable.
 
 Every animation added from here must have a corresponding reduced-motion override, and the
 override must leave content **fully visible** — never animate in something that stays hidden
@@ -240,6 +257,19 @@ when motion is disabled.
   `--ball` is high contrast against every surface and semantically means "this is what you're
   aiming at". Never suppress it on a new control.
 - Day-bar controls are real `<button>`s with `aria-pressed`, at a `44px` minimum hit target.
+- Small text controls reach `44px` **without changing the layout**, using a transparent
+  pseudo-element rather than `min-height`:
+
+  ```css
+  .today-reset{position:relative}
+  .today-reset::after{content:'';position:absolute;inset:0 0 -18px}
+  ```
+
+  Growing the box itself would push the drill grid down and break the "visually identical to the
+  pre-Phase-1 page" contract. Check what sits next to the control before choosing the overhang:
+  `.today .more` can expand symmetrically (`inset:-11px 0`) because margin and padding absorb it,
+  but `.today-reset` expands **downward only** — the day bar sits directly above it with no gap,
+  and a symmetric overhang would swallow taps meant for the bottom row of day buttons.
 
 **Must be addressed as the app grows:**
 - Interactive elements must be real `<button>` / `<input>` / `<a>`, not styled `<div>`s.

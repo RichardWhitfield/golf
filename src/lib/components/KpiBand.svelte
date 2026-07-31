@@ -13,7 +13,7 @@
 <style>
   .kpi{
     margin:44px 0;padding:30px 34px;border-radius:16px;
-    background:linear-gradient(100deg,var(--panel),#193a2b);
+    background:linear-gradient(100deg,var(--panel),var(--panel-2));
     border:1px solid var(--line);
     display:flex;flex-wrap:wrap;align-items:center;gap:14px 30px;
   }
