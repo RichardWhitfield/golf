@@ -12,8 +12,11 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 - `index.html` — self-contained, single file. The complete 3-week plan, plus a Today panel
   driven by a small vanilla script (see Phase 0.5).
 - `CNAME` — `golf.whitfield.life`, served by GitHub Pages from the repo root.
-- `README.md` — one line.
+- `README.md` — orientation and a documentation index.
 - No build step, no dependencies, no tests.
+
+Work is tracked in [GitHub issues](https://github.com/RichardWhitfield/golf/issues); each phase
+and open question below links to its issue.
 
 ---
 
@@ -46,6 +49,8 @@ Roughly 120 lines of vanilla JS in `index.html`. **Phase 1 should absorb this**,
 
 ## Phase 1 · Scaffold, keeping the site identical
 
+[#2](https://github.com/RichardWhitfield/golf/issues/2)
+
 Prove the toolchain end to end before changing anything visible.
 
 - Vite + Svelte 5 + TypeScript.
@@ -65,6 +70,8 @@ considering the phase complete.
 
 ## Phase 2 · Log a practice session
 
+[#3](https://github.com/RichardWhitfield/golf/issues/3)
+
 The first real feature. Highest value per unit of work — six days a week currently record nothing.
 
 - Storage layer: repository interface, `LocalStorageRepo`, schema versioning, migrations.
@@ -83,6 +90,8 @@ survives a browser restart.
 
 ## Phase 3 · Log a Trackman session, manually
 
+[#4](https://github.com/RichardWhitfield/golf/issues/4)
+
 - Trackman session form: date, best path, typical path, drills worked, notes.
 - Fits the existing 5-minute "log it" block that ends every Monday session.
 - Records `source: 'manual'`.
@@ -92,6 +101,8 @@ survives a browser restart.
 ---
 
 ## Phase 4 · Progress
+
+[#5](https://github.com/RichardWhitfield/golf/issues/5)
 
 Make the accumulated data answer questions.
 
@@ -110,6 +121,8 @@ store — the design decisions will be wrong.
 
 ## Phase 5 · Trackman ingest
 
+[#6](https://github.com/RichardWhitfield/golf/issues/6)
+
 **Blocked on OQ-1 below.** Do not start until the investigation concludes.
 
 If a data path exists: build it behind the `TrackmanSource` interface, add a scheduled GitHub
@@ -124,6 +137,8 @@ instead (a fast phone-optimised entry form, an iOS Shortcut).
 ## Open questions
 
 ### OQ-1 · Is TrackMan data programmatically accessible? — **blocking Phase 5**
+
+[#1](https://github.com/RichardWhitfield/golf/issues/1)
 
 TrackMan's documented API is a facility/partner product; there is no published API for individual
 golfers. Data currently reaches the player only through the phone app.
@@ -144,6 +159,8 @@ manual entry of two numbers is more honest than a brittle parser.
 
 ### OQ-2 · What happens after week three?
 
+[#7](https://github.com/RichardWhitfield/golf/issues/7)
+
 The plan is explicitly 3 weeks and ends before a trip. Options: repeat with a tightened target,
 switch KPI (face angle, strike location, start direction), or archive and start a new block.
 
@@ -152,6 +169,8 @@ read per block rather than as one endless series. **Decide before Phase 4**, sin
 the charts are scoped to.
 
 ### OQ-3 · Does storage ever need to leave the device?
+
+[#8](https://github.com/RichardWhitfield/golf/issues/8)
 
 Currently `localStorage` only. It becomes a real problem if logging happens on a phone but
 review happens on a laptop — the two devices would hold different data.
@@ -162,6 +181,8 @@ contained change.
 
 ### OQ-4 · Should the plan itself become editable?
 
+[#9](https://github.com/RichardWhitfield/golf/issues/9)
+
 Currently the plan is fixed content in the repo. If the coaching changes — new drills, revised
 schedule — is that a code edit or an in-app edit?
 
@@ -169,6 +190,8 @@ schedule — is that a code edit or an in-app edit?
 plan editing is a large feature for one user. Revisit only if the plan starts changing weekly.
 
 ### OQ-5 · When did the 3-week block start?
+
+[#10](https://github.com/RichardWhitfield/golf/issues/10)
 
 The Today panel knows the day but not which *week of the arc* you're in — so it can't say
 "week 2, transfer phase, mix drill-swings with normal swings", which is arguably the more useful
@@ -178,6 +201,8 @@ Options: hardcode a start date in the markup, or capture it once and store it. F
 naturally once Phase 2 introduces storage. **Cheap and high value — do it early in Phase 2.**
 
 ### OQ-6 · Do course rounds get logged?
+
+[#11](https://github.com/RichardWhitfield/golf/issues/11)
 
 The plan mentions the step drill as an on-course reset, and "score how many stay left of a
 slice". Whether actual rounds are tracked is undecided. **Out of scope until Phase 4 ships** —
