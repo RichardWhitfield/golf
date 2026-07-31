@@ -56,6 +56,48 @@
   .flight{width:100%;height:auto;display:block}
   .flight .trace{stroke-linecap:round;fill:none}
 
+  /* ---- focus ---- */
+  :focus-visible{outline:2px solid var(--ball);outline-offset:3px;border-radius:4px}
+
+  /* ---- today ---- */
+  .today{
+    margin:40px 0 0;padding:24px 26px 26px;border-radius:16px;
+    background:linear-gradient(100deg,var(--panel),#193a2b);
+    border:1px solid var(--line);border-left:3px solid var(--ball);
+  }
+  .today-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .today-date{font-family:'Space Mono',monospace;font-size:.76rem;color:var(--dim);letter-spacing:.06em}
+  .today h2{font-size:clamp(1.35rem,3vw,1.8rem);font-weight:800;margin:10px 0 6px}
+  .today .sub{color:var(--dim);font-size:.95rem;max-width:60ch}
+  .today .grid{margin-top:20px}
+  .today .drill{background:var(--card)}
+  .today .more{
+    display:inline-block;margin-top:16px;font-family:'Space Mono',monospace;
+    font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ball);text-decoration:none;border-bottom:1px solid #5a4d1f;padding-bottom:2px;
+  }
+  .today .more:hover{border-bottom-color:var(--ball)}
+
+  /* ---- day bar ---- */
+  .daybar{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap}
+  .daybar button{
+    font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.1em;
+    background:transparent;color:var(--dim);border:1px solid var(--line);
+    border-radius:100px;padding:10px 16px;min-height:44px;cursor:pointer;
+    transition:color .18s ease,border-color .18s ease;
+  }
+  .daybar button:hover{color:var(--chalk);border-color:#3c6650}
+  .daybar button[aria-pressed="true"]{color:var(--bg);background:var(--ball);border-color:var(--ball);font-weight:700}
+  .daybar button.is-today{border-color:#5a4d1f;color:var(--ball)}
+  .daybar button.is-today[aria-pressed="true"]{color:var(--bg)}
+  .today-reset{
+    background:none;border:none;color:var(--dim);cursor:pointer;padding:4px 0;
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.08em;
+    text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;
+  }
+  .today-reset:hover{color:var(--ball)}
+  .today-reset[hidden]{display:none}
+
   /* ---- KPI band ---- */
   .kpi{
     margin:44px 0;padding:30px 34px;border-radius:16px;
@@ -172,6 +214,9 @@
     .flight{max-width:300px;margin:8px auto 0}
     .week{grid-template-columns:1fr}
     .arc{grid-template-columns:1fr}
+    /* On a phone you're here to practise, not to read the poster — today comes first. */
+    .wrap{display:flex;flex-direction:column}
+    .today{order:-1;margin-top:0}
   }
   @media (prefers-reduced-motion:reduce){
     .reveal,.trace{animation:none;opacity:1;transform:none;stroke-dashoffset:0}
@@ -205,6 +250,20 @@
     </svg>
   </header>
 
+  <!-- TODAY -->
+  <section class="today reveal" id="today" aria-labelledby="today-title">
+    <div class="today-head">
+      <span class="eyebrow" id="today-eyebrow">Today</span>
+      <span class="today-date" id="today-date"></span>
+    </div>
+    <h2 id="today-title">Your week at a glance</h2>
+    <p class="sub" id="today-sub">Scroll on for the full plan — the drills, your week, and the three-week arc.</p>
+    <div class="daybar" id="daybar" role="group" aria-label="Choose a day"></div>
+    <button class="today-reset" id="today-reset" type="button" hidden>Back to today</button>
+    <div class="grid" id="today-drills"></div>
+    <a class="more" id="today-more" href="#week">Full week ↓</a>
+  </section>
+
   <!-- KPI -->
   <div class="kpi reveal">
     <span class="label">Headline number · club path</span>
@@ -221,26 +280,26 @@
   </section>
 
   <!-- DRILLS -->
-  <section>
+  <section id="drills">
     <div class="sec-head"><span class="idx">02</span><h2>Core drills</h2></div>
 
     <div class="group-label">Sequencing &amp; transition</div>
     <div class="grid">
-      <div class="drill">
+      <div class="drill" data-drill="01">
         <span class="no">01</span>
         <div class="tags"><span class="tag sim">SIM</span><span class="tag home">HOME</span></div>
         <h3>Step-change</h3>
         <p>Your money drill. Feet together, ball forward. Start back, and as you reach the top, step the lead foot toward the target and swing. Your on-course reset whenever the slice creeps back.</p>
         <div class="foot"><span>Reps · <b>10–15</b></span><span>Feels like · pressure in the lead foot before the arms move</span></div>
       </div>
-      <div class="drill">
+      <div class="drill" data-drill="02">
         <span class="no">02</span>
         <div class="tags"><span class="tag sim">SIM</span><span class="tag home">HOME</span></div>
         <h3>Pump-and-go</h3>
         <p>Swing to the top. Pump the hands down toward the trail pocket 2–3 times by bumping and rotating the hips — arms passive — then let the last one go and strike.</p>
         <div class="foot"><span>Reps · <b>8–10</b></span><span>Feels like · hands dropping while the hips clear</span></div>
       </div>
-      <div class="drill">
+      <div class="drill" data-drill="03">
         <span class="no">03</span>
         <div class="tags"><span class="tag sim">SIM</span><span class="tag home">HOME</span></div>
         <h3>Pause-at-the-top</h3>
@@ -251,21 +310,21 @@
 
     <div class="group-label">Slot &amp; path</div>
     <div class="grid">
-      <div class="drill">
+      <div class="drill" data-drill="04">
         <span class="no">04</span>
         <div class="tags"><span class="tag sim">SIM</span><span class="tag home">HOME</span></div>
         <h3>Outside gate</h3>
         <p>Set a headcover (or spare airflow ball) a grip-length outside the ball and slightly behind it, on the line. Over-the-top clips it; an inside path misses it clean.</p>
         <div class="foot"><span>Reps · <b>15–20 balls</b></span><span>Feels like · club coming from behind you, not across</span></div>
       </div>
-      <div class="drill">
+      <div class="drill" data-drill="05">
         <span class="no">05</span>
         <div class="tags"><span class="tag home">HOME</span></div>
         <h3>Trail-arm only</h3>
         <p>Trail hand only, choked down, small three-quarter swings at airflow balls. You physically can't come over the top one-handed — the arm has to drop and rotate.</p>
         <div class="foot"><span>Reps · <b>15–20</b></span><span>Feels like · the forearm rotating over through impact</span></div>
       </div>
-      <div class="drill">
+      <div class="drill" data-drill="06">
         <span class="no">06</span>
         <div class="tags"><span class="tag sim">SIM</span></div>
         <h3>Angled-stick shallow</h3>
@@ -276,7 +335,7 @@
 
     <div class="group-label">Tempo · the quiet fix</div>
     <div class="grid">
-      <div class="drill">
+      <div class="drill" data-drill="07">
         <span class="no">07</span>
         <div class="tags"><span class="tag home">HOME</span></div>
         <h3>Slow-motion &amp; swishes</h3>
@@ -287,7 +346,7 @@
   </section>
 
   <!-- WEEKLY -->
-  <section>
+  <section id="week">
     <div class="sec-head"><span class="idx">03</span><h2>Your week</h2></div>
     <div class="week">
       <div class="block">
@@ -380,5 +439,130 @@
   </footer>
 
 </div>
+
+<script>
+(function(){
+  'use strict';
+
+  var TZ = 'Australia/Sydney';
+  var ORDER = ['mon','tue','wed','thu','fri','sat','sun'];
+  var NAMES = {mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',
+               fri:'Friday',sat:'Saturday',sun:'Sunday'};
+
+  /* The weekly schedule. `drills` holds IDs that match the data-drill attributes on the
+     cards in the "Core drills" section — those cards remain the single source of truth
+     for drill content, and are cloned in here rather than duplicated. */
+  var OUTDOOR = '5–10 minutes outdoors with airflow balls. Two drills — slow and correct beats fast and many.';
+  var PLAN = {
+    mon:{title:'Trackman session',
+         sub:'Two hours. Warm up, then block work watching the path number, then transfer to normal swings, then play holes. Finish by logging your best and typical path.',
+         drills:['04','06','02'], moreText:'Full Monday plan ↓', moreHref:'#week'},
+    tue:{title:'Trail-arm and tempo', sub:OUTDOOR, drills:['05','07']},
+    wed:{title:'Step and gate',       sub:OUTDOOR, drills:['01','04']},
+    thu:{title:'Pump and tempo',      sub:OUTDOOR, drills:['02','07']},
+    fri:{title:'Trail-arm and gate',  sub:OUTDOOR, drills:['05','04']},
+    sat:{title:'Patch the weak spot',
+         sub:'Whatever felt worst this week, plus a few step drills to reset.',
+         drills:['01']},
+    sun:{title:'Free choice',
+         sub:'Anything you fancy — finish on a good one.',
+         drills:['01']}
+  };
+
+  var el = {
+    eyebrow: document.getElementById('today-eyebrow'),
+    date:    document.getElementById('today-date'),
+    title:   document.getElementById('today-title'),
+    sub:     document.getElementById('today-sub'),
+    daybar:  document.getElementById('daybar'),
+    drills:  document.getElementById('today-drills'),
+    more:    document.getElementById('today-more'),
+    reset:   document.getElementById('today-reset')
+  };
+
+  /* Snapshot the authored drill cards before any clones are added to the page. */
+  var source = {};
+  Array.prototype.forEach.call(document.querySelectorAll('[data-drill]'), function(node){
+    source[node.getAttribute('data-drill')] = node;
+  });
+
+  /* Day is resolved in Sydney rather than from the visitor's clock, so the plan stays
+     correct when travelling. Intl handles NSW daylight saving; local time is the fallback. */
+  function todayKey(){
+    try {
+      var s = new Intl.DateTimeFormat('en-US',{timeZone:TZ,weekday:'short'}).format(new Date());
+      var k = s.slice(0,3).toLowerCase();
+      if (PLAN[k]) return k;
+    } catch (e) { /* fall through */ }
+    return ORDER[(new Date().getDay() + 6) % 7];
+  }
+
+  function todayLabel(){
+    try {
+      return new Intl.DateTimeFormat('en-AU',
+        {timeZone:TZ,day:'numeric',month:'long'}).format(new Date());
+    } catch (e) {
+      return '';
+    }
+  }
+
+  var chips = {};
+  var current = todayKey();
+  var actualToday = current;
+
+  function render(key){
+    var day = PLAN[key];
+    var isToday = key === actualToday;
+
+    el.eyebrow.textContent = isToday ? 'Today · ' + NAMES[key] : NAMES[key];
+    el.date.textContent = isToday ? todayLabel() : '';
+    el.title.textContent = day.title;
+    el.sub.textContent = day.sub;
+
+    el.drills.textContent = '';
+    day.drills.forEach(function(id){
+      if (source[id]) el.drills.appendChild(source[id].cloneNode(true));
+    });
+
+    el.more.textContent = day.moreText || 'All drills ↓';
+    el.more.setAttribute('href', day.moreHref || '#drills');
+    el.reset.hidden = isToday;
+
+    ORDER.forEach(function(k){
+      chips[k].setAttribute('aria-pressed', String(k === key));
+      chips[k].classList.toggle('is-today', k === actualToday);
+    });
+  }
+
+  function select(key){
+    current = key;
+    render(key);
+  }
+
+  ORDER.forEach(function(key){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = key.toUpperCase();
+    b.setAttribute('aria-pressed','false');
+    b.setAttribute('aria-label', NAMES[key]);
+    b.addEventListener('click', function(){ select(key); });
+    el.daybar.appendChild(b);
+    chips[key] = b;
+  });
+
+  el.reset.addEventListener('click', function(){ select(actualToday); });
+
+  /* Keep a page left open overnight honest. */
+  setInterval(function(){
+    var k = todayKey();
+    if (k === actualToday) return;
+    var wasOnToday = current === actualToday;
+    actualToday = k;
+    select(wasOnToday ? k : current);
+  }, 60000);
+
+  render(current);
+})();
+</script>
 </body>
 </html>
