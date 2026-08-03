@@ -109,7 +109,7 @@ interface Repository {
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
   exportDocument(): Promise<StoreDocument>
-  importDocument(raw: unknown): Promise<ImportResult>    // { added, updated }
+  importDocument(raw: unknown): Promise<ImportSummary>   // { added, updated }
 }
 ```
 
