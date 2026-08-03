@@ -1,0 +1,84 @@
+/* Global layer: design tokens, reset, shared typography, page scaffold and motion.
+   Anything owned by a single component lives in that component's scoped <style> block —
+   including its own 760px media query. Never split one element's rules across both layers:
+   Svelte's scoping raises specificity, so a global override would lose to a scoped base rule.
+   See docs/design.md. */
+
+:root{
+  --bg:#0E2117;
+  --panel:#143026;
+  --card:#173A2A;
+  --chalk:#F4F2E9;
+  --dim:#A9BEB0;
+  --line:#294A3A;
+  --ball:#EFC64B;
+  --flag:#E0533B;
+
+  /* Supporting shades. Not a fourth surface level — each is a tint of a token above,
+     used for one job only. See docs/design.md §1. */
+  --glow:#1a3d2c;
+  --glow-fade:rgba(26,61,44,0);   /* --glow at zero alpha; keeps the gradient ramp identical */
+  --panel-2:#193a2b;
+  --line-hover:#3c6650;
+  --ball-dim:#5a4d1f;
+  --home:#8fd0a6;
+  --home-dim:#2f5a3f;
+  --flag-wash:rgba(224,83,59,.06);
+
+  --maxw:900px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(1200px 600px at 80% -10%, var(--glow) 0%, var(--glow-fade) 60%),
+    var(--bg);
+  color:var(--chalk);
+  font-family:'Inter',system-ui,sans-serif;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  padding:0 20px;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:64px 0 96px}
+
+/* ---- shared type ---- */
+.eyebrow{
+  font-family:'Space Mono',monospace;
+  font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--ball);
+  display:inline-block;
+}
+h1,h2,h3{font-family:'Archivo',sans-serif;line-height:1.02;letter-spacing:-.02em}
+.mono{font-family:'Space Mono',monospace}
+
+/* ---- focus ---- */
+:focus-visible{outline:2px solid var(--ball);outline-offset:3px;border-radius:4px}
+
+/* ---- section scaffold ---- */
+section{margin-top:72px}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+.sec-head h2{font-size:clamp(1.5rem,3.6vw,2.15rem);font-weight:800}
+.sec-head .idx{font-family:'Space Mono',monospace;color:var(--ball);font-size:.85rem;letter-spacing:.1em}
+
+/* Shared by the Today panel and the Core drills section. */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:16px}
+
+/* Shared by the weekly structure and the training aids. */
+.aid-note{margin-top:14px;font-size:.88rem;color:var(--dim);font-style:italic}
+
+/* ---- reveal ---- */
+.reveal{opacity:0;transform:translateY(16px);animation:rise .7s ease forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.trace{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.6s ease .3s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+@media (max-width:760px){
+  /* On a phone you're here to practise, not to read the poster — today comes first.
+     The Today panel sets its own `order` in TodayPanel.svelte. */
+  .wrap{display:flex;flex-direction:column}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .reveal,.trace{animation:none;opacity:1;transform:none;stroke-dashoffset:0}
+}

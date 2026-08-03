@@ -24,21 +24,30 @@ of these wrong, fix it in the same commit.
 
 ## Current state
 
-Single self-contained `index.html`, no build step, no dependencies. GitHub Pages serves the repo
-root; `CNAME` sets the custom domain.
+**Svelte 5 + Vite + TypeScript, built from source** (Phase 1, issue #2). GitHub Actions builds
+`dist/` and publishes it to GitHub Pages; `public/CNAME` sets the custom domain. Pages no longer
+serves the repo root — pushing `index.html` does nothing on its own.
 
-It now contains a small amount of vanilla JavaScript powering the **Today panel** — it resolves
-the current day in `Australia/Sydney` and shows that day's drills. This is deliberate interim
-code, not a departure from the Svelte plan: it delivers the feature today without blocking on a
-scaffold. Phase 1 should absorb it rather than work around it.
+The page is composed from components in `src/lib/components/`, styled by `src/app.css` plus
+scoped component styles. The Today panel is now a Svelte component reading the schedule from
+`src/lib/domain/plan.ts`; the vanilla JavaScript that used to power it is gone.
 
-**Key constraint on that script:** the drill cards in the "Core drills" section are the single
-source of truth for drill content. The Today panel *clones* them via `data-drill` attributes.
-Never duplicate drill copy into JavaScript — if a drill's text changes, it must change in exactly
-one place.
+**Key constraint: `src/lib/domain/drills.ts` is the single source of truth for drill content.**
+The Today panel and the "Core drills" section both render from it. Never restate drill copy in
+markup — if a drill's text changes, it must change in exactly one place. (This inverts the
+pre-Phase-1 rule, where the *cards* were authoritative and the panel cloned them.)
 
-**The stack described in `docs/architecture.md` (Svelte 5 + Vite + TypeScript) is the agreed
-target, not the current state.** Nothing has been scaffolded yet.
+Only the Phase 1 slice of `docs/architecture.md` §2 exists. `storage/`, `ingest/`, `stores/` and
+`routes/` are **not** scaffolded — they arrive with the phases that need them.
+
+### Where a style rule belongs
+
+`app.css` holds tokens, the reset, shared typography, the section scaffold, and classes used by
+more than one component (`.grid`, `.sec-head`, `.aid-note`). Everything else is scoped to its
+component — **including that component's own `760px` media query.**
+
+Never split one element's rules across both layers. Svelte compiles `.hero` to `.hero.svelte-xxx`,
+so a scoped base rule outranks a global override and the override silently loses.
 
 ## Rules
 
@@ -74,7 +83,9 @@ target, not the current state.** Nothing has been scaffolded yet.
 - Bump `schemaVersion` and write a migration for any stored-shape change.
 
 ### Deployment
-- **`CNAME` must end up in `dist/`** (put it in `public/`). Losing it drops the custom domain.
+- **`CNAME` must end up in `dist/`** (it lives in `public/`). Losing it drops the custom domain.
+  The deploy workflow asserts `dist/CNAME` exists and has the right contents — don't remove that
+  guard. `public/favicon.ico` matters for the same reason: browsers request it from the root.
 - Anything in `dist/` is publicly readable. **No secrets in the client bundle** — credentials
   belong in GitHub Actions secrets only.
 - Every phase must leave `golf.whitfield.life` working.
@@ -96,8 +107,19 @@ target, not the current state.** Nothing has been scaffolded yet.
 
 ## Commands
 
-No build tooling yet. Once Phase 1 lands, expect `npm run dev`, `npm run build`,
-`npm run check`, `npm test` — update this section when it's true.
+```
+npm install       # once
+npm run dev       # dev server with HMR
+npm run build     # production build into dist/
+npm run preview   # serve the built dist/ locally
+npm run check     # svelte-check (TypeScript + template type errors)
+npm test          # Vitest, domain logic only
+```
 
-To preview the current site: open `index.html` in a browser, or `python3 -m http.server` from the
-repo root.
+`npm run check` and `npm test` both run in CI before a deploy — a failure there blocks
+publication.
+
+Opening `index.html` directly no longer works: it is a Vite entry point containing only a mount
+node. Use `npm run dev`.
+
+**TypeScript is pinned to v6** — `svelte-check` does not yet accept v7.
