@@ -69,10 +69,12 @@
     color:var(--ball);text-decoration:none;border-bottom:1px solid var(--ball-dim);padding-bottom:2px;
     position:relative;
   }
-  /* ~21px of text, and this gets tapped outdoors. Expand the hit area to 44px with a
-     pseudo-element rather than min-height, so the ported layout is untouched. The 16px
-     margin above and the panel's 26px bottom padding both absorb the overhang. */
-  .today .more::after{content:'';position:absolute;inset:-11px 0}
+  /* This gets tapped outdoors, so expand the hit area to 44px with a pseudo-element rather
+     than min-height, leaving the ported layout untouched. The pseudo-element resolves against
+     the *padding* box (21.4px — the 22.4px border box less the 1px underline), not the border
+     box, so the inset must clear 44px from 21.4px, not from 22.4px: 21.4 + 2×12 = 45.4px.
+     The 16px margin above and the panel's 26px bottom padding both absorb the 12px overhang. */
+  .today .more::after{content:'';position:absolute;inset:-12px 0}
   .today .more:hover{border-bottom-color:var(--ball)}
 
   /* ---- day bar ---- */
@@ -93,10 +95,10 @@
     text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;
     position:relative;
   }
-  /* ~26px of text. Expanded downward only: the daybar sits directly above with no gap, so a
-     symmetric overhang would swallow taps meant for the bottom row of day buttons. The 20px
-     margin above `.grid` gives the room this needs. */
-  .today-reset::after{content:'';position:absolute;inset:0 0 -18px}
+  /* 25px padding box. Expanded downward only: the daybar sits directly above with no gap, so a
+     symmetric overhang would swallow taps meant for the bottom row of day buttons. 25 + 19 =
+     44px exactly, and the 20px margin above `.grid` absorbs the 19px with 1px to spare. */
+  .today-reset::after{content:'';position:absolute;inset:0 0 -19px}
   .today-reset:hover{color:var(--ball)}
   .today-reset[hidden]{display:none}
 
