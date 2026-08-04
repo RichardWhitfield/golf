@@ -6,9 +6,28 @@
   import { clubSeries, dateBounds } from '../lib/domain/series'
   import { KPI_CLUB } from '../lib/domain/clubs'
   import ClubPathChart from '../lib/components/ClubPathChart.svelte'
+  import { drillCoverage } from '../lib/domain/coverage'
+  import { resolveISODate } from '../lib/domain/today'
+  import { parseISODate } from '../lib/domain/block'
+  import CoverageBars from '../lib/components/CoverageBars.svelte'
 
   const hasTrackman = $derived(sessions.trackman.length > 0)
   const blockStart = $derived(sessions.settings.blockStart)
+
+  const today = resolveISODate()
+  const BLOCK_DAYS = 21
+
+  /** The current block when one is set, otherwise the last 21 days — the same length, so the
+   *  counts mean the same thing either way. */
+  const coverageWindow = $derived.by(() => {
+    if (blockStart) return { from: blockStart, to: today }
+    const end = parseISODate(today)
+    if (end === null) return { from: today, to: today }
+    const from = new Date(end - (BLOCK_DAYS - 1) * 86_400_000).toISOString().slice(0, 10)
+    return { from, to: today }
+  })
+
+  const coverage = $derived(drillCoverage(sessions.list, coverageWindow.from, coverageWindow.to))
 
   const series = $derived(clubSeries(sessions.list))
   const bounds = $derived(dateBounds(series))
@@ -55,7 +74,11 @@
 
 <section id="coverage">
   <SectionHead idx="02" title="Drill coverage" />
-  <p class="empty">Coverage arrives in the next step.</p>
+  <p class="note">
+    What the plan asked for against what you logged. A drill sitting at zero against a real
+    schedule is the finding.
+  </p>
+  <CoverageBars rows={coverage} from={coverageWindow.from} to={coverageWindow.to} />
 </section>
 
 <section id="feel">
