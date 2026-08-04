@@ -2969,6 +2969,25 @@ EOF
 
 **Why `<details>`:** the expand/collapse gets keyboard support, `aria-expanded` and screen-reader announcement from the browser. Hand-rolling it would be twenty lines of state and event handling to arrive somewhere worse.
 
+- [ ] **Step 0: Delete `SessionForm`'s re-seeding `$effect`**
+
+This task is where `editing` first becomes a *changing* prop, so it is where the double-initialisation in `SessionForm.svelte` has to go. Delete this block entirely:
+
+```svelte
+  // Reload the form when the caller switches which session is being edited.
+  $effect(() => {
+    draft = editing ? draftFromSession(editing) : fresh()
+    drillsTouched = editing !== null
+    problems = []
+  })
+```
+
+The `{#key}` wrapper added in Step 2 remounts the whole component whenever the edited session changes, so the `$state` initialisers at the top of the file run with the correct `editing` value every time. Keeping both would mean initialising twice and relying on an effect to correct the first attempt one reactive tick later — which is what `svelte-check` flags as `state_referenced_locally`.
+
+Removing the effect also drops `draftFromSession` from the set of things the effect referenced — **check whether it is still used** by the initialiser (it is) before touching the import line.
+
+After this change `npm run check` must report **0 errors and 0 warnings**. The three `state_referenced_locally` warnings introduced in Task 9 should be gone. If any remain, stop and report it — do not suppress them with an ignore comment.
+
 - [ ] **Step 1: Write the list**
 
 Create `src/lib/components/RecentSessions.svelte`:
@@ -3115,7 +3134,14 @@ Update `src/routes/LogView.svelte`:
       ? 'Change what you need and update, or cancel to go back to a new session.'
       : "Today's drills are already ticked. Change what you actually did, then save."}
   </p>
-  <SessionForm {editing} onDone={() => (editing = null)} />
+  <!-- Keyed on the session being edited, so switching in or out of edit mode REMOUNTS the form.
+       That makes `SessionForm`'s `$state` initialisers correct by construction — they run once,
+       with the right `editing` value — and lets its re-seeding `$effect` be deleted (Step 0).
+       Without the key, the initialiser captures `editing` once and only the effect corrects it,
+       one reactive tick later: the pattern `svelte-check` flags as `state_referenced_locally`. -->
+  {#key editing?.id ?? 'new'}
+    <SessionForm {editing} onDone={() => (editing = null)} />
+  {/key}
   <RecentSessions onEdit={edit} />
 </section>
 <SiteFooter />
