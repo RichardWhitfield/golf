@@ -546,16 +546,27 @@ describe('seedEntries', () => {
 
   it("pre-selects exactly the day's scheduled drills", () => {
     const selected = seedEntries('wed').filter((e) => e.selected).map((e) => e.drillId)
-    expect(selected).toEqual(WEEK.wed.drills)
+    expect(selected).toEqual(['01', '04'])
   })
 
   it('pre-selects the right drills for every day of the week', () => {
+    // Compared as sets, deliberately. `WEEK[day].drills` is authored in the order the drills
+    // are *worked* — Monday is ['04','06','02'] — while the form lists all seven in stable
+    // 01-07 order so the rows never reshuffle as you tick them. The selection must match; the
+    // sequence must not be asserted, or the form would be forced to reorder itself.
     for (const [day, plan] of Object.entries(WEEK)) {
       const selected = seedEntries(day as keyof typeof WEEK)
         .filter((e) => e.selected)
         .map((e) => e.drillId)
-      expect(selected).toEqual(plan.drills)
+      expect(new Set(selected)).toEqual(new Set(plan.drills))
+      expect(selected).toHaveLength(plan.drills.length)
     }
+  })
+
+  it('lists the selected drills in stable drill order, not the plan\'s working order', () => {
+    // Monday's plan order is ['04','06','02']; the form must still read 02, 04, 06.
+    const selected = seedEntries('mon').filter((e) => e.selected).map((e) => e.drillId)
+    expect(selected).toEqual(['02', '04', '06'])
   })
 
   it("seeds each entry's swings from the drill's authored default", () => {
