@@ -2,6 +2,7 @@
   import SiteNav from './lib/components/SiteNav.svelte'
   import LogView from './routes/LogView.svelte'
   import PlanView from './routes/PlanView.svelte'
+  import ProgressView from './routes/ProgressView.svelte'
   import { router } from './lib/stores/router.svelte'
   import { sessions } from './lib/stores/sessions.svelte'
 
@@ -24,6 +25,8 @@
   <SiteNav />
   {#if router.current === 'log'}
     <LogView />
+  {:else if router.current === 'progress'}
+    <ProgressView />
   {:else}
     <PlanView />
   {/if}

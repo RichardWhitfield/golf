@@ -1,12 +1,13 @@
-export type Route = 'plan' | 'log'
+export type Route = 'plan' | 'log' | 'progress'
 
-const PATHS: Record<Route, string> = { plan: '/', log: '/log' }
+const PATHS: Record<Route, string> = { plan: '/', log: '/log', progress: '/progress' }
 
 /** `null` for anything unrecognised — the caller normalises it back to the plan. */
 function routeFor(pathname: string): Route | null {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/' || path === '/index.html') return 'plan'
   if (path === '/log') return 'log'
+  if (path === '/progress') return 'progress'
   return null
 }
 
