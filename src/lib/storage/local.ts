@@ -63,8 +63,14 @@ export class LocalStorageRepo implements Repository {
   }
 
   async exportDocument(): Promise<StoreDocument> {
+    // `read()` FIRST — it is what *detects* a fault. Checking `this.fault` beforehand only sees
+    // one left behind by an earlier call, so on a fresh instance over corrupt data the guard
+    // passes and the empty document `read()` returns is handed back as though it were a
+    // successful backup. That failure would land in the one method whose entire job is getting
+    // the data out safely. Every other method here already has this order right.
+    const doc = this.read()
     if (this.fault) throw new Error(this.fault)
-    return this.read()
+    return doc
   }
 
   async importDocument(raw: unknown): Promise<ImportSummary> {
