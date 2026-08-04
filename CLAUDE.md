@@ -37,16 +37,21 @@ The Today panel and the "Core drills" section both render from it. Never restate
 markup — if a drill's text changes, it must change in exactly one place. (This inverts the
 pre-Phase-1 rule, where the *cards* were authoritative and the panel cloned them.)
 
-`storage/`, `stores/` and `routes/` are built (Phase 2, issue #3). `ingest/` arrives with
-Phase 5.
+`storage/`, `stores/` and `routes/` are built (Phase 2, issue #3). `ingest/` is built (Phase 3,
+issue #4), along with `scripts/trackman-ingest.ts` — the Node entry point the daily Actions
+workflow runs. It imports from `lib/ingest/`, so the null-filtering, Sydney-date and merge rules
+exist once and are shared with the browser. That is why `tsx` is a devDependency.
 
 The site has two views behind a History-API router: `/` (the plan page) and `/log`. Deep links
 depend on `dist/404.html`, generated from the built `index.html` by the `pages-spa-fallback`
 plugin in `vite.config.ts` and asserted by the deploy workflow alongside `CNAME`.
 
 Practice data lives in one `localStorage` key, `golf:store`, holding one versioned JSON
-document. **Reach it only through `lib/stores/sessions.svelte.ts`** — that file constructs the
-only `Repository` in the app.
+document at `schemaVersion` 2. **Reach it only through `lib/stores/sessions.svelte.ts`** — that
+file constructs the only `Repository` in the app.
+
+The store holds **two session types**: `PracticeSession` (Tue–Sun) and `TrackmanSession` (the bay
+session, with per-club club path). `Session` is the union; narrow with `isPractice`/`isTrackman`.
 
 ### Where a style rule belongs
 
@@ -84,9 +89,19 @@ so a scoped base rule outranks a global override and the override silently loses
   interface in `lib/storage/`.
 - **Repository methods are `async`, always** — even over synchronous `localStorage`. This is what
   makes a future backend a contained change rather than a rewrite.
-- Club path is **signed**; negative is out-to-in. Never store an absolute value.
+- Club path is **signed**; negative is out-to-in. Never store an absolute value, and never
+  range-check one with `Math.abs` — that accepts a sign flip, the one error that matters most.
 - The target is a **band** (`−2°` to `+2°`), not a maximum. Overshooting is a fault. Progress
-  visuals need fault regions on both sides — never a "higher is better" bar.
+  visuals need fault regions on both sides — never a "higher is better" bar. This is also why
+  `best` means the reading closest to neutral, **never `Math.max`**.
+- **Never blend club path across clubs.** No code path may compute a mean spanning more than one
+  club — a blended figure tracks club selection, not swing change (OQ-7, issue #14). The KPI club
+  is the **driver**.
+- **`domain/clubs.ts` is the single source of truth for club names, order and the Trackman name
+  mapping.** That mapping contains only spellings verified against real API responses; an unknown
+  string returns `null` and is reported, never guessed at.
+- **`n` (shot count) is absent, never zero, on hand-typed readings.** Don't fabricate a default —
+  a chart would weight the guess as though it were measured.
 - Plan and drill content lives in `lib/domain/` as data, not in markup.
 - Bump `schemaVersion` and write a migration for any stored-shape change.
 
@@ -104,10 +119,21 @@ so a scoped base rule outranks a global override and the override silently loses
 - **`localStorage` is the only copy of the user's practice data.** Clearing site data destroys
   it. JSON export/import is a requirement, not a nicety. Never write code that can wipe the store
   without an explicit user action.
-- **Trackman integration is resolved but undocumented** (OQ-1, closed 2026-07-31). A GraphQL API at
+- **Trackman integration is built, and undocumented** (Phase 3, issue #4). A GraphQL API at
   `api.trackmangolf.com/graphql` works with the player's own token — see `docs/architecture.md` §4.
   It is unofficial and **must be assumed to break without notice**: never let it block app load, and
-  keep manual entry working as the baseline.
+  keep manual entry working as the baseline. `syncPublished()` is fired without `await` and
+  swallows every failure by design.
+- **Deleting `.github/workflows/trackman.yml` and `public/trackman.json` must leave the app fully
+  usable.** That is the phase's stated "done when", not a nicety. Manual entry is the baseline (D6).
+- **The repo is public, so `public/trackman.json` is world-readable.** It carries per-club
+  aggregates only — never stroke-level data, never location, never identifiers. The workflow must
+  never widen that.
+- **Never interpolate a workflow input into a `run:` command.** `trackman.yml`'s `since` input
+  reaches the script through `env:`; the script re-validates its shape before it reaches a URL.
+- **The refresh token must never be echoed, written to a file, or included in an error message.**
+  Workflow logs on a public repo are public. A failed token exchange reports its HTTP status only,
+  because the response body of a failed grant can echo the grant back.
 - **Club path is meaningless without a club.** Store it per club and never chart a blended average —
   a mixed-club mean tracks club selection, not swing change (OQ-7 / issue #14).
 - **Don't redesign.** The user explicitly likes the current look. Extend the system; don't
@@ -131,7 +157,12 @@ npm run build     # production build into dist/
 npm run preview   # serve the built dist/ locally
 npm run check     # svelte-check (TypeScript + template type errors)
 npm test          # Vitest, domain logic only
+npm run ingest    # pull Trackman sessions — needs TRACKMAN_REFRESH_TOKEN in the environment
 ```
+
+`npm run ingest` accepts `--since YYYY-MM-DD` (default: the last 14 days) and `--out` (default:
+`public/trackman.json`). It merges with whatever is already in that file, so a narrow window never
+truncates history, and an unchanged pull rewrites the file byte-for-byte identically.
 
 `npm run check` and `npm test` both run in CI before a deploy — a failure there blocks
 publication.

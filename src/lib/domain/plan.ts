@@ -124,10 +124,16 @@ export const ARC: ArcPhase[] = [
   },
 ]
 
-/** The single KPI: club path, signed. Negative is out-to-in. The target is a band, not a maximum. */
+/**
+ * The single KPI: **driver** club path, signed. Negative is out-to-in. The target is a band, not
+ * a maximum.
+ *
+ * The club is named deliberately (OQ-7, issue #14). A blended average across clubs tracks club
+ * selection as much as swing change — see `docs/content.md`.
+ */
 export const KPI = {
-  label: 'Headline number · club path',
+  label: 'Headline number · driver club path',
   now: '−6° / −10°',
   goal: '−2° / +2°',
-  note: "This is your one KPI on the Trackman. You don't need a big draw — you need the path to come back toward neutral with the face just left of it. Watch the number trend across a session, not any single shot.",
+  note: "This is your one KPI on the Trackman, measured with the driver — a figure blended across clubs just tracks what was in your hand. You don't need a big draw; you need the path to come back toward neutral with the face just left of it. Watch the number trend across a session, not any single shot.",
 }
