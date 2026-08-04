@@ -61,7 +61,8 @@ core token used for exactly one job. **They are not a fourth surface level** —
 | `--ball-dim` | `#5a4d1f` | Muted `--ball` for borders that shouldn't shout: `.tag.sim`, today's day button, the "all drills" underline. |
 | `--home` | `#8fd0a6` | `.tag.home` text. The only green that carries meaning rather than depth. |
 | `--home-dim` | `#2f5a3f` | `.tag.home` border. |
-| `--flag-wash` | `rgba(224,83,59,.06)` | Watch-outs panel background. `--flag` at 6%. |
+| `--flag-wash` | `rgba(224,83,59,.06)` | Watch-outs panel background, and both fault regions on the progress charts. `--flag` at 6%. |
+| `--ball-wash` | `rgba(239,198,75,.10)` | Target-band fill on the progress charts, and the block shading. `--ball` at 10%. |
 
 **The hero SVG carries no colour of its own.** It used to hardcode `#294A3A`, `#E0533B`,
 `#EFC64B`, `#F4F2E9` and `#A9BEB0` as presentation attributes — literal copies of `--line`,
@@ -215,10 +216,8 @@ carried by `aria-pressed`, not by class alone.
 ### Site nav
 `.sitenav` — a mono pill row at the top of the page, above everything, with a hairline beneath.
 Active view carries `aria-current="page"` and renders in `--ball` with a `--ball-dim` border.
-Progress is not a link — it is a `<span>` with a `SOON` badge, because a dead link reads as a
-broken app and hiding it hides the shape of what's being built. Its unavailability is carried
-by the badge text, never by the dimming alone. `44px` minimum, and `order:-2` below the
-breakpoint so the Today panel's `order:-1` cannot float above it.
+Three views: Plan, Log and Progress. `44px` minimum, and `order:-2` below the breakpoint so the
+Today panel's `order:-1` cannot float above it.
 
 ### Form field
 `.lab` mono uppercase label above a `--card` control with a `--line` border and `10px` radius.
@@ -267,6 +266,47 @@ reports `N new · N updated` in `--ball`; failures report a reason in `--flag`.
 
 The unreadable-store warning reuses the `.warn` treatment — `--flag` border over
 `--flag-wash` — and is the one place the app tells you it is refusing to write.
+
+### Club path chart
+`ClubPathChart.svelte` — one club's readings as inline SVG on a **fixed shared domain**
+(`−14°` … `+4°`, from `domain/scale.ts`). Draw order back to front: fault region above `+2°`,
+fault region below `−2°`, the target band, block shading, zero rule, the connected line, then
+the dots.
+
+**Both fault regions are `--flag-wash` and the band is `--ball-wash`.** Overshooting past `+2°`
+is a fault, not success — this is the one component where getting the yellow/red semantic wrong
+would invert the coaching message.
+
+Dot radius encodes the shot count on a `sqrt` scale. **A reading with no `n` is a hollow dashed
+ring**, never a sized dot — there is no count to size it by. Same-date readings are nudged
+apart by their ordinal, because 21 dates in the backfill carry two sessions.
+
+The driver panel takes `--panel` and a taller SVG as the KPI headline; the rest sit on `--card`
+in the shared `.grid`. Each chart is a `<figure>` with `role="img"`, a worded `aria-label`, and
+a visually-hidden data table.
+
+### Coverage row
+`CoverageBars.svelte` — done against scheduled, one row per drill. Fill is `--ball`, sized to
+the proportion done. **A drill with nothing done against a real schedule fills the whole track
+in `--flag`** rather than drawing a zero-width bar: zero progress at zero width is invisible, so
+the row that matters most would be the one you cannot see. It is a fault region, the same idea
+as the chart's fault bands, and the red count beside it is what stops a full bar reading as
+"done".
+
+**A drill the plan never schedules renders as "not in the current schedule", never as an empty
+bar** — a `0 of 0` bar is indistinguishable from avoidance and would name drill `03` the most
+avoided drill in the plan. That label wraps rather than truncating: the base `.track` sets
+`overflow:hidden` so a bar fill cannot escape its rounded ends, and inheriting that here clipped
+the message to "not in the current".
+
+### Phase feel card
+`PhaseFeel.svelte` — one card per drill, three rows for groove / transfer / proof. Five pips
+plus the mean and `n`. **An unlogged phase says "not logged yet" in words**; `0.0` is a real
+value on a 1–5 feel scale.
+
+### Arc position
+`ArcPosition.svelte` — the three phase cards with the live one bordered in `--ball` and carrying
+a `DAY n OF 21` badge. Outside the block it says so rather than reporting a week number.
 
 ---
 

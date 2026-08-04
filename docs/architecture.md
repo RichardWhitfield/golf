@@ -21,7 +21,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D17 | Ingest publication | **Per-club aggregates committed to `public/trackman.json`** | The repo is public, so a committed file is world-readable. Aggregates carry no stroke data, no location, no identifiers. |
 | D7 | Language | **TypeScript** | The data model is the core of this app and will outlive any UI. Types are the cheapest documentation of it. |
 | D8 | Tests | **Vitest** for domain logic and the storage layer | Not for UI. The valuable, breakable logic is data shaping and aggregation. |
-| D9 | Navigation | **Client-side views** (Plan, Log; Progress in Phase 4) | The log needs its own screen. The poster page becomes the Plan view, visually unchanged. |
+| D9 | Navigation | **Client-side views** (Plan, Log, Progress) | The log needs its own screen. The poster page becomes the Plan view, visually unchanged. |
 | D10 | URL scheme | **Clean paths** via the History API, with a generated `404.html` | Real URLs. The shim is copied from `dist/index.html` at build time — a hand-written `public/404.html` would reference stale hashed assets. |
 
 ### Deliberately excluded (YAGNI)
@@ -69,7 +69,10 @@ src/
       session.ts          # practice session drafts, swing defaults
       clubs.ts            # OQ-7: club vocabulary, bag order, Trackman name mapping
       trackman.ts         # Trackman session drafts and validation
-      stats.ts            # aggregation: streaks, path trend, drill coverage  # Phase 4
+      scale.ts            # the shared fixed chart axis: degrees/dates → SVG units
+      series.ts           # Trackman sessions → one club-path series per club
+      coverage.ts         # drills done vs what the plan scheduled
+      feel.ts             # mean feel per drill per arc phase
     storage/
       repository.ts       # the interface — the seam
       local.ts            # LocalStorageRepo implementation
@@ -92,10 +95,12 @@ src/
 ```
 
 `domain/`, `storage/` and `stores/` are built (Phase 2, issue #3); `ingest/` is built (Phase 3,
-issue #4). `domain/stats.ts` is not — it arrives with Phase 4. There is one file outside `src/`:
-`scripts/trackman-ingest.ts`, the Node entry point the workflow runs, which imports from
-`lib/ingest/` so the rules exist in one place. `PlanView` and `LogView` live in `src/routes/`,
-switched by `router.svelte.ts`.
+issue #4). The progress calculations are built (Phase 4, issue #5) as four pure modules —
+`scale.ts`, `series.ts`, `coverage.ts` and `feel.ts` — rather than the single `stats.ts` first
+sketched here: they answer four unrelated questions and share no state, so one module would only
+have coupled them. There is one file outside `src/`: `scripts/trackman-ingest.ts`, the Node entry
+point the workflow runs, which imports from `lib/ingest/` so the rules exist in one place.
+`PlanView`, `LogView` and `ProgressView` live in `src/routes/`, switched by `router.svelte.ts`.
 
 The plan and drill *content* becomes data (`plan.ts`, `drills.ts`) rather than hand-written
 markup. This is the single biggest structural change: the current page repeats the same card

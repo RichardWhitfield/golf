@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-05
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -10,8 +10,8 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 ## Where things stand
 
 - Svelte 5 + Vite + TypeScript, built by GitHub Actions and published to Pages.
-- Two views behind a History-API router: `/` (the plan) and `/log` (the practice log). Deep links
-  depend on a generated `dist/404.html`.
+- Three views behind the router: `/` (the plan), `/log` (the practice log) and `/progress`
+  (the charts). Deep links depend on a generated `dist/404.html`.
 - Practice **and Trackman** sessions persist in `localStorage` behind the async repository seam at
   `schemaVersion` 2, with JSON export/import.
 - Club path is stored **per club** and never blended. The KPI is **driver** club path.
@@ -132,27 +132,28 @@ with `since: 2025-06-01` to create the backfill (86 sessions, 369 rows, ~30 KiB)
 
 ---
 
-## Phase 4 · Progress
+## Phase 4 · Progress — **done (2026-08-05)**
 
 [#5](https://github.com/RichardWhitfield/golf/issues/5)
 
-Make the accumulated data answer questions.
+Shipped: a `/progress` route holding four views — per-club club-path small multiples on a fixed
+shared domain with the band and **both** fault regions, drill coverage against the plan's own
+schedule, feel per drill per arc phase, and the live arc position. The calculations live in four
+pure modules (`domain/scale.ts`, `series.ts`, `coverage.ts`, `feel.ts`); components only render.
 
-- **Club path over time, as per-club small multiples** — one panel per club, shared axes, the
-  target band drawn on each. Fits the existing `auto-fill`/`minmax()` grid; needs no new
-  breakpoint. **Never a blended series** (OQ-7). The headline panel is the driver.
-- **Show `n` on every point.** July's 7-iron `−10.27°` is ten shots, and the tail of every series
-  will be over-read without a visible count. A hand-typed reading has no `n` and must be rendered
-  differently rather than weighted as though it were measured.
-- The band must be drawn as a **band with fault regions on both sides** — overshooting is a fault,
-  not success (see the "don't overcook it" watch-out in `content.md`).
-- **Drill coverage** — which drills are actually being done versus quietly avoided.
-- **Feel trend per drill.**
-- **Current position in the 3-week arc**, and which phase (groove / transfer / proof) is active,
-  since a drill means something different in week 1 than week 3.
+**Two findings from the real backfill changed the design** — see
+`docs/superpowers/specs/2026-08-04-phase-4-progress-design.md`:
 
-**Depends on:** several weeks of Phase 2/3 data existing. Don't build charts against an empty
-store — the design decisions will be wrong.
+- **The worst readings carry the smallest `n`.** The driver's `−11.53°` on 2026-07-20 is three
+  shots. Dot area encodes the count, so a thin reading cannot shout as loudly as a measured one.
+- **Drill `03` is scheduled by no day in `plan.ts`.** It computes to `0 of 0`, which is
+  indistinguishable from a drill asked for six times and skipped. Coverage carries a `status`
+  so "never asked" and "avoided" can never render alike — otherwise the chart would invent a
+  finding.
+
+**The headline is not flattering:** across 44 driver readings the club path has gone from
+`−1.83°` (2025-07-03) to `−3.18°` (2026-07-22), and only three of those readings have ever sat
+inside the `−2°…+2°` band. The page reports that rather than finding a window that flatters it.
 
 ---
 
@@ -197,8 +198,13 @@ The plan is explicitly 3 weeks and ends before a trip. Options: repeat with a ti
 switch KPI (face angle, strike location, start direction), or archive and start a new block.
 
 Affects the data model — a `Block` entity may be needed to group sessions, so progress can be
-read per block rather than as one endless series. **Decide before Phase 4**, since it changes what
-the charts are scoped to.
+read per block rather than as one endless series.
+
+**Partly answered by Phase 4 (2026-08-05):** for *charting scope* the decision is **all-time,
+with the current block shaded on the axis** — the question worth answering is whether the block
+is bending a 13-month trend, and scoping to three weeks leaves the club-path chart with about
+three points. This needed no `Block` entity. The wider question — what happens after week three,
+and whether sessions get grouped per block — **remains open.**
 
 ### OQ-3 · Does storage ever need to leave the device?
 
