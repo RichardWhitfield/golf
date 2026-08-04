@@ -8,10 +8,11 @@
   import ClubPathChart from '../lib/components/ClubPathChart.svelte'
   import { drillCoverage } from '../lib/domain/coverage'
   import { resolveISODate } from '../lib/domain/today'
-  import { parseISODate } from '../lib/domain/block'
+  import { blockPosition, parseISODate } from '../lib/domain/block'
   import CoverageBars from '../lib/components/CoverageBars.svelte'
   import { feelByPhase } from '../lib/domain/feel'
   import PhaseFeelPanel from '../lib/components/PhaseFeel.svelte'
+  import ArcPosition from '../lib/components/ArcPosition.svelte'
 
   const hasTrackman = $derived(sessions.trackman.length > 0)
   const blockStart = $derived(sessions.settings.blockStart)
@@ -32,6 +33,8 @@
   const coverage = $derived(drillCoverage(sessions.list, coverageWindow.from, coverageWindow.to))
 
   const feel = $derived(blockStart ? feelByPhase(sessions.list, blockStart) : [])
+
+  const position = $derived(blockStart ? blockPosition(blockStart, today) : null)
 
   const series = $derived(clubSeries(sessions.list))
   const bounds = $derived(dateBounds(series))
@@ -103,7 +106,14 @@
 
 <section id="where">
   <SectionHead idx="04" title="Where you are" />
-  <p class="empty">The arc position arrives in the next step.</p>
+  {#if sessions.ready && !blockStart}
+    <p class="empty">
+      No block start date is set. Set one on the
+      <a href={router.href('plan')} onclick={(e) => router.onNavClick(e, 'plan')}>Plan</a> page.
+    </p>
+  {:else}
+    <ArcPosition {position} />
+  {/if}
 </section>
 <SiteFooter />
 
