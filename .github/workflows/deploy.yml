@@ -4,9 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Called by trackman.yml once it has committed new session data. A commit pushed with
+  # GITHUB_TOKEN does not trigger another workflow, so without this the data would sit in the
+  # repo unpublished until some unrelated push happened to deploy it.
+  workflow_call:
 
 # Never add pull_request_target or workflow_run: this repo is public, and those triggers
-# run with secret access under attacker-influenced conditions.
+# run with secret access under attacker-influenced conditions. workflow_call above is a
+# different thing entirely — an explicit invocation by a workflow already in this repo,
+# running with permissions the calling job grants it.
 
 # Actions are pinned to full commit SHAs, not tags. This job holds `pages: write` and
 # `id-token: write`, so a retagged or compromised action could publish to golf.whitfield.life.

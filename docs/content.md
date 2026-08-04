@@ -16,7 +16,7 @@ plan recreates that step feeling while standing still.
 
 ## The KPI
 
-One number, measured on a Trackman: **club path**.
+One number, measured on a Trackman: **club path, with the driver**.
 
 | | Value |
 |---|---|
@@ -25,6 +25,37 @@ One number, measured on a Trackman: **club path**.
 
 The goal is **not** a big draw. The path needs to return toward neutral with the face just left
 of it. **Judge the trend across a session, never a single shot.**
+
+### Why the driver, and why the club is named
+
+The KPI used to be "club path" with no club attached. Against thirteen months of real data that
+is not measurable — a blended average tracks which club was in your hand as much as what the
+swing did.
+
+Read November 2025. Blended, it was the best month in the whole series at `−3.27°`. The driver
+that month was `−7.79°` — the *worst* to that point. The number only looked good because
+42 seven-irons at `−1.66°` outweighed 22 drivers. Over the same thirteen months the driver went
+backwards (`−4.01°` → `−7.50°`) while the 4-iron improved (`−7.19°` → `−4.73°`). One blended
+series cannot show both. It shows neither.
+
+The driver is the KPI because it is where the slice costs most, it has the most measured shots
+after the 4-iron, and it is the club currently trending the wrong way.
+
+### The band is shared, but the clubs are not
+
+`−2°` to `+2°` is the target for every club, not a per-club figure. It is a coaching target, and
+inventing a separate band per club would turn "where you have been" into "where you should be".
+
+Be honest about what that means when reading the numbers: **the driver sits systematically
+shallower than the irons** throughout the data, which is expected from a flatter plane and an
+upward attack angle. An iron inside the band is a stronger result than a driver inside it.
+
+### Every average needs its count
+
+**Never read a club-path average without its shot count.** July's 7-iron figure of `−10.27°` is
+ten shots. The tail of every series is thin, and a mean over a handful of swings will be
+over-read every time unless the `n` is sitting next to it. A hand-typed session has no count,
+and shows a dash rather than a number invented to fill the gap.
 
 ---
 

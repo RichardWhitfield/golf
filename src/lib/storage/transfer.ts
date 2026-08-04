@@ -1,5 +1,14 @@
-import type { DrillId, ISODate, Location, PracticeSession } from '../domain/types'
+import type {
+  ClubPath,
+  DrillId,
+  ISODate,
+  Location,
+  PracticeSession,
+  Session,
+  TrackmanSession,
+} from '../domain/types'
 import { DRILLS } from '../domain/drills'
+import { MAX_PATH_DEGREES, compareClubs, isClub, type Club } from '../domain/clubs'
 import { parseISODate } from '../domain/block'
 import type { ImportSummary, StoreDocument } from './repository'
 import { SCHEMA_VERSION, migrate } from './migrations'
@@ -23,12 +32,102 @@ function reject(reason: string): never {
   throw new InvalidImportError(`That file is not a practice-log export: ${reason}`)
 }
 
-function checkSession(raw: unknown, index: number): PracticeSession {
+/**
+ * Dispatch on `type` **before** either checker runs. Both types live in one document now, so a
+ * checker that assumed its own type would reject the other as corrupt.
+ */
+function checkSession(raw: unknown, index: number): Session {
   const where = `session ${index + 1}`
   if (!isRecord(raw)) reject(`${where} is not an object.`)
+  if (raw.type === 'trackman') return checkTrackmanSession(raw, where)
+  if (raw.type === 'practice') return checkPracticeSession(raw, where)
+  reject(`${where} has an unknown type "${String(raw.type)}".`)
+}
 
+function checkDrillIds(raw: unknown, where: string): DrillId[] | undefined {
+  if (raw === undefined) return undefined
+  if (!Array.isArray(raw)) reject(`${where} has an invalid drills-worked list.`)
+  return raw.map((id) => {
+    if (typeof id !== 'string' || !DRILL_IDS.has(id)) {
+      reject(`${where} names a drill that does not exist.`)
+    }
+    return id as DrillId
+  })
+}
+
+/**
+ * **Exported deliberately.** `ingest/published.ts` validates the fetched Trackman file with this
+ * same function, so a file picked by hand and a file published by the workflow are held to
+ * identical standards and refused in identical words.
+ */
+export function checkTrackmanSession(raw: Record<string, unknown>, where: string): TrackmanSession {
   if (typeof raw.id !== 'string' || raw.id === '') reject(`${where} has no id.`)
-  if (raw.type !== 'practice') reject(`${where} is not a practice session.`)
+  if (typeof raw.date !== 'string' || parseISODate(raw.date) === null) {
+    reject(`${where} has an invalid date.`)
+  }
+  if (raw.source !== 'manual' && raw.source !== 'api') {
+    reject(`${where} has an unknown source "${String(raw.source)}".`)
+  }
+  if (!Array.isArray(raw.clubs) || raw.clubs.length === 0) {
+    reject(`${where} has no club-path readings.`)
+  }
+  if (raw.notes !== undefined && typeof raw.notes !== 'string') reject(`${where} has invalid notes.`)
+
+  const seen = new Set<Club>()
+  const clubs: ClubPath[] = raw.clubs.map((entry, i) => {
+    const what = `${where}, club ${i + 1}`
+    if (!isRecord(entry)) reject(`${what} is not an object.`)
+    if (!isClub(entry.club)) reject(`${what} names a club this app does not know.`)
+    if (seen.has(entry.club)) reject(`${where} lists ${entry.club} twice.`)
+    seen.add(entry.club)
+
+    // Signed, always. A positive path is in-to-out — real, if unlikely. Never coerce it, and
+    // never range-check with an absolute-value shortcut that would quietly accept a sign flip.
+    for (const key of ['typical', 'best'] as const) {
+      const value = entry[key]
+      if (
+        typeof value !== 'number' ||
+        !Number.isFinite(value) ||
+        value < -MAX_PATH_DEGREES ||
+        value > MAX_PATH_DEGREES
+      ) {
+        reject(`${what} has an implausible ${key} club path.`)
+      }
+    }
+    if (
+      entry.n !== undefined &&
+      (typeof entry.n !== 'number' || !Number.isInteger(entry.n) || entry.n < 1)
+    ) {
+      reject(`${what} has an invalid shot count.`)
+    }
+
+    const path: ClubPath = {
+      club: entry.club,
+      typical: entry.typical as number,
+      best: entry.best as number,
+    }
+    if (entry.n !== undefined) path.n = entry.n as number
+    return path
+  })
+  // Bag order, so a stored session reads the same way however it was assembled.
+  clubs.sort((a, b) => compareClubs(a.club, b.club))
+
+  const drillsWorked = checkDrillIds(raw.drillsWorked, where)
+
+  const session: TrackmanSession = {
+    id: raw.id,
+    type: 'trackman',
+    date: raw.date as ISODate,
+    clubs,
+    source: raw.source,
+  }
+  if (drillsWorked !== undefined) session.drillsWorked = drillsWorked
+  if (typeof raw.notes === 'string' && raw.notes !== '') session.notes = raw.notes
+  return session
+}
+
+function checkPracticeSession(raw: Record<string, unknown>, where: string): PracticeSession {
+  if (typeof raw.id !== 'string' || raw.id === '') reject(`${where} has no id.`)
   if (typeof raw.date !== 'string' || parseISODate(raw.date) === null) {
     reject(`${where} has an invalid date.`)
   }

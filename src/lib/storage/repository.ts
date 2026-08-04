@@ -1,4 +1,5 @@
-import type { ISODate, PracticeSession } from '../domain/types'
+import type { ISODate, Session, TrackmanSession } from '../domain/types'
+import type { TrackmanMergeResult } from '../ingest/merge'
 import { SCHEMA_VERSION } from './migrations'
 
 export interface Settings {
@@ -10,7 +11,7 @@ export interface Settings {
  *  key-per-record, and it makes export trivial. */
 export interface StoreDocument {
   schemaVersion: number
-  sessions: PracticeSession[]
+  sessions: Session[]
   settings: Settings
 }
 
@@ -29,15 +30,21 @@ export interface ImportSummary {
  */
 export interface Repository {
   /** Newest first. */
-  listSessions(): Promise<PracticeSession[]>
+  listSessions(): Promise<Session[]>
   /** Upsert by id: an existing id updates, a new one inserts. */
-  saveSession(session: PracticeSession): Promise<void>
+  saveSession(session: Session): Promise<void>
   deleteSession(id: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
   exportDocument(): Promise<StoreDocument>
   /** Merges by session id. Adds and updates; never drops. */
   importDocument(raw: unknown): Promise<ImportSummary>
+  /**
+   * Fold in Trackman sessions fetched by the scheduled workflow. Adds and updates; never drops,
+   * and **never overwrites a session marked `manual`**. Writes only when something changed, so
+   * the sync that runs on every page load is free when there is nothing new.
+   */
+  mergeTrackman(incoming: TrackmanSession[]): Promise<TrackmanMergeResult>
   /**
    * Non-null when the stored data could not be read and writing is therefore refused.
    * Part of the interface, not an implementation detail: a future remote repo has the same

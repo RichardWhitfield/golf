@@ -1,8 +1,8 @@
-import type { PracticeSession } from '../domain/types'
+import type { Session } from '../domain/types'
 import type { Settings, StoreDocument } from './repository'
 
 /** Bump this and add a migration below for **any** change to the stored shape. */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 /** Stable across schema versions — the version lives inside the document, not in the key. */
 export const STORAGE_KEY = 'golf:store'
@@ -29,12 +29,22 @@ export class FutureSchemaError extends Error {
 type Migration = (doc: Record<string, unknown>) => Record<string, unknown>
 
 /**
- * Keyed by the version being migrated **from**. Empty at v1 — the machinery and its tests exist
- * so the first real schema change is a data edit rather than an architecture change.
+ * Keyed by the version being migrated **from**.
  *
  * A migration must be pure and total: given any document at version N, return one at N+1.
  */
-const MIGRATIONS: Record<number, Migration> = {}
+const MIGRATIONS: Record<number, Migration> = {
+  /**
+   * v1 → v2: Trackman sessions join the document. **Identity, deliberately.** Every v1 document
+   * is already a valid v2 one — v1 held only `type: 'practice'` sessions, and those are unchanged.
+   *
+   * The bump is not for the data. It is so the **build currently deployed** refuses to touch a
+   * document containing Trackman sessions, which its `checkSession()` would reject as corrupt.
+   * `FutureSchemaError` then does exactly the right thing: refuse, don't quarantine, and say
+   * "update the site".
+   */
+  1: (doc) => doc,
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -88,7 +98,7 @@ export function migrate(raw: unknown): StoreDocument {
 
   return {
     schemaVersion: SCHEMA_VERSION,
-    sessions: (doc.sessions as PracticeSession[] | undefined) ?? [],
+    sessions: (doc.sessions as Session[] | undefined) ?? [],
     settings: (doc.settings as Settings | undefined) ?? {},
   }
 }

@@ -12,8 +12,11 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 - Svelte 5 + Vite + TypeScript, built by GitHub Actions and published to Pages.
 - Two views behind a History-API router: `/` (the plan) and `/log` (the practice log). Deep links
   depend on a generated `dist/404.html`.
-- Practice sessions persist in `localStorage` behind the async repository seam, with JSON
-  export/import.
+- Practice **and Trackman** sessions persist in `localStorage` behind the async repository seam at
+  `schemaVersion` 2, with JSON export/import.
+- Club path is stored **per club** and never blended. The KPI is **driver** club path.
+- A daily Actions workflow pulls Trackman sessions into `public/trackman.json` and publishes them;
+  the browser merges that file on load without ever overwriting anything typed by hand.
 - `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
 - `npm run check` and `npm test` both gate the deploy.
 
@@ -98,15 +101,34 @@ session is a second session type through the same seam, not new machinery.
 
 ---
 
-## Phase 3 · Log a Trackman session, manually
+## Phase 3 · Monday's Trackman session — **done (2026-08-04)**
 
-[#4](https://github.com/RichardWhitfield/golf/issues/4)
+[#4](https://github.com/RichardWhitfield/golf/issues/4), also closing
+[#14](https://github.com/RichardWhitfield/golf/issues/14) (OQ-7) and absorbing the former Phase 5.
 
-- Trackman session form: date, best path, typical path, drills worked, notes.
-- Fits the existing 5-minute "log it" block that ends every Monday session.
-- Records `source: 'manual'`.
+Automatic pull, with manual entry as the permanent baseline. Club path became a **per-club series**
+in the same phase, because OQ-7 showed a blended figure is not measurable.
 
-**Done when:** Monday's numbers are captured without needing any integration to exist.
+Shipped: `Club`/`ClubPath`/`TrackmanSession` at `schemaVersion` 2; the manual Trackman form behind
+Practice / Trackman pills on the log view; `ApiSource` over the GraphQL API; a daily Actions
+workflow committing `public/trackman.json` and publishing it via `workflow_call`; and a
+non-blocking browser-side merge that never overwrites anything typed by hand.
+
+**Four findings from probing the live API changed the design** — see
+`docs/superpowers/specs/2026-08-04-phase-3-trackman-design.md`:
+
+- The `null` is on `measurement.clubPath`, not `measurement` (976 of 5,877 strokes, plus 3 with no
+  club). Code written to the issue's wording would have filtered nothing.
+- 10 of 91 sessions fall on a different UTC date than Sydney date.
+- 23 dates carry more than one session, so a date can never be a key.
+- Dropping the first 5 or 10 strokes moves driver monthly means by ≤0.1° and reverses no trend, so
+  **no warm-up rule was built.**
+
+**Done when** — met: a Monday session appears without anything being typed, *and* deleting the
+workflow leaves the app fully usable with the numbers still enterable by hand.
+
+**Set up by hand after merge:** the `TRACKMAN_REFRESH_TOKEN` secret, then one `workflow_dispatch`
+with `since: 2025-06-01` to create the backfill (86 sessions, 369 rows, ~30 KiB).
 
 ---
 
@@ -116,9 +138,14 @@ session is a second session type through the same seam, not new machinery.
 
 Make the accumulated data answer questions.
 
-- **Club path over time** against the `−2°` to `+2°` target band. The band must be drawn as a
-  band with fault regions on both sides — overshooting is a fault, not success (see the
-  "don't overcook it" watch-out in `content.md`).
+- **Club path over time, as per-club small multiples** — one panel per club, shared axes, the
+  target band drawn on each. Fits the existing `auto-fill`/`minmax()` grid; needs no new
+  breakpoint. **Never a blended series** (OQ-7). The headline panel is the driver.
+- **Show `n` on every point.** July's 7-iron `−10.27°` is ten shots, and the tail of every series
+  will be over-read without a visible count. A hand-typed reading has no `n` and must be rendered
+  differently rather than weighted as though it were measured.
+- The band must be drawn as a **band with fault regions on both sides** — overshooting is a fault,
+  not success (see the "don't overcook it" watch-out in `content.md`).
 - **Drill coverage** — which drills are actually being done versus quietly avoided.
 - **Feel trend per drill.**
 - **Current position in the 3-week arc**, and which phase (groove / transfer / proof) is active,
@@ -129,34 +156,15 @@ store — the design decisions will be wrong.
 
 ---
 
-## Phase 5 · Trackman ingest
+## Phase 5 · Trackman ingest — **merged into Phase 3**
 
-[#6](https://github.com/RichardWhitfield/golf/issues/6)
+[#6](https://github.com/RichardWhitfield/golf/issues/6) · closed as duplicate of
+[#4](https://github.com/RichardWhitfield/golf/issues/4)
 
-**Unblocked (2026-07-31).** OQ-1 resolved — a data path and a reusable headless credential both
-exist.
-
-Build it behind the `TrackmanSource` interface as `ApiSource`, driven by a scheduled GitHub Actions
-workflow, degrading silently to manual entry on failure.
-
-- **Endpoint:** `POST https://api.trackmangolf.com/graphql`, `Authorization: Bearer <token>`.
-- **Query:** `me.activities(kinds: [VIRTUAL_RANGE], timeFrom:, timeTo:)` — Monday sessions arrive as
-  `VirtualRangeSessionActivity`. `timeFrom`/`timeTo` maps directly onto `fetchSince()`.
-- **KPI:** `aggregatedMeasurement(clubs:)` returns per-club averages server-side, so
-  `averageClubPath` is a single field. Store it **per club**, never blended — see OQ-7.
-- **Auth:** refresh-token grant against the public mobile client
-  `old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae` (PKCE, no client secret). The refresh token is
-  **non-rotating and reusable**, so a single static `TRACKMAN_REFRESH_TOKEN` Actions secret needs no
-  write-back. Access tokens last 14 days.
-- **Workflow triggers:** `schedule` and `workflow_dispatch` **only**. Never `pull_request_target` or
-  `workflow_run` — this repo is public and those triggers expose secrets to fork PRs.
-
-**Watch out:** ~17% of strokes carry no club data and return `null` measurements — filter them, they
-are not zeros. Units are SI (m/s, metres, degrees). `club` is returned as `7Iron` but filtered as
-`IRON7`.
-
-**Depends on** Phases 2 and 3 — ingest writes into that model, and manual entry must be proven
-before anything automatic is trusted.
+Merged on 2026-07-31, once OQ-1 confirmed both a working data path and a reusable headless
+credential. There was no longer a reason to build manual entry as a separate, earlier phase: it
+shipped alongside the ingest instead, and D6 is unchanged — deleting the workflow must still leave
+the app fully usable. Built as part of Phase 3 above.
 
 ---
 
@@ -230,21 +238,34 @@ The plan mentions the step drill as an on-course reset, and "score how many stay
 slice". Whether actual rounds are tracked is undecided. **Out of scope until Phase 4 ships** —
 it's a third session type and would widen the app considerably.
 
-### OQ-7 · Which club is the KPI scoped to? — **blocking Phase 4**
+### OQ-7 · Which club is the KPI scoped to? — **resolved 2026-08-04**
 
-[#14](https://github.com/RichardWhitfield/golf/issues/14)
+[#14](https://github.com/RichardWhitfield/golf/issues/14) · closed by
+[#4](https://github.com/RichardWhitfield/golf/issues/4)
 
-Raised by the OQ-1 backfill. `content.md` defines the KPI as "one number: club path" and never says
+Raised by the OQ-1 backfill. `content.md` defined the KPI as "one number: club path" and never said
 which club. Against real data that is not measurable — a blended average tracks club selection as
 much as swing change. In 2025-11 the blended figure was the best in the series (`-3.27`) while the
 driver was the worst to that point (`-7.79`), purely because more seven-irons were hit. Over the
 same 13 months the driver worsened (`-4.01` → `-7.50`) while the 4-iron improved (`-7.19` → `-4.73`)
 — opposite trends a single series cannot show.
 
-Recommendation: scope the KPI to the **driver**, store `club` on every path value, chart per-club
-small multiples with `n` visible, and decide whether the `−2°`/`+2°` target band is itself per-club
-(the driver sits systematically shallower than the irons throughout the data). **Decide before
-Phase 4.**
+**Decided:**
+
+- **The KPI is driver club path**, named in `content.md` and in `plan.ts`. It is where the slice
+  costs most and the club currently trending backwards.
+- **`club` is stored on every path value**, normalised on write by `domain/clubs.ts`. No code path
+  may compute a mean across clubs.
+- **The `−2°`/`+2°` band is shared, not per club.** It is a coaching target; deriving a band per
+  club would turn "where you have been" into "where you should be". `content.md` records instead
+  that the driver sits systematically shallower, so an iron inside the band is the stronger result.
+- **`n` is stored and shown**, and is absent rather than faked on hand-typed entries.
+- **The warm-up question is answered: there is no effect worth correcting for.** Dropping the first
+  5 or 10 strokes of each session moves driver monthly means by ≤0.1° in every month with a
+  meaningful `n` and reverses no trend. **No warm-up rule was built.**
+
+Per-club small multiples are the remaining piece and belong to Phase 4 — the stored shape now
+supports them.
 
 ---
 

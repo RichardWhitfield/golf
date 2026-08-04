@@ -1,4 +1,5 @@
-import type { PracticeSession } from '../domain/types'
+import type { Session, TrackmanSession } from '../domain/types'
+import { mergeTrackmanSessions, type TrackmanMergeResult } from '../ingest/merge'
 import type { ImportSummary, Repository, Settings, StoreDocument } from './repository'
 import { emptyDocument } from './repository'
 import {
@@ -49,7 +50,7 @@ export class LocalStorageRepo implements Repository {
     return this.fault
   }
 
-  async listSessions(): Promise<PracticeSession[]> {
+  async listSessions(): Promise<Session[]> {
     // Sorted newest first, and structurally cloned — callers must not be able to reach in and
     // mutate the store by editing the array they were handed.
     return this.read()
@@ -57,7 +58,7 @@ export class LocalStorageRepo implements Repository {
       .sort((a, b) => b.date.localeCompare(a.date))
   }
 
-  async saveSession(session: PracticeSession): Promise<void> {
+  async saveSession(session: Session): Promise<void> {
     const doc = this.read()
     const index = doc.sessions.findIndex((s) => s.id === session.id)
     if (index === -1) doc.sessions.push(session)
@@ -97,6 +98,17 @@ export class LocalStorageRepo implements Repository {
     const { doc, summary } = mergeDocuments(this.read(), incoming)
     this.write(doc)
     return summary
+  }
+
+  async mergeTrackman(incoming: TrackmanSession[]): Promise<TrackmanMergeResult> {
+    const doc = this.read()
+    const result = mergeTrackmanSessions(doc.sessions, incoming)
+    // Writing only on a real change keeps a no-op sync off `localStorage` on every page load,
+    // and keeps it from throwing when the store is in a fault state but had nothing to do.
+    if (!result.changed) return result
+    doc.sessions = result.sessions
+    this.write(doc)
+    return result
   }
 
   async readQuarantine(): Promise<string | null> {

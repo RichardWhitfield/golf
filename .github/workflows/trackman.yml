@@ -1,0 +1,92 @@
+name: Pull Trackman sessions
+
+# schedule and workflow_dispatch ONLY. Never pull_request_target or workflow_run: this repo is
+# public, and those triggers run with secret access under attacker-influenced conditions.
+on:
+  schedule:
+    # 13:00 UTC daily — 23:00 AEST, after any Sydney evening bay session.
+    #
+    # Daily, not weekly. Only 31 of the 91 sessions in the 13-month backfill fell on a Monday
+    # (Thu 22, Sat 14, Wed 12, Sun 6, Tue 4, Fri 2), so a Monday-only job would miss two thirds
+    # of the data. The default 14-day window and the idempotent merge make a daily run cheap:
+    # nothing changes on a quiet day, so nothing is committed and nothing is deployed.
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Pull from this date (YYYY-MM-DD). Blank means the last 14 days. Use 2025-06-01 for the full backfill.'
+        required: false
+        type: string
+
+# Nothing by default. Each job takes only what it needs.
+permissions: {}
+
+# Let a running pull finish rather than cancelling it — a half-written data file that then gets
+# committed would be worse than a slightly late one.
+concurrency:
+  group: trackman
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      # Actions are pinned to full commit SHAs, not tags, and this job holds the Trackman
+      # credential. A tag is a movable pointer; a SHA is not. The trailing comment records the
+      # version each SHA corresponds to — update both together, never the comment alone.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pull sessions
+        # Both values reach the script through the environment, never through string
+        # interpolation into the command line. `inputs.since` is user-controlled even on a
+        # dispatch-only trigger, and interpolating it into `run:` would be a command injection;
+        # the script validates its shape again before it reaches a URL.
+        #
+        # The token is never echoed, never written to a file, and never passed through
+        # base64 or jq. A failed token exchange reports its HTTP status only.
+        env:
+          TRACKMAN_REFRESH_TOKEN: ${{ secrets.TRACKMAN_REFRESH_TOKEN }}
+          SINCE: ${{ inputs.since }}
+        run: |
+          if [ -n "$SINCE" ]; then
+            npm run ingest -- --since "$SINCE"
+          else
+            npm run ingest
+          fi
+
+      - name: Commit if the data changed
+        id: commit
+        run: |
+          if git diff --quiet -- public/trackman.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new sessions."
+            exit 0
+          fi
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/trackman.json
+          git commit -m 'Update the Trackman session data'
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+  # Publishing is a separate job so the ingest never holds pages:write, and so a failed pull
+  # leaves the deployed site exactly as it was.
+  publish:
+    needs: ingest
+    if: needs.ingest.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy.yml

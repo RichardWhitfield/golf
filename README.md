@@ -2,8 +2,8 @@
 
 A personal golf-improvement site, live at **[golf.whitfield.life](https://golf.whitfield.life)**.
 
-A 3-week practice plan for fixing an over-the-top slice, built around one KPI: club path from
-`−6°/−10°` toward `−2°/+2°`. Being expanded into a living practice tracker.
+A 3-week practice plan for fixing an over-the-top slice, built around one KPI: **driver** club
+path, from `−6°/−10°` toward `−2°/+2°`. Being expanded into a living practice tracker.
 
 Opens on a **Today panel** that works out the current day in Sydney and shows that day's drills
 in full, with a picker for any other day.
