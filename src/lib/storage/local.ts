@@ -1,4 +1,4 @@
-import type { PracticeSession } from '../domain/types'
+import type { Session } from '../domain/types'
 import type { ImportSummary, Repository, Settings, StoreDocument } from './repository'
 import { emptyDocument } from './repository'
 import {
@@ -49,7 +49,7 @@ export class LocalStorageRepo implements Repository {
     return this.fault
   }
 
-  async listSessions(): Promise<PracticeSession[]> {
+  async listSessions(): Promise<Session[]> {
     // Sorted newest first, and structurally cloned — callers must not be able to reach in and
     // mutate the store by editing the array they were handed.
     return this.read()
@@ -57,7 +57,7 @@ export class LocalStorageRepo implements Repository {
       .sort((a, b) => b.date.localeCompare(a.date))
   }
 
-  async saveSession(session: PracticeSession): Promise<void> {
+  async saveSession(session: Session): Promise<void> {
     const doc = this.read()
     const index = doc.sessions.findIndex((s) => s.id === session.id)
     if (index === -1) doc.sessions.push(session)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FutureSchemaError, SCHEMA_VERSION, UnreadableStoreError, migrate } from './migrations'
 import { emptyDocument } from './repository'
-import type { PracticeSession } from '../domain/types'
+import type { PracticeSession, TrackmanSession } from '../domain/types'
 
 const session: PracticeSession = {
   id: 'a',
@@ -9,6 +9,14 @@ const session: PracticeSession = {
   date: '2026-08-05',
   location: 'home',
   entries: [{ drillId: '01', swings: 12, feel: 3 }],
+}
+
+const trackman: TrackmanSession = {
+  id: 't1',
+  type: 'trackman',
+  date: '2026-07-27',
+  source: 'api',
+  clubs: [{ club: 'DRIVER', typical: -7.5, best: -1.2, n: 26 }],
 }
 
 describe('migrate', () => {
@@ -61,12 +69,40 @@ describe('migrate', () => {
   })
 
   it('rejects a negative version before it can reach the migration loop', () => {
-    // Honest about what this covers: the `version < 1` guard, not the loop. While
-    // SCHEMA_VERSION is 1 there is NO valid input that enters the loop body at all, so the
-    // "no migration for this gap" branch is unreachable and therefore untested. When
-    // SCHEMA_VERSION next rises, add a case with a genuine registered gap — a test named for
-    // a branch it cannot reach ships false confidence.
     expect(() => migrate({ schemaVersion: -1 })).toThrow(UnreadableStoreError)
+  })
+
+  it('runs the migration loop for real, now that a registered step exists', () => {
+    // The predecessor of this test noted that while SCHEMA_VERSION was 1 the loop body was
+    // unreachable. It is reachable now: a v1 document takes the 1 → 2 step.
+    const v1 = {
+      schemaVersion: 1,
+      sessions: [session],
+      settings: { blockStart: '2026-07-20' },
+    }
+    const doc = migrate(v1)
+    expect(doc.schemaVersion).toBe(2)
+    // v1 → v2 is identity: v1 held only practice sessions, and those are unchanged.
+    expect(doc.sessions).toEqual([session])
+    expect(doc.settings).toEqual({ blockStart: '2026-07-20' })
+  })
+
+  it('carries a Trackman session through a v2 round trip', () => {
+    const v2 = {
+      schemaVersion: 2,
+      sessions: [trackman],
+      settings: {},
+    }
+    expect(migrate(v2).sessions).toEqual([trackman])
+  })
+
+  it('refuses a document from one version ahead, which is the whole point of the bump', () => {
+    // The v1 build deployed today does exactly this when it meets a v2 document: refuses,
+    // does not quarantine, and tells the user to update the site. Without the bump it would
+    // instead read the document and reject every Trackman session in it as corrupt.
+    expect(() => migrate({ schemaVersion: 3, sessions: [], settings: {} })).toThrow(
+      FutureSchemaError,
+    )
   })
 })
 

@@ -94,7 +94,7 @@ describe('mergeDocuments', () => {
       doc([session('a', { location: 'course' })]),
     )
     expect(merged.sessions).toHaveLength(1)
-    expect(merged.sessions[0].location).toBe('course')
+    expect(merged.sessions[0]).toMatchObject({ location: 'course' })
     expect(summary).toEqual({ added: 0, updated: 1 })
   })
 

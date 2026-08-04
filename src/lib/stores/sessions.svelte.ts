@@ -1,4 +1,4 @@
-import type { ISODate, PracticeSession } from '../domain/types'
+import type { ISODate, Session } from '../domain/types'
 import { resolveISODate } from '../domain/today'
 import type { ImportSummary, Repository, Settings } from '../storage/repository'
 import { LocalStorageRepo } from '../storage/local'
@@ -13,7 +13,7 @@ import { InvalidImportError, exportFilename, serialiseDocument } from '../storag
  */
 class SessionStore {
   /** Newest first, mirroring the repository's ordering. */
-  list = $state<PracticeSession[]>([])
+  list = $state<Session[]>([])
   settings = $state<Settings>({})
   /** False until the first load resolves, so the UI can avoid flashing "no sessions yet". */
   ready = $state(false)
@@ -33,7 +33,7 @@ class SessionStore {
     this.ready = true
   }
 
-  async save(session: PracticeSession): Promise<void> {
+  async save(session: Session): Promise<void> {
     await this.#repo.saveSession(session)
     await this.load()
   }

@@ -71,7 +71,7 @@ describe('saveSession', () => {
     await repo.saveSession({ ...session('a'), location: 'course' })
     const stored = await repo.listSessions()
     expect(stored).toHaveLength(1)
-    expect(stored[0].location).toBe('course')
+    expect(stored[0]).toMatchObject({ location: 'course' })
   })
 
   it('survives a new repository over the same storage', async () => {

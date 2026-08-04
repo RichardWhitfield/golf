@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PracticeSession } from '../domain/types'
+  import { isPractice, type PracticeSession } from '../domain/types'
   import { drill } from '../domain/drills'
   import { sessions } from '../stores/sessions.svelte'
 
@@ -10,7 +10,9 @@
   let confirming = $state<string | null>(null)
 
   const SHOWN = 10
-  const recent = $derived(sessions.list.slice(0, SHOWN))
+  // Practice sessions only for now; Trackman sessions join this list once their form exists.
+  const practice = $derived(sessions.list.filter(isPractice))
+  const recent = $derived(practice.slice(0, SHOWN))
 
   function dayAndMonth(date: string): string {
     const [, month, day] = date.split('-')
@@ -67,8 +69,8 @@
       </li>
     {/each}
   </ul>
-  {#if sessions.list.length > SHOWN}
-    <p class="empty">Showing the most recent {SHOWN} of {sessions.list.length}.</p>
+  {#if practice.length > SHOWN}
+    <p class="empty">Showing the most recent {SHOWN} of {practice.length}.</p>
   {/if}
 {/if}
 

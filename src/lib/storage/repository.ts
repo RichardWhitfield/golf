@@ -1,4 +1,4 @@
-import type { ISODate, PracticeSession } from '../domain/types'
+import type { ISODate, Session } from '../domain/types'
 import { SCHEMA_VERSION } from './migrations'
 
 export interface Settings {
@@ -10,7 +10,7 @@ export interface Settings {
  *  key-per-record, and it makes export trivial. */
 export interface StoreDocument {
   schemaVersion: number
-  sessions: PracticeSession[]
+  sessions: Session[]
   settings: Settings
 }
 
@@ -29,9 +29,9 @@ export interface ImportSummary {
  */
 export interface Repository {
   /** Newest first. */
-  listSessions(): Promise<PracticeSession[]>
+  listSessions(): Promise<Session[]>
   /** Upsert by id: an existing id updates, a new one inserts. */
-  saveSession(session: PracticeSession): Promise<void>
+  saveSession(session: Session): Promise<void>
   deleteSession(id: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
