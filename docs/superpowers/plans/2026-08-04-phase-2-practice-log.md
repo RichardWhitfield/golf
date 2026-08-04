@@ -3408,7 +3408,7 @@ Run: `npm run check && npm test && npm run dev`
 On `/log`:
 - **Export JSON** downloads `golf-practice-<today>.json`; open it and confirm it contains `schemaVersion`, your sessions and your settings.
 - Importing that same file back reports `0 new · N updated` and leaves the list unchanged.
-- Editing the file to change one session's notes and re-importing reports `0 new · 1 updated` and shows the change.
+- Editing the file to change one session's notes and re-importing shows the change, and reports `0 new · N updated` where **N is the number of sessions in the file**. The count reports records *written*, not records whose contents differed — `mergeDocuments` counts every id match. That is the more useful number after restoring a backup, but it does mean a two-session file reports `2 updated` even if you only edited one. To see a literal `1 updated`, import a file containing just that one session.
 - Importing a file with a session removed does **not** delete it locally.
 - Importing a text file, or JSON with a bad `location`, shows a red reason and changes nothing.
 - To check the fault path: in devtools set `localStorage['golf:store'] = '{ broken'`, reload, and confirm the warning appears, the set-aside copy downloads, and saving a session is refused with a readable message. Then remove `golf:store` and `golf:store.unreadable` to clean up.
