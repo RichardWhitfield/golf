@@ -11,6 +11,9 @@ export interface Drill {
   description: string
   /** Free text rather than a number — ranges ("10–15", "10 rehearsals + 5 hits") carry intent. */
   reps: string
+  /** A number the log form can pre-fill. `reps` stays prose — "10 rehearsals + 5 hits" has no
+   *  single number in it, and parsing it would be guesswork. Authored, not derived. */
+  defaultSwings: number
   /** The cue. The most valuable field in the model — every drill keeps one. */
   feelsLike: string
 }
@@ -45,4 +48,30 @@ export interface ArcPhase {
   body: string
   /** Trailing italicised clause, kept as text rather than HTML in the data. */
   emphasis?: string
+}
+
+/** Calendar date, `YYYY-MM-DD`. Always the Sydney date — see `today.ts`. */
+export type ISODate = string
+
+/** `sim` is the Trackman bay, `home` is outdoors with airflow balls, `course` is on the course. */
+export type Location = 'sim' | 'home' | 'course'
+
+/** How close the swing came to the drill's "feels like" cue. */
+export type Feel = 1 | 2 | 3 | 4 | 5
+
+export interface DrillEntry {
+  drillId: DrillId
+  swings: number
+  /** Per entry, never per session — two drills in one session can go very differently. */
+  feel: Feel
+}
+
+/** Tue–Sun: short outdoor sessions, manually logged. Monday's Trackman session is Phase 3. */
+export interface PracticeSession {
+  id: string
+  type: 'practice'
+  date: ISODate
+  location: Location
+  entries: DrillEntry[]
+  notes?: string
 }

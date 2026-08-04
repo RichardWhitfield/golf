@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayKeyFromLocalTime, formatDayLabel, resolveDayKey } from './today'
+import { dayKeyFromLocalTime, formatDayLabel, resolveDayKey, resolveISODate } from './today'
 import { DAY_ORDER, OUTDOOR_DAYS, WEEK } from './plan'
 import { DRILLS, DRILL_GROUPS } from './drills'
 
@@ -64,5 +64,34 @@ describe('plan integrity', () => {
   it('keeps drill ids 01-07 stable and gives every drill a feel cue', () => {
     expect(DRILLS.map((d) => d.id)).toEqual(['01', '02', '03', '04', '05', '06', '07'])
     for (const d of DRILLS) expect(d.feelsLike).toBeTruthy()
+  })
+})
+
+describe('resolveISODate', () => {
+  it('returns the Sydney date when UTC is still on the previous day', () => {
+    // 2026-08-02 23:00 UTC is 3 August, 09:00 in Sydney (AEST, +10).
+    expect(resolveISODate(new Date('2026-08-02T23:00:00Z'))).toBe('2026-08-03')
+  })
+
+  it('honours Sydney daylight saving', () => {
+    // 2026-01-04 13:30 UTC is 5 January, 00:30 in Sydney (AEDT, +11).
+    expect(resolveISODate(new Date('2026-01-04T13:30:00Z'))).toBe('2026-01-05')
+  })
+
+  it('zero-pads single-digit months and days', () => {
+    expect(resolveISODate(new Date('2026-03-05T05:00:00Z'))).toBe('2026-03-05')
+  })
+})
+
+describe('drill swing defaults', () => {
+  it('gives every drill a positive whole-number default', () => {
+    for (const d of DRILLS) {
+      expect(Number.isInteger(d.defaultSwings)).toBe(true)
+      expect(d.defaultSwings).toBeGreaterThan(0)
+    }
+  })
+
+  it('keeps the prose reps field intact alongside it', () => {
+    for (const d of DRILLS) expect(d.reps).toBeTruthy()
   })
 })

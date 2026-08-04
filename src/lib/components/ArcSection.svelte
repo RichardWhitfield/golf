@@ -3,7 +3,7 @@
   import SectionHead from './SectionHead.svelte'
 </script>
 
-<section>
+<section id="arc">
   <SectionHead idx="04" title="The 3-week arc" />
   <div class="arc">
     {#each ARC as phase (phase.n)}

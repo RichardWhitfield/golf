@@ -38,6 +38,10 @@ Seven drills in three groups. Each is tagged for where it can be done:
 Drills carry a stable number (`01`–`07`) that the weekly schedule references by digit. **These
 numbers are identifiers — never renumber them**, or every cross-reference on the site breaks.
 
+Each drill also carries `defaultSwings` — a whole number the log form pre-fills. Separate from
+`reps`, which stays prose because ranges and mixed counts ("10 rehearsals + 5 hits") carry intent
+that a single number would lose. Change both together when a drill's volume changes.
+
 ### Group 1 — Sequencing & transition
 
 **01 · Step-change** — `SIM` `HOME` — 10–15 reps

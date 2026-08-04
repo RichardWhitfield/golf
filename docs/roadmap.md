@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-04
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -9,11 +9,13 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 
 ## Where things stand
 
-- `index.html` — self-contained, single file. The complete 3-week plan, plus a Today panel
-  driven by a small vanilla script (see Phase 0.5).
-- `CNAME` — `golf.whitfield.life`, served by GitHub Pages from the repo root.
-- `README.md` — orientation and a documentation index.
-- No build step, no dependencies, no tests.
+- Svelte 5 + Vite + TypeScript, built by GitHub Actions and published to Pages.
+- Two views behind a History-API router: `/` (the plan) and `/log` (the practice log). Deep links
+  depend on a generated `dist/404.html`.
+- Practice sessions persist in `localStorage` behind the async repository seam, with JSON
+  export/import.
+- `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
+- `npm run check` and `npm test` both gate the deploy.
 
 Work is tracked in [GitHub issues](https://github.com/RichardWhitfield/golf/issues); each phase
 and open question below links to its issue.
@@ -68,7 +70,7 @@ considering the phase complete.
 
 ---
 
-## Phase 2 · Log a practice session
+## Phase 2 · Log a practice session — **done (2026-08-04)**
 
 [#3](https://github.com/RichardWhitfield/golf/issues/3)
 
@@ -85,6 +87,14 @@ The first real feature. Highest value per unit of work — six days a week curre
 
 **Done when:** a Tuesday session can be logged outdoors on a phone in under a minute, and the data
 survives a browser restart.
+
+Shipped: the storage seam (`Repository`, `LocalStorageRepo`, `schemaVersion`, migration
+machinery), the log form with the day's drills pre-ticked from `plan.ts`, recent sessions with
+edit and delete, JSON export/import merging by id, and the block start date (OQ-5) surfaced as
+the arc week and phase in the Today panel.
+
+Phase 3 now has a storage layer, a form pattern and an export format to build on — a Trackman
+session is a second session type through the same seam, not new machinery.
 
 ---
 
@@ -203,16 +213,14 @@ schedule — is that a code edit or an in-app edit?
 **Recommendation: keep it a code edit.** It changes rarely, it's version-controlled, and in-app
 plan editing is a large feature for one user. Revisit only if the plan starts changing weekly.
 
-### OQ-5 · When did the 3-week block start?
+### OQ-5 · When did the 3-week block start? — **resolved 2026-08-04**
 
-[#10](https://github.com/RichardWhitfield/golf/issues/10)
+[#10](https://github.com/RichardWhitfield/golf/issues/10) · closed
 
-The Today panel knows the day but not which *week of the arc* you're in — so it can't say
-"week 2, transfer phase, mix drill-swings with normal swings", which is arguably the more useful
-instruction. That needs a block start date.
-
-Options: hardcode a start date in the markup, or capture it once and store it. Falls out
-naturally once Phase 2 introduces storage. **Cheap and high value — do it early in Phase 2.**
+Captured once and stored, as Phase 2's storage layer made it cheap. `Settings.blockStart` holds
+the date; `domain/block.ts` turns it into a week and an arc phase; the Today panel shows
+`WEEK 2 · TRANSFER` beside the day. Outside the three weeks it says nothing and offers a new
+start date — a finished plan should not claim "week 7".
 
 ### OQ-6 · Do course rounds get logged?
 

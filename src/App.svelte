@@ -1,25 +1,24 @@
 <script lang="ts">
-  import AidsSection from './lib/components/AidsSection.svelte'
-  import ArcSection from './lib/components/ArcSection.svelte'
-  import DrillsSection from './lib/components/DrillsSection.svelte'
-  import Hero from './lib/components/Hero.svelte'
-  import KpiBand from './lib/components/KpiBand.svelte'
-  import OneIdea from './lib/components/OneIdea.svelte'
-  import SiteFooter from './lib/components/SiteFooter.svelte'
-  import TodayPanel from './lib/components/TodayPanel.svelte'
-  import WatchOuts from './lib/components/WatchOuts.svelte'
-  import WeekSection from './lib/components/WeekSection.svelte'
+  import SiteNav from './lib/components/SiteNav.svelte'
+  import LogView from './routes/LogView.svelte'
+  import PlanView from './routes/PlanView.svelte'
+  import { router } from './lib/stores/router.svelte'
+  import { sessions } from './lib/stores/sessions.svelte'
+
+  $effect(() => router.start())
+  $effect(() => {
+    sessions.load().catch((error) => {
+      // Never let a storage failure stop the plan page rendering — it needs no storage at all.
+      console.error('Could not load the practice log:', error)
+    })
+  })
 </script>
 
 <div class="wrap">
-  <Hero />
-  <TodayPanel />
-  <KpiBand />
-  <OneIdea />
-  <DrillsSection />
-  <WeekSection />
-  <ArcSection />
-  <AidsSection />
-  <WatchOuts />
-  <SiteFooter />
+  <SiteNav />
+  {#if router.current === 'log'}
+    <LogView />
+  {:else}
+    <PlanView />
+  {/if}
 </div>

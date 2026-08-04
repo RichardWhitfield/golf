@@ -2,8 +2,8 @@
 
 Target architecture for turning the static plan page into a living practice tracker.
 
-**Status:** proposed. Nothing here is built yet — the repo currently contains a single
-`index.html`. See `roadmap.md` for sequencing.
+**Status:** partly built. Sections are marked **Built** where the code now matches what follows;
+an unmarked section is still the plan being built towards. See `roadmap.md` for sequencing.
 
 ---
 
@@ -19,6 +19,8 @@ Target architecture for turning the static plan page into a living practice trac
 | D6 | Trackman data | **Manual entry is the baseline**; automated ingest is a pluggable source | No confirmed programmatic access exists yet. The app must be fully usable without it. |
 | D7 | Language | **TypeScript** | The data model is the core of this app and will outlive any UI. Types are the cheapest documentation of it. |
 | D8 | Tests | **Vitest** for domain logic and the storage layer | Not for UI. The valuable, breakable logic is data shaping and aggregation. |
+| D9 | Navigation | **Client-side views** (Plan, Log; Progress in Phase 4) | The log needs its own screen. The poster page becomes the Plan view, visually unchanged. |
+| D10 | URL scheme | **Clean paths** via the History API, with a generated `404.html` | Real URLs. The shim is copied from `dist/index.html` at build time — a hand-written `public/404.html` would reference stale hashed assets. |
 
 ### Deliberately excluded (YAGNI)
 
@@ -52,7 +54,7 @@ through the repository, and **every repository method is `async` from day one** 
 `localStorage` is synchronous. If the methods are sync now, adding a network call later changes
 every call site. Paying the `await` cost up front is the entire point.
 
-### Proposed layout
+### Layout
 
 ```
 src/
@@ -61,19 +63,30 @@ src/
       types.ts            # PracticeSession, TrackmanSession, Drill, …
       plan.ts             # the 3-week plan as data (from content.md)
       drills.ts           # the 7 drills as data
-      stats.ts            # aggregation: streaks, path trend, drill coverage
+      block.ts            # OQ-5: block start → arc week + phase
+      session.ts          # session drafts, swing defaults
+      stats.ts            # aggregation: streaks, path trend, drill coverage  # Phase 4
     storage/
       repository.ts       # the interface — the seam
       local.ts            # LocalStorageRepo implementation
       migrations.ts       # schemaVersion upgrades
-    ingest/
+      transfer.ts         # JSON export/import, merge by id
+    ingest/                                                                  # Phase 5
       source.ts           # TrackmanSource interface
       manual.ts           # manual entry (always available)
-    stores/               # Svelte stores wrapping the repository
+    stores/
+      router.svelte.ts    # History-API router
+      sessions.svelte.ts  # the rune store wrapping the repository
     components/
-  routes/                 # or views/ — Plan, Log, Progress
+      PlanView.svelte     # the poster page
+      LogView.svelte      # the practice log
+      …
   app.css                 # tokens + resets (from design.md)
 ```
+
+`domain/`, `storage/` and `stores/` are built (Phase 2, issue #3). `ingest/` and `domain/stats.ts`
+are not — they arrive with the phases marked above. There is no separate `routes/`: `PlanView` and
+`LogView` live alongside the other components, switched by `router.svelte.ts`.
 
 The plan and drill *content* becomes data (`plan.ts`, `drills.ts`) rather than hand-written
 markup. This is the single biggest structural change: the current page repeats the same card
@@ -84,7 +97,11 @@ picker, and progress-by-drill — one source, three consumers.
 
 ## 3. Data model
 
-Sketch, not final. TypeScript definitions in `domain/types.ts` are the source of truth once built.
+**Built.** `domain/types.ts` is the source of truth; the sketch below is kept because it explains
+*why* the shapes are what they are. `PracticeSession` is implemented exactly as written, with one
+omission: **`durationMin` was deliberately not built.** Issue #3 doesn't ask for it and every
+Tue–Sun session is the same 5–10 minutes. Adding it later is a field on a new schema version, not
+a rework.
 
 ```ts
 type ISODate = string          // 'YYYY-MM-DD'
@@ -137,15 +154,22 @@ interface TrackmanSession {
 
 ### Persistence
 
-Single `localStorage` key holding one JSON document with a `schemaVersion`. At this data volume
-(a few sessions a week) that's simpler and safer than key-per-record, and it makes export
-trivial.
+One `localStorage` key, `golf:store`, holding one JSON document with `schemaVersion: 1`. At a few
+sessions a week that is simpler and safer than key-per-record, and it makes export trivial.
+Migrations live in `storage/migrations.ts`, keyed by the version being migrated *from*. The table
+is empty at v1; the tests around it are not.
 
-**Because `localStorage` is the only copy, manual JSON export/import is a required feature, not a
-nice-to-have.** Clearing site data would otherwise destroy months of logs.
+Because `localStorage` is the only copy, three guards exist:
 
-Every schema change ships a migration in `migrations.ts`. Never mutate the shape without bumping
-the version.
+1. **Unreadable JSON** is copied to `golf:store.unreadable` before anything is written, and all
+   further writes are refused. The Data panel surfaces the warning and offers the copy as a
+   download.
+2. **A document from a newer build** is refused but *not* moved — the data is fine, this build is
+   behind, and relocating it would strand the newer build.
+3. **Import merges by session id.** It adds and updates; it never drops. One malformed record
+   rejects the whole file rather than leaving a partial state nobody chose.
+
+Manual JSON export/import is a required feature, not a nice-to-have.
 
 ---
 
@@ -229,6 +253,15 @@ push to main → actions: npm ci → npm run build → upload dist/ → deploy P
 drops the custom domain.
 
 Set Vite's `base` to `'/'` (custom apex-style domain, not a project subpath).
+
+`dist/404.html` must survive the build alongside `CNAME`. It is generated by the
+`pages-spa-fallback` plugin in `vite.config.ts`, copying the built `index.html` so it carries
+the correct hashed asset names. The deploy workflow asserts both. Losing the shim 404s every
+deep link and fails silently — the site still builds and still deploys.
+
+That plugin imports `node:fs` and `node:path`, which is the one new dependency Phase 2 added:
+`@types/node` as a devDependency, with `"node"` added to `tsconfig.json`'s `types` array so
+`svelte-check` can resolve them. Types only — nothing reaches the client bundle.
 
 ---
 

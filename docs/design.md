@@ -101,6 +101,10 @@ you'd read it aloud as a value, it's mono.
 | Eyebrow | `.72rem`, `.22em` tracking, uppercase | Mono, `--ball`. |
 | Tag | `.62rem`, `.08em` tracking | Mono. Smallest text on the page. |
 
+The `h1` row above is the **hero** treatment and belongs to the Plan view. The Log view's `h1`
+takes the section `h2` scale — a form page shouldn't open with a poster headline. Each view
+still has exactly one `h1`.
+
 ### Headline treatment
 
 Headings use `line-height: 1.02` and `letter-spacing: -.02em` — very tight, which is what gives
@@ -191,6 +195,10 @@ mobile (`≤760px`) `.wrap` becomes a flex column and `.today` takes `order:-1`,
 the hero — on a phone you're there to practise, not to read the poster. This is the only place
 the design reorders content, and it's the reason `.wrap` is flex at all below the breakpoint.
 
+The panel also carries the **block position** when a start date is stored: a solid `--ball`
+`WEEK n` pill beside the phase title, which links to section 04. Outside the three weeks it
+offers to set a new start rather than reporting a week number the plan doesn't have.
+
 ### Day bar
 `.daybar` — a row of mono pill `<button>`s, MON–SUN. Three visual states:
 - default: `--dim` text, `--line` border
@@ -203,6 +211,62 @@ carried by `aria-pressed`, not by class alone.
 ### Warning panel
 `.warn` — `--flag` border, 6%-opacity red wash, red eyebrow. Custom list markers drawn with
 `clip-path` as small triangular flags. Reserved for genuine watch-outs.
+
+### Site nav
+`.sitenav` — a mono pill row at the top of the page, above everything, with a hairline beneath.
+Active view carries `aria-current="page"` and renders in `--ball` with a `--ball-dim` border.
+Progress is not a link — it is a `<span>` with a `SOON` badge, because a dead link reads as a
+broken app and hiding it hides the shape of what's being built. Its unavailability is carried
+by the badge text, never by the dimming alone. `44px` minimum, and `order:-2` below the
+breakpoint so the Today panel's `order:-1` cannot float above it.
+
+### Form field
+`.lab` mono uppercase label above a `--card` control with a `--line` border and `10px` radius.
+Text inputs use Space Mono (they hold data); the notes `textarea` uses Inter (it holds prose).
+
+### Location pills
+Identical to the day bar — mono pill `<button>`s carrying `aria-pressed`, `44px` minimum,
+solid `--ball` when selected. Reused deliberately: the two controls do the same job.
+
+### Drill entry row
+`.row` — a `--card` row whose whole label is the tap target. The checkbox is visually hidden
+and a `::before` box is drawn in its place so it can carry `--ball` and reach `44px`; the real
+input keeps the state, the keyboard and the announcement. Ticked rows take a `--ball-dim`
+border and reveal the swing stepper and feel picker.
+
+### Swing stepper
+`[−] n [+]` — two `44px` round buttons around a `72px` mono number field. Native spinners are
+suppressed: they are a 20px target sitting next to a 44px one.
+
+### Feel picker
+Five `44px` mono pills backed by real radio inputs, so arrow-key navigation and grouping come
+free. The visually-hidden input forwards `:focus-visible` to its label — without that,
+keyboard users get no focus state at all.
+
+**Untouched state:** feel defaults to a neutral 3 and the group renders muted until tapped.
+This is a rendering state only; the stored value is 3 either way. It exists so you can see at
+a glance which drills you actually judged.
+
+### Save button
+Full-width `--ball` fill with `--bg` text, `52px` — the page's only primary action.
+
+### Session row
+`details`/`summary` on `--card` — mono date in `--ball`, a location tag, and the drill numbers
+right-aligned. Expanded, it lists each drill's swings and feel and offers Edit and Delete.
+Native `<details>` is used deliberately: keyboard support, `aria-expanded` and announcement
+come from the browser rather than from hand-written state.
+
+**Delete confirms in place**, with a second `--flag` button, not a native `confirm()` — a
+browser dialog is easy to dismiss by accident on a phone, and this removes the only copy of a
+session.
+
+### Data panel
+Export and import as mono outline buttons; the file input is visually hidden behind a styled
+`<label>` that forwards `:focus-visible`, since a native file input cannot be styled. Import
+reports `N new · N updated` in `--ball`; failures report a reason in `--flag`.
+
+The unreadable-store warning reuses the `.warn` treatment — `--flag` border over
+`--flag-wash` — and is the one place the app tells you it is refusing to write.
 
 ---
 

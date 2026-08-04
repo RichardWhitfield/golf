@@ -1,7 +1,9 @@
 <script lang="ts">
   import { DAY_NAMES, DAY_ORDER, WEEK } from '../domain/plan'
   import { drill } from '../domain/drills'
-  import { formatDayLabel, resolveDayKey } from '../domain/today'
+  import { formatDayLabel, resolveDayKey, resolveISODate } from '../domain/today'
+  import { blockPosition } from '../domain/block'
+  import { sessions } from '../stores/sessions.svelte'
   import DrillCard from './DrillCard.svelte'
 
   /** The real day in Sydney, and the day being viewed — they differ once you browse the daybar. */
@@ -23,6 +25,26 @@
     }, 60000)
     return () => clearInterval(timer)
   })
+
+  /** Where today sits in the 3-week arc. `null` before a start date is set, and once the
+   *  block has run out — a finished plan should say nothing, not claim "week 7". */
+  const position = $derived.by(() => {
+    const start = sessions.settings.blockStart
+    return start ? blockPosition(start, resolveISODate()) : null
+  })
+
+  let settingBlock = $state(false)
+  let blockDraft = $state('')
+
+  function openBlockEditor() {
+    blockDraft = sessions.settings.blockStart ?? resolveISODate()
+    settingBlock = true
+  }
+
+  async function saveBlockStart() {
+    await sessions.setBlockStart(blockDraft)
+    settingBlock = false
+  }
 </script>
 
 <section class="today reveal" id="today" aria-labelledby="today-title">
@@ -30,6 +52,27 @@
     <span class="eyebrow">{isToday ? `Today · ${DAY_NAMES[selected]}` : DAY_NAMES[selected]}</span>
     <span class="today-date">{isToday ? formatDayLabel() : ''}</span>
   </div>
+
+  {#if position}
+    <p class="arc">
+      <span class="wk">Week {position.week}</span>
+      <a href="#arc">{position.phase.title}</a>
+      <button type="button" class="arc-edit" onclick={openBlockEditor}>Change start</button>
+    </p>
+  {:else if sessions.ready && !settingBlock}
+    <button type="button" class="arc-set" onclick={openBlockEditor}>
+      {sessions.settings.blockStart ? 'Block finished · set a new start' : 'Set block start'}
+    </button>
+  {/if}
+
+  {#if settingBlock}
+    <div class="arc-form">
+      <label class="lab" for="block-start">Block start · the Monday it began</label>
+      <input id="block-start" type="date" bind:value={blockDraft} />
+      <button type="button" class="arc-save" onclick={saveBlockStart}>Save</button>
+      <button type="button" class="arc-cancel" onclick={() => (settingBlock = false)}>Cancel</button>
+    </div>
+  {/if}
   <h2 id="today-title">{day.title}</h2>
   <p class="sub">{day.sub}</p>
   <div class="daybar" role="group" aria-label="Choose a day">
@@ -101,6 +144,56 @@
   .today-reset::after{content:'';position:absolute;inset:0 0 -19px}
   .today-reset:hover{color:var(--ball)}
   .today-reset[hidden]{display:none}
+
+  /* ---- block position (OQ-5) ---- */
+  .arc{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .arc .wk{
+    font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--bg);background:var(--ball);
+    padding:4px 10px;border-radius:100px;font-weight:700;
+  }
+  .arc a{
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ball);text-decoration:none;
+    border-bottom:1px solid var(--ball-dim);padding-bottom:2px;position:relative;
+  }
+  /* 19.4px padding box (20.4px border box less the 1px underline): 19.4 + 2x13 = 45.4px.
+     The 8px margin above and the 10px flex gap absorb the overhang. */
+  .arc a::after{content:'';position:absolute;inset:-13px 0}
+  .arc a:hover{border-bottom-color:var(--ball)}
+
+  .arc-set,.arc-edit,.arc-cancel{
+    background:none;border:none;color:var(--dim);cursor:pointer;padding:4px 0;
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.08em;
+    text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;
+    position:relative;
+  }
+  /* Same overhang technique as `.today-reset` — 25px padding box, expanded to 44px. These sit
+     with clear space below, so the overhang can be symmetric. */
+  .arc-set::after,.arc-edit::after{content:'';position:absolute;inset:-10px 0}
+  /* Cancel wraps onto its own row beneath Save at narrow widths, where only the 10px flex
+     row-gap separates them — a symmetric overhang would reach within half a pixel of Save's
+     bottom edge. Bias it downward instead: 25 + 2 + 17 = 44px, the 8px left above clears Save,
+     and the 20px margin above `.grid` absorbs the 17px below. */
+  .arc-cancel::after{content:'';position:absolute;inset:-2px 0 -17px}
+  .arc-set{margin-top:10px}
+  .arc-set:hover,.arc-edit:hover,.arc-cancel:hover{color:var(--ball)}
+
+  .arc-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .arc-form .lab{
+    font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);flex-basis:100%;
+  }
+  .arc-form input{
+    background:var(--card);color:var(--chalk);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;min-height:44px;
+    font-family:'Space Mono',monospace;font-size:.9rem;
+  }
+  .arc-save{
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+    min-height:44px;padding:0 20px;border-radius:100px;cursor:pointer;font-weight:700;
+    background:var(--ball);color:var(--bg);border:1px solid var(--ball);
+  }
 
   @media (max-width:760px){
     /* `.wrap` becomes a flex column at this width (app.css) — today jumps to the top. */
