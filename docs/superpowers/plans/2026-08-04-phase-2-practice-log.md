@@ -3462,6 +3462,22 @@ EOF
 - Consumes: `blockPosition` (Task 2); `resolveISODate` (Task 1); `sessions` store (Task 7).
 - Produces: nothing new.
 
+- [ ] **Step 0: Clear the stale success message when an export fails**
+
+Surfaced by Task 11's review. In `src/lib/components/DataPanel.svelte`, `exportAll()` resets
+`problem` on entry but not `message`, so a failed export after an earlier successful one renders
+a red error *underneath* a stale green "Exported 5 sessions." — the two flatly contradict each
+other, in the panel whose whole job is telling you whether your only backup worked. Its sibling
+`onFile()` already clears both.
+
+One line, at the top of `exportAll`:
+
+```ts
+  async function exportAll() {
+    message = null
+    problem = null
+```
+
 - [ ] **Step 1: Add the block state to the script**
 
 In `src/lib/components/TodayPanel.svelte`, add to the `<script>` block:
