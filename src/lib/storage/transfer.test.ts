@@ -7,8 +7,8 @@ import {
   serialiseDocument,
 } from './transfer'
 import { SCHEMA_VERSION } from './migrations'
-import { emptyDocument } from './repository'
-import type { PracticeSession } from '../domain/types'
+import { emptyDocument, type StoreDocument } from './repository'
+import type { PracticeSession, Session, TrackmanSession } from '../domain/types'
 
 const session = (id: string, over: Partial<PracticeSession> = {}): PracticeSession => ({
   id,
@@ -19,10 +19,119 @@ const session = (id: string, over: Partial<PracticeSession> = {}): PracticeSessi
   ...over,
 })
 
-const doc = (sessions: PracticeSession[], settings = {}) => ({
+// `unknown[]` in, `Session[]` out: half these tests deliberately pass malformed records, which is
+// the point — `parseDocument` is the thing that decides whether they are sessions at all.
+const doc = (sessions: unknown[], settings = {}): StoreDocument => ({
   schemaVersion: SCHEMA_VERSION,
-  sessions,
+  sessions: sessions as Session[],
   settings,
+})
+
+const trackman = (over: Record<string, unknown> = {}) => ({
+  id: 't1',
+  type: 'trackman',
+  date: '2026-07-27',
+  source: 'api',
+  clubs: [{ club: 'DRIVER', typical: -7.5, best: -1.2, n: 26 }],
+  ...over,
+})
+
+describe('parseDocument · Trackman sessions', () => {
+  it('accepts one', () => {
+    expect(parseDocument(doc([trackman()])).sessions[0]).toEqual(trackman())
+  })
+
+  it('accepts one with no shot count, drills or notes', () => {
+    const bare = trackman({ clubs: [{ club: 'DRIVER', typical: -7.5, best: -1.2 }] })
+    expect(parseDocument(doc([bare])).sessions[0]).toEqual(bare)
+  })
+
+  it('keeps a positive club path exactly as stored', () => {
+    // +3 is in-to-out. Real, if unlikely on this player. Never coerce the sign.
+    const s = trackman({ clubs: [{ club: 'IRON7', typical: 3.1, best: 0.4 }] })
+    const parsed = parseDocument(doc([s])).sessions[0] as TrackmanSession
+    expect(parsed.clubs[0].typical).toBe(3.1)
+    expect(parsed.clubs[0].best).toBe(0.4)
+  })
+
+  it('sorts clubs into bag order', () => {
+    const s = trackman({
+      clubs: [
+        { club: 'SAND_WEDGE', typical: -8, best: -4 },
+        { club: 'DRIVER', typical: -7, best: -1 },
+      ],
+    })
+    const parsed = parseDocument(doc([s])).sessions[0] as TrackmanSession
+    expect(parsed.clubs.map((c) => c.club)).toEqual(['DRIVER', 'SAND_WEDGE'])
+  })
+
+  it('keeps drills worked when they are valid', () => {
+    const s = trackman({ drillsWorked: ['01', '04'] })
+    expect(parseDocument(doc([s])).sessions[0]).toMatchObject({ drillsWorked: ['01', '04'] })
+  })
+
+  it('rejects a club this app does not know', () => {
+    const s = trackman({ clubs: [{ club: 'SPOON', typical: -1, best: -1 }] })
+    expect(() => parseDocument(doc([s]))).toThrow(InvalidImportError)
+  })
+
+  it('rejects a session with no clubs', () => {
+    expect(() => parseDocument(doc([trackman({ clubs: [] })]))).toThrow(/no club-path/)
+  })
+
+  it('rejects the same club twice in one session', () => {
+    const s = trackman({
+      clubs: [
+        { club: 'DRIVER', typical: -1, best: -1 },
+        { club: 'DRIVER', typical: -2, best: -2 },
+      ],
+    })
+    expect(() => parseDocument(doc([s]))).toThrow(/twice/)
+  })
+
+  it('rejects an unknown source', () => {
+    expect(() => parseDocument(doc([trackman({ source: 'guess' })]))).toThrow(/source/)
+  })
+
+  it('rejects a path beyond any real swing', () => {
+    const s = trackman({ clubs: [{ club: 'DRIVER', typical: -400, best: -1 }] })
+    expect(() => parseDocument(doc([s]))).toThrow(/implausible/)
+  })
+
+  it('rejects a non-numeric or infinite path', () => {
+    for (const typical of ['-7.5', null, Number.POSITIVE_INFINITY, Number.NaN]) {
+      const s = trackman({ clubs: [{ club: 'DRIVER', typical, best: -1 }] })
+      expect(() => parseDocument(doc([s]))).toThrow(InvalidImportError)
+    }
+  })
+
+  it('rejects a shot count that is not a positive integer', () => {
+    for (const n of [2.5, 0, -3, '26']) {
+      const s = trackman({ clubs: [{ club: 'DRIVER', typical: -1, best: -1, n }] })
+      expect(() => parseDocument(doc([s]))).toThrow(/shot count/)
+    }
+  })
+
+  it('rejects a drill that does not exist', () => {
+    expect(() => parseDocument(doc([trackman({ drillsWorked: ['99'] })]))).toThrow(/drill/)
+  })
+
+  it('names an unknown session type rather than calling it "not a practice session"', () => {
+    expect(() => parseDocument(doc([trackman({ type: 'round' })]))).toThrow(/round/)
+  })
+
+  it('merges by id across both session types', () => {
+    const stored = parseDocument(doc([trackman()]))
+    const incoming = parseDocument(doc([trackman({ notes: 'edited' })]))
+    const { doc: merged, summary } = mergeDocuments(stored, incoming)
+    expect(merged.sessions).toHaveLength(1)
+    expect(summary).toEqual({ added: 0, updated: 1 })
+  })
+
+  it('round-trips through serialise and parse', () => {
+    const original = parseDocument(doc([session('a'), trackman()]))
+    expect(parseDocument(JSON.parse(serialiseDocument(original)))).toEqual(original)
+  })
 })
 
 describe('parseDocument', () => {
