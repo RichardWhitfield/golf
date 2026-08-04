@@ -696,7 +696,9 @@ Create `src/lib/domain/session.ts`:
 
 ```ts
 import type { DayKey, DrillId, Feel, ISODate, Location, PracticeSession } from './types'
-import { DRILLS, drill } from './drills'
+// Only `DRILLS` is needed here — every function walks all seven in order rather than looking up
+// one by id. The `drill()` accessor is used by the components and by this module's tests.
+import { DRILLS } from './drills'
 import { WEEK } from './plan'
 import { parseISODate } from './block'
 
