@@ -6,7 +6,7 @@
 
 **Architecture:** Three layers, already sketched in `docs/architecture.md` §2. Pure TypeScript domain modules (`lib/domain/`) know the plan and the session shape. A storage layer (`lib/storage/`) owns one versioned JSON document in one `localStorage` key behind an `async` `Repository` interface. Svelte 5 rune stores (`lib/stores/`) hold the single repository instance; **no component ever touches `localStorage`.** A tiny History-API router splits the existing poster page (Plan) from the new Log view.
 
-**Tech Stack:** Svelte 5 (runes), Vite 8, TypeScript 6, Vitest 4. No new dependencies — none of this needs one.
+**Tech Stack:** Svelte 5 (runes), Vite 8, TypeScript 6, Vitest 4. One new **devDependency**: `@types/node`, required because Task 8's Vite plugin imports `node:fs`/`node:path` and `svelte-check` cannot resolve those without it (`tsconfig.json` also gains `"node"` to its `types` array). Types only — nothing reaches the client bundle. No new runtime dependencies.
 
 **Spec:** `docs/superpowers/specs/2026-08-04-phase-2-practice-log-design.md`
 **Issue:** [#3](https://github.com/RichardWhitfield/golf/issues/3), also closing [#10](https://github.com/RichardWhitfield/golf/issues/10) (OQ-5)
