@@ -3816,6 +3816,280 @@ gh issue close 10 --comment "Resolved as part of #3. Block start is stored in se
 
 ---
 
+---
+
+### Task 14: Survive a browser that blocks site data
+
+**Found by the final whole-branch review. Critical — blocks merge.**
+
+**Files:**
+- Modify: `src/lib/storage/local.ts`
+- Modify: `src/lib/storage/local.test.ts`
+- Modify: `src/App.svelte`
+- Modify: `CLAUDE.md`
+
+**The failure.** In a browser with site data blocked — Safari or Firefox private browsing, "block
+all cookies", an enterprise policy, a sandboxed iframe — **the entire site renders a blank page on
+every route**, including the plan page, which needs no storage whatsoever. Verified in a real
+browser: `#app` has zero children and zero injected `<style>` tags.
+
+**The chain:**
+1. `local.ts:25` — `constructor(storage: Storage = localStorage)`. A default parameter is evaluated
+   at construction time.
+2. `sessions.svelte.ts:85` — `export const sessions = new SessionStore()` runs at **module scope**,
+   and its own default is `new LocalStorageRepo()`.
+3. So importing the store reads the global `localStorage`, and **merely reading that global throws**
+   in these browsers (`Access is denied for this document.`) — it is not only `getItem` that fails.
+4. Module evaluation throws, the bundle never finishes, Svelte never mounts.
+
+Separately, `read()` calls `this.storage.getItem(...)` **outside** its `try`, so a throwing
+`getItem` would propagate even if construction were lazy. `write()` has the same exposure —
+`setItem` throws `QuotaExceededError` in Safari private mode even when the object is reachable.
+
+This breaks the project's own principle, stated for Trackman in `CLAUDE.md`: an unavailable
+dependency must "never block app load". Storage deserves the rule more, not less — and the plan
+page going blank is a straight regression against the pre-Phase-2 site.
+
+**Interfaces:**
+- Consumes: everything already built.
+- Produces: `LocalStorageRepo` gains a null-storage mode; `faultMessage` gains an
+  unavailable-storage message. No signature changes for callers.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `src/lib/storage/local.test.ts`. The existing `MemoryStorage` fake stays as-is.
+
+```ts
+/** A `Storage` whose every operation throws, like a browser with site data blocked. */
+class HostileStorage implements Storage {
+  get length(): number {
+    throw new Error('Access is denied for this document.')
+  }
+  clear(): void {
+    throw new Error('Access is denied for this document.')
+  }
+  getItem(): string | null {
+    throw new Error('Access is denied for this document.')
+  }
+  key(): string | null {
+    throw new Error('Access is denied for this document.')
+  }
+  removeItem(): void {
+    throw new Error('Access is denied for this document.')
+  }
+  setItem(): void {
+    throw new Error('Access is denied for this document.')
+  }
+}
+
+describe('storage that is unavailable entirely', () => {
+  it('constructs without throwing when storage is null', () => {
+    expect(() => new LocalStorageRepo(null)).not.toThrow()
+  })
+
+  it('lists nothing rather than throwing', async () => {
+    expect(await new LocalStorageRepo(null).listSessions()).toEqual([])
+  })
+
+  it('returns empty settings rather than throwing', async () => {
+    expect(await new LocalStorageRepo(null).getSettings()).toEqual({})
+  })
+
+  it('reports a fault explaining that nothing can be saved', async () => {
+    const repo = new LocalStorageRepo(null)
+    await repo.listSessions()
+    expect(repo.faultMessage).toMatch(/blocking site data|cannot be saved/i)
+  })
+
+  it('refuses to save rather than pretending it worked', async () => {
+    const repo = new LocalStorageRepo(null)
+    await repo.listSessions()
+    await expect(repo.saveSession(session('a'))).rejects.toThrow()
+  })
+
+  it('refuses to export rather than returning an empty document', async () => {
+    const repo = new LocalStorageRepo(null)
+    await expect(repo.exportDocument()).rejects.toThrow()
+  })
+
+  it('has no quarantine to offer', async () => {
+    expect(await new LocalStorageRepo(null).readQuarantine()).toBeNull()
+  })
+})
+
+describe('storage whose every operation throws', () => {
+  it('does not let a throwing getItem escape listSessions', async () => {
+    const repo = new LocalStorageRepo(new HostileStorage())
+    expect(await repo.listSessions()).toEqual([])
+    expect(repo.faultMessage).toBeTruthy()
+  })
+
+  it('does not let a throwing setItem escape saveSession', async () => {
+    const repo = new LocalStorageRepo(new HostileStorage())
+    await expect(repo.saveSession(session('a'))).rejects.toThrow()
+  })
+})
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `npm test`
+Expected: FAIL — `new LocalStorageRepo(null)` is a type error and the hostile-storage cases throw.
+
+- [ ] **Step 3: Make storage resolution lazy and defensive**
+
+In `src/lib/storage/local.ts`, add above the class:
+
+```ts
+/**
+ * Resolved defensively, because **merely reading `globalThis.localStorage` throws** in a browser
+ * with site data blocked — private browsing, "block all cookies", an enterprise policy, a
+ * sandboxed iframe. This class is constructed at module scope, so an eager read takes the whole
+ * app down before Svelte can mount anything, blanking even the plan page, which needs no storage.
+ */
+function defaultStorage(): Storage | null {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+const UNAVAILABLE =
+  'This browser is blocking site data, so nothing can be saved here. Your practice log will not ' +
+  'persist. Check the browser’s privacy settings, or use a normal (non-private) window.'
+```
+
+Change the field and constructor to:
+
+```ts
+  private readonly storage: Storage | null
+  private fault: string | null = null
+
+  /** Pass `null` explicitly to model unavailable storage; omit it to resolve the real one safely. */
+  constructor(storage: Storage | null | undefined = undefined) {
+    this.storage = storage === undefined ? defaultStorage() : storage
+  }
+```
+
+- [ ] **Step 4: Make every storage touch tolerate a throw**
+
+`read()` — the `getItem` call must sit **inside** the guarded region, and the null case must set the
+fault rather than looking like an empty store:
+
+```ts
+  private read(): StoreDocument {
+    if (!this.storage) {
+      this.fault = UNAVAILABLE
+      return emptyDocument()
+    }
+
+    let raw: string | null
+    try {
+      raw = this.storage.getItem(STORAGE_KEY)
+    } catch {
+      // Reachable object, failing operation — treat it as unavailable rather than as corruption.
+      // Nothing is quarantined, because nothing was read.
+      this.fault = UNAVAILABLE
+      return emptyDocument()
+    }
+
+    if (raw === null) {
+      this.fault = null
+      return emptyDocument()
+    }
+    // ... the existing migrate/quarantine try block, unchanged ...
+  }
+```
+
+`write()` keeps its existing fault check, then guards the write itself:
+
+```ts
+  private write(doc: StoreDocument): void {
+    if (this.fault) {
+      throw new Error(`Refusing to overwrite the stored data: ${this.fault}`)
+    }
+    if (!this.storage) throw new Error(UNAVAILABLE)
+    try {
+      this.storage.setItem(STORAGE_KEY, JSON.stringify(doc))
+    } catch (error) {
+      // Safari private mode throws QuotaExceededError on setItem even when storage is readable.
+      // Surface it: a save that silently did nothing is worse than one that says it failed.
+      this.fault = UNAVAILABLE
+      throw new Error(UNAVAILABLE, { cause: error })
+    }
+  }
+```
+
+`quarantine()` and `readQuarantine()` must both tolerate a null or throwing storage and simply do
+nothing / return `null`.
+
+- [ ] **Step 5: Stop an unhandled rejection at boot**
+
+`src/App.svelte` currently has `$effect(() => { void sessions.load() })`. `void` discards the
+promise, so any rejection becomes an unhandled rejection. `load()` no longer throws for the
+storage-unavailable case, but make the intent explicit and the failure visible:
+
+```svelte
+  $effect(() => {
+    sessions.load().catch((error) => {
+      // Never let a storage failure stop the plan page rendering — it needs no storage at all.
+      console.error('Could not load the practice log:', error)
+    })
+  })
+```
+
+- [ ] **Step 6: Run the tests**
+
+Run: `npm test && npm run check`
+Expected: PASS, 0 errors, 0 warnings. 115 existing tests plus the 9 new ones.
+
+- [ ] **Step 7: Verify in a browser that actually blocks storage**
+
+Build and preview, then in devtools **block site data for `localhost`** (or use a private window)
+and confirm:
+- `/` renders the full plan page. This is the non-negotiable one.
+- `/log` renders, and the Data panel shows the "blocking site data" warning.
+- Saving a session reports the failure rather than appearing to succeed.
+- With storage allowed again, everything behaves exactly as before.
+
+- [ ] **Step 8: Record it in `CLAUDE.md`**
+
+Under **Things to be careful about**, add:
+
+> - **The app must render even when `localStorage` is unavailable.** Reading the global throws
+>   outright in private browsing and under "block all cookies", and the store is constructed at
+>   module scope — so an eager read blanks the whole site, plan page included. `LocalStorageRepo`
+>   resolves storage lazily and treats it as absent rather than fatal. Don't reintroduce a
+>   top-level `localStorage` reference.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add src docs CLAUDE.md
+git commit -m "$(cat <<'EOF'
+Render the site when the browser blocks site data
+
+Reading globalThis.localStorage throws outright in private browsing, under
+"block all cookies", and in a sandboxed iframe -- not just getItem. The
+repository took it as a default parameter and the store is constructed at
+module scope, so importing the store threw, the bundle never finished
+evaluating, and every route rendered a blank page. The plan page needs no
+storage at all and went blank with the rest.
+
+Storage is now resolved lazily and treated as absent rather than fatal, every
+operation tolerates a throw, and the failure surfaces as a warning that says
+the log will not persist -- a save that silently does nothing is worse than one
+that admits it failed.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01UDMck26QppQA5Rbic9coEL
+EOF
+)"
+```
+
+---
+
 ## Notes for the implementer
 
 **Things that will bite you, in rough order of likelihood:**
