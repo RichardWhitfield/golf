@@ -256,6 +256,14 @@ come from the browser rather than from hand-written state.
 browser dialog is easy to dismiss by accident on a phone, and this removes the only copy of a
 session.
 
+### Data panel
+Export and import as mono outline buttons; the file input is visually hidden behind a styled
+`<label>` that forwards `:focus-visible`, since a native file input cannot be styled. Import
+reports `N new · N updated` in `--ball`; failures report a reason in `--flag`.
+
+The unreadable-store warning reuses the `.warn` treatment — `--flag` border over
+`--flag-wash` — and is the one place the app tells you it is refusing to write.
+
 ---
 
 ## 5. Motion

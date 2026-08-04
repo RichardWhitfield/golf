@@ -80,5 +80,8 @@ section{margin-top:72px}
 }
 
 @media (prefers-reduced-motion:reduce){
+  /* `scroll-behavior:smooth` is motion too. Anchor links and the log view's scroll-to-form
+     both animate without this, for users who explicitly asked the OS for none. */
+  html{scroll-behavior:auto}
   .reveal,.trace{animation:none;opacity:1;transform:none;stroke-dashoffset:0}
 }

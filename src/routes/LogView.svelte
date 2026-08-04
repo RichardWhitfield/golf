@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PracticeSession } from '../lib/domain/types'
+  import DataPanel from '../lib/components/DataPanel.svelte'
   import RecentSessions from '../lib/components/RecentSessions.svelte'
   import SessionForm from '../lib/components/SessionForm.svelte'
   import SiteFooter from '../lib/components/SiteFooter.svelte'
@@ -30,6 +31,7 @@
     <SessionForm {editing} onDone={() => (editing = null)} />
   {/key}
   <RecentSessions onEdit={edit} />
+  <DataPanel />
 </section>
 <SiteFooter />
 
