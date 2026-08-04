@@ -80,6 +80,14 @@
 
 <p class="note">Importing adds and updates. It never deletes a session you already have.</p>
 
+{#if sessions.syncMessage}
+  <p class="sync" role="status">{sessions.syncMessage}</p>
+  <p class="note">
+    Skipped days are ones you already typed in yourself. Delete the typed session if you would
+    rather have the imported numbers.
+  </p>
+{/if}
+
 {#if message}<p class="msg" role="status">{message}</p>{/if}
 {#if problem}<p class="err" role="alert">{problem}</p>{/if}
 
@@ -101,6 +109,10 @@
   .file input:focus-visible + span{outline:2px solid var(--ball);outline-offset:3px}
   .file input:disabled + span{opacity:.6;cursor:default}
   .note{margin-top:14px;font-size:.86rem;color:var(--dim);font-style:italic}
+  .sync{
+    margin-top:18px;font-family:'Space Mono',monospace;font-size:.74rem;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+  }
   .msg{
     margin-top:14px;font-family:'Space Mono',monospace;font-size:.74rem;
     letter-spacing:.1em;text-transform:uppercase;color:var(--ball);

@@ -274,3 +274,46 @@ describe('storage whose every operation throws', () => {
     await expect(repo.saveSession(session('a'))).rejects.toThrow()
   })
 })
+
+describe('mergeTrackman', () => {
+  const incoming = [
+    {
+      id: 'a',
+      type: 'trackman' as const,
+      date: '2026-07-27',
+      source: 'api' as const,
+      clubs: [{ club: 'DRIVER' as const, typical: -7.5, best: -1.2, n: 26 }],
+    },
+  ]
+
+  it('adds fetched sessions', async () => {
+    expect(await repo.mergeTrackman(incoming)).toMatchObject({ added: 1, changed: true })
+    expect(await repo.listSessions()).toHaveLength(1)
+  })
+
+  it('writes nothing at all on a no-op sync', async () => {
+    // This runs on every page load. A write per load would be pointless churn, and would throw
+    // whenever the store is in a fault state despite there being nothing to do.
+    await repo.mergeTrackman(incoming)
+    const afterFirst = storage.getItem(STORAGE_KEY)
+    expect(await repo.mergeTrackman(incoming)).toMatchObject({ added: 0, changed: false })
+    expect(storage.getItem(STORAGE_KEY)).toBe(afterFirst)
+  })
+
+  it('does not throw when storage is unavailable and there is nothing to merge', async () => {
+    await expect(new LocalStorageRepo(null).mergeTrackman([])).resolves.toMatchObject({
+      changed: false,
+    })
+  })
+
+  it('does throw when storage is unavailable and there is something to merge', async () => {
+    // Silence here would look like a successful import that quietly vanished on reload.
+    await expect(new LocalStorageRepo(null).mergeTrackman(incoming)).rejects.toThrow()
+  })
+
+  it('keeps practice sessions alongside the fetched ones', async () => {
+    await repo.saveSession(session('p1'))
+    await repo.mergeTrackman(incoming)
+    expect((await repo.listSessions()).map((s) => s.id).sort()).toEqual(['a', 'p1'])
+  })
+})

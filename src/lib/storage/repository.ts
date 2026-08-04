@@ -1,4 +1,5 @@
-import type { ISODate, Session } from '../domain/types'
+import type { ISODate, Session, TrackmanSession } from '../domain/types'
+import type { TrackmanMergeResult } from '../ingest/merge'
 import { SCHEMA_VERSION } from './migrations'
 
 export interface Settings {
@@ -38,6 +39,12 @@ export interface Repository {
   exportDocument(): Promise<StoreDocument>
   /** Merges by session id. Adds and updates; never drops. */
   importDocument(raw: unknown): Promise<ImportSummary>
+  /**
+   * Fold in Trackman sessions fetched by the scheduled workflow. Adds and updates; never drops,
+   * and **never overwrites a session marked `manual`**. Writes only when something changed, so
+   * the sync that runs on every page load is free when there is nothing new.
+   */
+  mergeTrackman(incoming: TrackmanSession[]): Promise<TrackmanMergeResult>
   /**
    * Non-null when the stored data could not be read and writing is therefore refused.
    * Part of the interface, not an implementation detail: a future remote repo has the same
