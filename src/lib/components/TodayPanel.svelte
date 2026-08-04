@@ -170,7 +170,12 @@
   }
   /* Same overhang technique as `.today-reset` — 25px padding box, expanded to 44px. These sit
      with clear space below, so the overhang can be symmetric. */
-  .arc-set::after,.arc-edit::after,.arc-cancel::after{content:'';position:absolute;inset:-10px 0}
+  .arc-set::after,.arc-edit::after{content:'';position:absolute;inset:-10px 0}
+  /* Cancel wraps onto its own row beneath Save at narrow widths, where only the 10px flex
+     row-gap separates them — a symmetric overhang would reach within half a pixel of Save's
+     bottom edge. Bias it downward instead: 25 + 2 + 17 = 44px, the 8px left above clears Save,
+     and the 20px margin above `.grid` absorbs the 17px below. */
+  .arc-cancel::after{content:'';position:absolute;inset:-2px 0 -17px}
   .arc-set{margin-top:10px}
   .arc-set:hover,.arc-edit:hover,.arc-cancel:hover{color:var(--ball)}
 
