@@ -216,6 +216,36 @@ broken app and hiding it hides the shape of what's being built. Its unavailabili
 by the badge text, never by the dimming alone. `44px` minimum, and `order:-2` below the
 breakpoint so the Today panel's `order:-1` cannot float above it.
 
+### Form field
+`.lab` mono uppercase label above a `--card` control with a `--line` border and `10px` radius.
+Text inputs use Space Mono (they hold data); the notes `textarea` uses Inter (it holds prose).
+
+### Location pills
+Identical to the day bar — mono pill `<button>`s carrying `aria-pressed`, `44px` minimum,
+solid `--ball` when selected. Reused deliberately: the two controls do the same job.
+
+### Drill entry row
+`.row` — a `--card` row whose whole label is the tap target. The checkbox is visually hidden
+and a `::before` box is drawn in its place so it can carry `--ball` and reach `44px`; the real
+input keeps the state, the keyboard and the announcement. Ticked rows take a `--ball-dim`
+border and reveal the swing stepper and feel picker.
+
+### Swing stepper
+`[−] n [+]` — two `44px` round buttons around a `72px` mono number field. Native spinners are
+suppressed: they are a 20px target sitting next to a 44px one.
+
+### Feel picker
+Five `44px` mono pills backed by real radio inputs, so arrow-key navigation and grouping come
+free. The visually-hidden input forwards `:focus-visible` to its label — without that,
+keyboard users get no focus state at all.
+
+**Untouched state:** feel defaults to a neutral 3 and the group renders muted until tapped.
+This is a rendering state only; the stored value is 3 either way. It exists so you can see at
+a glance which drills you actually judged.
+
+### Save button
+Full-width `--ball` fill with `--bg` text, `52px` — the page's only primary action.
+
 ---
 
 ## 5. Motion
