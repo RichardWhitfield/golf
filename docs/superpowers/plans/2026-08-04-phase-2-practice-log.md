@@ -3654,6 +3654,30 @@ EOF
 - Modify: `docs/roadmap.md`
 - Modify: `CLAUDE.md`
 
+- [ ] **Step 0: Bias the Cancel hit target downward, away from Save**
+
+Surfaced by Task 12's review, which measured it rather than eyeballing it. In
+`src/lib/components/TodayPanel.svelte`, `.arc-cancel` shares the symmetric `inset:-10px 0`
+overhang with `.arc-set` and `.arc-edit`. At 375px the `.arc-form` row wraps and Cancel drops
+onto its own line beneath Save, separated only by the flex `row-gap: 10px` — which the `-10px`
+overhang consumes exactly. Measured clearance: **0.5px**. A font-metric or rounding difference of
+a pixel and a tap on the bottom of *Save* activates *Cancel*.
+
+This is the same trap the existing `.today-reset` comment documents, and it takes the same
+solution: bias the overhang downward. Split `.arc-cancel` out of the shared rule:
+
+```css
+  .arc-set::after,.arc-edit::after{content:'';position:absolute;inset:-10px 0}
+  /* Cancel wraps onto its own row beneath Save at narrow widths, where only the 10px flex
+     row-gap separates them — a symmetric overhang would reach within half a pixel of Save's
+     bottom edge. Bias it downward instead: 25 + 2 + 17 = 44px, the 8px left above clears Save,
+     and the 20px margin above `.grid` absorbs the 17px below. */
+  .arc-cancel::after{content:'';position:absolute;inset:-2px 0 -17px}
+```
+
+Confirm afterwards that `.arc-cancel` still measures at least 44px and that its box no longer
+comes within a few pixels of Save's.
+
 - [ ] **Step 1: Update `docs/architecture.md`**
 
 Retitle §2's **Proposed layout** to **Layout**, and annotate the tree so built and unbuilt are
