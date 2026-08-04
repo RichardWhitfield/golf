@@ -42,9 +42,14 @@ issue #4), along with `scripts/trackman-ingest.ts` — the Node entry point the 
 workflow runs. It imports from `lib/ingest/`, so the null-filtering, Sydney-date and merge rules
 exist once and are shared with the browser. That is why `tsx` is a devDependency.
 
-The site has two views behind a History-API router: `/` (the plan page) and `/log`. Deep links
-depend on `dist/404.html`, generated from the built `index.html` by the `pages-spa-fallback`
-plugin in `vite.config.ts` and asserted by the deploy workflow alongside `CNAME`.
+The site has three views behind a History-API router: `/` (the plan page), `/log` and
+`/progress`. Deep links depend on `dist/404.html`, generated from the built `index.html` by the
+`pages-spa-fallback` plugin in `vite.config.ts` and asserted by the deploy workflow alongside
+`CNAME`.
+
+Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/domain/` —
+`scale.ts` (the shared fixed axis), `series.ts` (per-club series), `coverage.ts` (done vs
+scheduled) and `feel.ts` (feel per arc phase). **Components render; they never calculate.**
 
 Practice data lives in one `localStorage` key, `golf:store`, holding one versioned JSON
 document at `schemaVersion` 2. **Reach it only through `lib/stores/sessions.svelte.ts`** — that
@@ -97,6 +102,13 @@ so a scoped base rule outranks a global override and the override silently loses
 - **Never blend club path across clubs.** No code path may compute a mean spanning more than one
   club — a blended figure tracks club selection, not swing change (OQ-7, issue #14). The KPI club
   is the **driver**.
+- **`domain/series.ts` is where the never-blend rule is enforced structurally.** It keys by
+  `Club` and never reduces across keys, so no cross-club mean is expressible. Keep it that way.
+- **The chart y-domain is a fixed constant, never derived from the data.** A fitted domain moves
+  between visits and silently redefines "good" as "better than recent" rather than "in the band".
+- **"Never scheduled" and "avoided" are different findings.** Drill `03` appears in no day's
+  `plan.ts` schedule, so it computes to `0 of 0` — identical to a drill asked for six times and
+  skipped. `coverage.ts` carries a `status` to keep them apart. Never render them alike.
 - **`domain/clubs.ts` is the single source of truth for club names, order and the Trackman name
   mapping.** That mapping contains only spellings verified against real API responses; an unknown
   string returns `null` and is reported, never guessed at.
