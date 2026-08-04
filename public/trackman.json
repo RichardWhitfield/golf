@@ -1,0 +1,2907 @@
+{
+  "version": 1,
+  "sessions": [
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRjNTlkNzkzMS1kNjQ0LTU1OTQtYTEyMC04ZTIzOTA5MDQ1MmU=",
+      "type": "trackman",
+      "date": "2025-07-03",
+      "clubs": [
+        {
+          "club": "IRON6",
+          "typical": -4.55,
+          "best": -1,
+          "n": 23
+        },
+        {
+          "club": "IRON8",
+          "typical": -2.2,
+          "best": 0.2,
+          "n": 18
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -7.43,
+          "best": -5,
+          "n": 10
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -4.25,
+          "best": -2.2,
+          "n": 2
+        },
+        {
+          "club": "WEDGE60",
+          "typical": -5.29,
+          "best": -1,
+          "n": 10
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRkZjFjMWZmYy0zODI1LTU1NDktYWZkNS05Y2UxOTlkYjFkNWE=",
+      "type": "trackman",
+      "date": "2025-07-03",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -1.83,
+          "best": 0.1,
+          "n": 14
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.02,
+          "best": -1.8,
+          "n": 15
+        },
+        {
+          "club": "IRON7",
+          "typical": -6.52,
+          "best": -3.1,
+          "n": 15
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRkYmUzNWVkNS1iM2JhLTU4MGUtOWZkMC1hYzUzMzI2ZGE5MDY=",
+      "type": "trackman",
+      "date": "2025-07-06",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -2.55,
+          "best": 0.1,
+          "n": 38
+        },
+        {
+          "club": "WOOD3",
+          "typical": -2.97,
+          "best": -0.1,
+          "n": 30
+        },
+        {
+          "club": "IRON4",
+          "typical": -6.17,
+          "best": -2,
+          "n": 19
+        },
+        {
+          "club": "IRON5",
+          "typical": -2.23,
+          "best": -0.8,
+          "n": 7
+        },
+        {
+          "club": "IRON6",
+          "typical": -2.74,
+          "best": -1.6,
+          "n": 5
+        },
+        {
+          "club": "IRON7",
+          "typical": -5.21,
+          "best": -1.4,
+          "n": 21
+        },
+        {
+          "club": "IRON8",
+          "typical": -4.8,
+          "best": -2.2,
+          "n": 11
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -2.8,
+          "best": -0.8,
+          "n": 8
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -4.78,
+          "best": -1.3,
+          "n": 11
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxOTZkYWQ5ZC05MTc2LTVlMzEtOTE1MS1mMWJiOThiMjEwNGM=",
+      "type": "trackman",
+      "date": "2025-07-07",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -2.17,
+          "best": 0.3,
+          "n": 7
+        },
+        {
+          "club": "WOOD3",
+          "typical": -1.42,
+          "best": 0.3,
+          "n": 10
+        },
+        {
+          "club": "IRON7",
+          "typical": -3.75,
+          "best": -0.2,
+          "n": 8
+        },
+        {
+          "club": "IRON9",
+          "typical": -5.75,
+          "best": -1.6,
+          "n": 8
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -5.77,
+          "best": -2.6,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5YzBiMzIwMS1jNDg2LTVkNWUtYWEwOC02ZWZmOWRlZTgyYmE=",
+      "type": "trackman",
+      "date": "2025-07-09",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -4.4,
+          "best": -0.3,
+          "n": 73
+        },
+        {
+          "club": "WOOD5",
+          "typical": -3.74,
+          "best": -2.2,
+          "n": 10
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.23,
+          "best": -1.6,
+          "n": 28
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.97,
+          "best": -5,
+          "n": 8
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.56,
+          "best": 0,
+          "n": 19
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -4.89,
+          "best": -2.6,
+          "n": 13
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -6.9,
+          "best": -5.4,
+          "n": 7
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRhYjk5ZjViNS0yNDdjLTViODYtYWNjZC1hMmM3NWE5ZTRjMzA=",
+      "type": "trackman",
+      "date": "2025-07-12",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -3.79,
+          "best": -0.7,
+          "n": 14
+        },
+        {
+          "club": "WOOD3",
+          "typical": -2.19,
+          "best": 0.3,
+          "n": 14
+        },
+        {
+          "club": "IRON5",
+          "typical": -6.76,
+          "best": -2,
+          "n": 43
+        },
+        {
+          "club": "IRON7",
+          "typical": -6.7,
+          "best": -3.4,
+          "n": 21
+        },
+        {
+          "club": "IRON9",
+          "typical": -5.42,
+          "best": -2.1,
+          "n": 6
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -3.72,
+          "best": -0.7,
+          "n": 9
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -5.3,
+          "best": -1.7,
+          "n": 3
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1ODQyZjRjZi00MmM4LTVmYWMtYmIwZS1lODAzZTkyNzQzMGI=",
+      "type": "trackman",
+      "date": "2025-07-14",
+      "clubs": [
+        {
+          "club": "IRON6",
+          "typical": -3.77,
+          "best": -1.9,
+          "n": 4
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -8.88,
+          "best": -6,
+          "n": 5
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxNWEyNTEzYi01NTk3LTViMzktYWIwMy1jMTIwMGI5NGIzMzk=",
+      "type": "trackman",
+      "date": "2025-07-14",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -3.16,
+          "best": -0.7,
+          "n": 20
+        },
+        {
+          "club": "WOOD3",
+          "typical": -3.64,
+          "best": -1.6,
+          "n": 14
+        },
+        {
+          "club": "IRON4",
+          "typical": -3.44,
+          "best": -1,
+          "n": 17
+        },
+        {
+          "club": "IRON6",
+          "typical": -4.82,
+          "best": -2.6,
+          "n": 17
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQzYmMxYTM2Ni1jODg4LTViZmMtYWExZS1jMDM3Nzc0MzMyMjU=",
+      "type": "trackman",
+      "date": "2025-07-17",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -0.19,
+          "best": -0.2,
+          "n": 8
+        },
+        {
+          "club": "IRON4",
+          "typical": -3.59,
+          "best": -0.1,
+          "n": 9
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.19,
+          "best": -2.5,
+          "n": 13
+        },
+        {
+          "club": "IRON8",
+          "typical": -5.22,
+          "best": -1.9,
+          "n": 9
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -7.44,
+          "best": -6.7,
+          "n": 5
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -7.26,
+          "best": -4.5,
+          "n": 5
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiMmEyMTFjMC1iNDY5LTVjNjgtYmY4Yy1lNjcwNWVmNjc4OGU=",
+      "type": "trackman",
+      "date": "2025-07-18",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.39,
+          "best": -1.3,
+          "n": 21
+        },
+        {
+          "club": "WOOD5",
+          "typical": -5.68,
+          "best": -2.1,
+          "n": 12
+        },
+        {
+          "club": "IRON5",
+          "typical": -8.58,
+          "best": -6.6,
+          "n": 12
+        },
+        {
+          "club": "IRON7",
+          "typical": -9.22,
+          "best": -6.1,
+          "n": 9
+        },
+        {
+          "club": "IRON9",
+          "typical": -9.57,
+          "best": -7.2,
+          "n": 10
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -8.96,
+          "best": -7.2,
+          "n": 5
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ2ZmRkN2EyZS01YTY0LTVhN2QtYjQyMC04MmQ0NWUyMWUzZTE=",
+      "type": "trackman",
+      "date": "2025-07-21",
+      "clubs": [
+        {
+          "club": "IRON6",
+          "typical": -6.79,
+          "best": -4.4,
+          "n": 15
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyMjc5NzEwNC1jYzI0LTVhZDctOTZlOC0wZThhZmU4NGUwOGY=",
+      "type": "trackman",
+      "date": "2025-07-21",
+      "clubs": [
+        {
+          "club": "WOOD3",
+          "typical": -3.45,
+          "best": -3.1,
+          "n": 2
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.87,
+          "best": -3,
+          "n": 24
+        },
+        {
+          "club": "IRON5",
+          "typical": -8.26,
+          "best": 0.6,
+          "n": 46
+        },
+        {
+          "club": "IRON6",
+          "typical": -7.6,
+          "best": -2.4,
+          "n": 25
+        },
+        {
+          "club": "IRON7",
+          "typical": -7.82,
+          "best": -1.6,
+          "n": 16
+        },
+        {
+          "club": "IRON8",
+          "typical": -7.29,
+          "best": -4,
+          "n": 14
+        },
+        {
+          "club": "IRON9",
+          "typical": -7.71,
+          "best": -5,
+          "n": 8
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -9.04,
+          "best": -5.7,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwZjIzNzY2ZC05MjEyLTVhN2UtYTMyZi04YTgyMWQ0MmNkNGI=",
+      "type": "trackman",
+      "date": "2025-07-23",
+      "clubs": [
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -7.29,
+          "best": -5,
+          "n": 9
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -9.84,
+          "best": -8,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxMjM5NjVjNC1iMDlkLTViZTUtYjk5Zi1jZmUwNDZkZmQxZjg=",
+      "type": "trackman",
+      "date": "2025-07-23",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -7.52,
+          "best": -2.5,
+          "n": 47
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxMzVlZDc1NS0xZGU3LTVmYzQtYThlYi1lNGI3NDFlZWE1OTU=",
+      "type": "trackman",
+      "date": "2025-07-24",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -7.69,
+          "best": -2.9,
+          "n": 16
+        },
+        {
+          "club": "IRON5",
+          "typical": -9.69,
+          "best": -7,
+          "n": 12
+        },
+        {
+          "club": "IRON8",
+          "typical": -9.62,
+          "best": -5.5,
+          "n": 16
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -9.4,
+          "best": -7.2,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRmYjk4NWZiYy1hNjU2LTViYTgtYWI1YS0yNmZkOTY4NWNlODY=",
+      "type": "trackman",
+      "date": "2025-07-24",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -7.53,
+          "best": -1.2,
+          "n": 43
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5MDMxY2VjMS0wN2ZlLTVkNzctYmRiNS0yZWZhN2RlNDYwYTU=",
+      "type": "trackman",
+      "date": "2025-07-26",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -9.43,
+          "best": -4.8,
+          "n": 26
+        },
+        {
+          "club": "IRON5",
+          "typical": -9.26,
+          "best": -2.2,
+          "n": 45
+        },
+        {
+          "club": "IRON6",
+          "typical": -10.64,
+          "best": -7.6,
+          "n": 9
+        },
+        {
+          "club": "IRON7",
+          "typical": -10.26,
+          "best": -4.6,
+          "n": 23
+        },
+        {
+          "club": "IRON8",
+          "typical": -11.81,
+          "best": -6.3,
+          "n": 12
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRjNzg3NzdmYy1mNGFlLTU2NGEtOWJjZS04ZmU2MDYwNGUyNjQ=",
+      "type": "trackman",
+      "date": "2025-07-26",
+      "clubs": [
+        {
+          "club": "IRON9",
+          "typical": -8.6,
+          "best": -8.2,
+          "n": 2
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -11.7,
+          "best": -9.9,
+          "n": 10
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -12.16,
+          "best": -9.9,
+          "n": 14
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -12.22,
+          "best": -9.1,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1NjBmYWUzNC1mN2EyLTU2MTQtYTU4NS05NGJhMjliYjY3NDI=",
+      "type": "trackman",
+      "date": "2025-07-28",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -2.97,
+          "best": -0.9,
+          "n": 3
+        },
+        {
+          "club": "WOOD3",
+          "typical": -3.6,
+          "best": -0.1,
+          "n": 26
+        },
+        {
+          "club": "WOOD5",
+          "typical": -3.95,
+          "best": -1.3,
+          "n": 15
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.29,
+          "best": -4.5,
+          "n": 9
+        },
+        {
+          "club": "IRON5",
+          "typical": -6.91,
+          "best": -4.5,
+          "n": 20
+        },
+        {
+          "club": "IRON7",
+          "typical": -8.15,
+          "best": -5.1,
+          "n": 12
+        },
+        {
+          "club": "IRON9",
+          "typical": -8.17,
+          "best": -3.6,
+          "n": 7
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -7.7,
+          "best": -7.7,
+          "n": 1
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5MDY5YzVmMy0xMzE1LTUzMDAtODliMC0yYzMzZGQyNWY5NjY=",
+      "type": "trackman",
+      "date": "2025-07-31",
+      "clubs": [
+        {
+          "club": "IRON5",
+          "typical": -9.44,
+          "best": -6,
+          "n": 27
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyZDQwNDkwYS1kOWVhLTUzY2UtYjkxZi03M2Q4YzNmNzI5Njg=",
+      "type": "trackman",
+      "date": "2025-07-31",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -5.62,
+          "best": -2.4,
+          "n": 9
+        },
+        {
+          "club": "IRON4",
+          "typical": -11.8,
+          "best": -7.2,
+          "n": 21
+        },
+        {
+          "club": "IRON6",
+          "typical": -10.24,
+          "best": -5,
+          "n": 15
+        },
+        {
+          "club": "IRON8",
+          "typical": -8.45,
+          "best": -3.4,
+          "n": 17
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -10.81,
+          "best": -7.6,
+          "n": 7
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -13.76,
+          "best": -11.6,
+          "n": 10
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxOTI1ZjQ0Mi1hNDI3LTU0ODMtOTZlOS01ZWJmYzk5YWYxNDU=",
+      "type": "trackman",
+      "date": "2025-08-02",
+      "clubs": [
+        {
+          "club": "WOOD3",
+          "typical": -5.17,
+          "best": 0.5,
+          "n": 30
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.14,
+          "best": -2.8,
+          "n": 36
+        },
+        {
+          "club": "IRON6",
+          "typical": -8.98,
+          "best": -3,
+          "n": 29
+        },
+        {
+          "club": "IRON9",
+          "typical": -8.82,
+          "best": -6.4,
+          "n": 9
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -9.31,
+          "best": -7.8,
+          "n": 14
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0NWM5ZWU1NC0zOWM0LTU4OWQtYjhiYy1iYWUwYzJhNTI2Zjk=",
+      "type": "trackman",
+      "date": "2025-08-05",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -4.46,
+          "best": -1.6,
+          "n": 10
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.77,
+          "best": -4.8,
+          "n": 3
+        },
+        {
+          "club": "IRON6",
+          "typical": -7.93,
+          "best": -5.3,
+          "n": 8
+        },
+        {
+          "club": "IRON8",
+          "typical": -8.15,
+          "best": -7.1,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1NmNkYzA1OS1jNmRlLTUxMjctODhkMy1lZTQwZDExNmE1NTU=",
+      "type": "trackman",
+      "date": "2025-08-05",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -7.61,
+          "best": -4.9,
+          "n": 15
+        },
+        {
+          "club": "IRON7",
+          "typical": -7.5,
+          "best": -5.1,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiMDNmOWI2NS1kMzBhLTU1NDEtOWI0Ny1hNDEzZDk4ZTkzZjU=",
+      "type": "trackman",
+      "date": "2025-08-05",
+      "clubs": [
+        {
+          "club": "WEDGE58",
+          "typical": -11.48,
+          "best": -9.7,
+          "n": 5
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ4MzM2YjkxZC0wMTcyLTViMTgtYTk2ZC0yMDI1NzEyNTdiYWM=",
+      "type": "trackman",
+      "date": "2025-08-28",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -9.94,
+          "best": -6.6,
+          "n": 16
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiMzFkOGY1Yi01NWIzLTVhNzctYTliMC0wNWJlM2NkOTIxMDU=",
+      "type": "trackman",
+      "date": "2025-08-28",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -1.78,
+          "best": 0.3,
+          "n": 5
+        },
+        {
+          "club": "WOOD5",
+          "typical": -6.11,
+          "best": -4.5,
+          "n": 12
+        },
+        {
+          "club": "IRON4",
+          "typical": -9.6,
+          "best": -5.3,
+          "n": 20
+        },
+        {
+          "club": "IRON5",
+          "typical": -9.81,
+          "best": -5.7,
+          "n": 8
+        },
+        {
+          "club": "IRON7",
+          "typical": -8.41,
+          "best": -5.1,
+          "n": 14
+        },
+        {
+          "club": "IRON9",
+          "typical": -7.54,
+          "best": -5,
+          "n": 10
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -10.9,
+          "best": -10.9,
+          "n": 1
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQzYjIzMmRlMC1lN2U5LTUxN2UtYTEyZC0wZmY4ZTkxZDdiNmE=",
+      "type": "trackman",
+      "date": "2025-08-31",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -5.13,
+          "best": 0.1,
+          "n": 22
+        },
+        {
+          "club": "WOOD3",
+          "typical": -6.18,
+          "best": -0.3,
+          "n": 52
+        },
+        {
+          "club": "WOOD5",
+          "typical": -4.25,
+          "best": -1.3,
+          "n": 13
+        },
+        {
+          "club": "IRON4",
+          "typical": -6.59,
+          "best": 2,
+          "n": 36
+        },
+        {
+          "club": "IRON6",
+          "typical": -6.31,
+          "best": -2,
+          "n": 16
+        },
+        {
+          "club": "IRON8",
+          "typical": -8.6,
+          "best": -8.6,
+          "n": 1
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5Yzk4N2M3Yy0yODExLTU4MmMtYmY3ZS0wOTRlNmE5OGNhYjI=",
+      "type": "trackman",
+      "date": "2025-09-01",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -7.01,
+          "best": -3.3,
+          "n": 17
+        },
+        {
+          "club": "WOOD3",
+          "typical": -5.77,
+          "best": -0.7,
+          "n": 15
+        },
+        {
+          "club": "WOOD5",
+          "typical": -5.06,
+          "best": 1.1,
+          "n": 10
+        },
+        {
+          "club": "IRON5",
+          "typical": -7.45,
+          "best": -4.7,
+          "n": 11
+        },
+        {
+          "club": "IRON7",
+          "typical": -7.44,
+          "best": -3.8,
+          "n": 10
+        },
+        {
+          "club": "IRON9",
+          "typical": -7.07,
+          "best": -4.1,
+          "n": 4
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -8.67,
+          "best": -7.6,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyMWZjNzAzOC1hYmNlLTVkZGItYTk5Yi02NGM4MDEyZDExODU=",
+      "type": "trackman",
+      "date": "2025-09-04",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -5.31,
+          "best": -2.4,
+          "n": 11
+        },
+        {
+          "club": "WOOD5",
+          "typical": -7.46,
+          "best": -4.5,
+          "n": 16
+        },
+        {
+          "club": "IRON4",
+          "typical": -8.57,
+          "best": -0.9,
+          "n": 43
+        },
+        {
+          "club": "IRON6",
+          "typical": -11.02,
+          "best": -8.2,
+          "n": 13
+        },
+        {
+          "club": "IRON8",
+          "typical": -8.02,
+          "best": -4.5,
+          "n": 12
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRjNWZlZjA0NS1iMjYwLTU1YzQtODZmYy0xY2JmYmQzYzFmODc=",
+      "type": "trackman",
+      "date": "2025-09-06",
+      "clubs": [
+        {
+          "club": "IRON7",
+          "typical": -8.3,
+          "best": -7.1,
+          "n": 3
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1NTNlYmIzNS1jNzg2LTU3ODItOTc4NS0yMzhmZTg2NTU5Mzc=",
+      "type": "trackman",
+      "date": "2025-09-11",
+      "clubs": [
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -6.6,
+          "best": -6.6,
+          "n": 1
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -8.77,
+          "best": -1.5,
+          "n": 10
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQzMmE1YmVjOC1lMTc0LTUxMDMtYWI4Yi01NTJlOTM5YTNjZmU=",
+      "type": "trackman",
+      "date": "2025-09-11",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -2.88,
+          "best": 0.1,
+          "n": 6
+        },
+        {
+          "club": "IRON4",
+          "typical": -6.71,
+          "best": -2.6,
+          "n": 11
+        },
+        {
+          "club": "IRON6",
+          "typical": -6.7,
+          "best": -0.6,
+          "n": 20
+        },
+        {
+          "club": "IRON8",
+          "typical": -6.26,
+          "best": -3,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1YWI0OGQ5Ni04OGQwLTVmNzMtYWQwMC00ZGM2NDRiYzNmYzE=",
+      "type": "trackman",
+      "date": "2025-09-13",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -5.36,
+          "best": -3.1,
+          "n": 21
+        },
+        {
+          "club": "WOOD5",
+          "typical": -5.86,
+          "best": -2.1,
+          "n": 14
+        },
+        {
+          "club": "IRON5",
+          "typical": -4.45,
+          "best": -0.1,
+          "n": 6
+        },
+        {
+          "club": "IRON7",
+          "typical": -3.8,
+          "best": -0.3,
+          "n": 5
+        },
+        {
+          "club": "IRON9",
+          "typical": -5.75,
+          "best": -4.6,
+          "n": 4
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -5.22,
+          "best": -3.2,
+          "n": 4
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -6.3,
+          "best": -2.3,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiYzU1ZDY2ZC02ODdlLTU0NDYtOTQzYi1kYmJjNTVmYjkzMmQ=",
+      "type": "trackman",
+      "date": "2025-09-13",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -5.81,
+          "best": -2.9,
+          "n": 10
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.27,
+          "best": -6.1,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRlNWE5NWIyNS1hZTZhLTU2YjYtYTBiYS02YWZmZDhjMjRkODA=",
+      "type": "trackman",
+      "date": "2025-09-15",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -8.58,
+          "best": -2.4,
+          "n": 23
+        },
+        {
+          "club": "IRON4",
+          "typical": -10.4,
+          "best": -6.3,
+          "n": 20
+        },
+        {
+          "club": "IRON6",
+          "typical": -9.41,
+          "best": -6.7,
+          "n": 9
+        },
+        {
+          "club": "IRON8",
+          "typical": -11.17,
+          "best": -8.1,
+          "n": 4
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -12,
+          "best": -12,
+          "n": 1
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -11.7,
+          "best": -9.6,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiYjQ0NGY4MC1mODZmLTU5OTMtODc4Ni00MzBlODQ2NTQ0YzI=",
+      "type": "trackman",
+      "date": "2025-09-18",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -8.23,
+          "best": -4.3,
+          "n": 19
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.06,
+          "best": 0,
+          "n": 141
+        },
+        {
+          "club": "IRON5",
+          "typical": -7.3,
+          "best": -7.3,
+          "n": 1
+        },
+        {
+          "club": "IRON6",
+          "typical": -11.6,
+          "best": -10.6,
+          "n": 2
+        },
+        {
+          "club": "IRON7",
+          "typical": -7.67,
+          "best": -4,
+          "n": 13
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -13.2,
+          "best": -13.2,
+          "n": 1
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0ODFkYzYzMC1lMWZkLTUwYTItYjY4Yy00NDc4Nzk1MzNiNDc=",
+      "type": "trackman",
+      "date": "2025-09-21",
+      "clubs": [
+        {
+          "club": "IRON7",
+          "typical": -11.32,
+          "best": -8.4,
+          "n": 8
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -11.23,
+          "best": -8.1,
+          "n": 3
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5NTEzNjk2Ny1kOTQ1LTVkNDYtOTI1MC1mNTIwNzUyNTdmMTg=",
+      "type": "trackman",
+      "date": "2025-09-21",
+      "clubs": [
+        {
+          "club": "IRON7",
+          "typical": -7.98,
+          "best": 0.6,
+          "n": 109
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiNDMxNDVkZS0yOTVmLTU4NDgtOTI0ZC1kMTkyMjI2YzVhYWY=",
+      "type": "trackman",
+      "date": "2025-09-24",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -3.96,
+          "best": -0.9,
+          "n": 8
+        },
+        {
+          "club": "IRON5",
+          "typical": -3.51,
+          "best": 0.2,
+          "n": 43
+        },
+        {
+          "club": "IRON8",
+          "typical": -5.93,
+          "best": -2.6,
+          "n": 22
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -6.41,
+          "best": -2.8,
+          "n": 18
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5NTg0YzYyOC1iMzcwLTUwODAtOGVhNS1mNjJjNTU5NjVhMDA=",
+      "type": "trackman",
+      "date": "2025-09-29",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -10.01,
+          "best": -6.5,
+          "n": 7
+        },
+        {
+          "club": "WOOD3",
+          "typical": -8.28,
+          "best": -6.3,
+          "n": 6
+        },
+        {
+          "club": "WOOD5",
+          "typical": -5.92,
+          "best": 0.5,
+          "n": 13
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.56,
+          "best": -0.4,
+          "n": 40
+        },
+        {
+          "club": "IRON9",
+          "typical": -3.47,
+          "best": -0.8,
+          "n": 12
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -5.6,
+          "best": -3.2,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0OWE0NzZkZS01MDkxLTU4NzctODczZi1kNmZiMTFiYzZlMGI=",
+      "type": "trackman",
+      "date": "2025-10-01",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -4.03,
+          "best": 0.4,
+          "n": 39
+        },
+        {
+          "club": "IRON4",
+          "typical": -4.12,
+          "best": -0.7,
+          "n": 39
+        },
+        {
+          "club": "IRON7",
+          "typical": -4.64,
+          "best": -0.2,
+          "n": 16
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -4.4,
+          "best": -1,
+          "n": 12
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -6.6,
+          "best": -5.8,
+          "n": 2
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5NDBmNDgzYy0zMzNmLTUzOTgtODQ1NS0xMzU3NzZhMmExZTE=",
+      "type": "trackman",
+      "date": "2025-10-06",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -3.29,
+          "best": 0,
+          "n": 28
+        },
+        {
+          "club": "WOOD3",
+          "typical": -3.24,
+          "best": -0.9,
+          "n": 10
+        },
+        {
+          "club": "WOOD5",
+          "typical": -3.55,
+          "best": -0.1,
+          "n": 15
+        },
+        {
+          "club": "IRON4",
+          "typical": -3.8,
+          "best": 0.3,
+          "n": 32
+        },
+        {
+          "club": "IRON6",
+          "typical": -1.76,
+          "best": 0,
+          "n": 18
+        },
+        {
+          "club": "IRON8",
+          "typical": -1.29,
+          "best": -0.1,
+          "n": 19
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -0.37,
+          "best": -0.8,
+          "n": 7
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwNjJlZWUxYS1mNWQxLTUzNmMtODU3Yi0yNDU1ZGFiM2NlM2U=",
+      "type": "trackman",
+      "date": "2025-10-09",
+      "clubs": [
+        {
+          "club": "SAND_WEDGE",
+          "typical": -6.42,
+          "best": -0.8,
+          "n": 20
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -9.17,
+          "best": -5.4,
+          "n": 7
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiOTQ2Nzk4YS1iYmMxLTVlNzktOTYzOC03M2EzMTViZTY5MTA=",
+      "type": "trackman",
+      "date": "2025-10-09",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -5.68,
+          "best": -2.4,
+          "n": 13
+        },
+        {
+          "club": "WOOD3",
+          "typical": -4.31,
+          "best": -2.3,
+          "n": 8
+        },
+        {
+          "club": "WOOD5",
+          "typical": -5.94,
+          "best": -3.3,
+          "n": 10
+        },
+        {
+          "club": "IRON4",
+          "typical": -4.89,
+          "best": 0,
+          "n": 36
+        },
+        {
+          "club": "IRON7",
+          "typical": -4.93,
+          "best": -1.1,
+          "n": 18
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -3.65,
+          "best": 0.6,
+          "n": 11
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwMzZmYjMyYi1mOGU1LTVlMDUtYWE4MS04MGVhNmYzZTM3OTI=",
+      "type": "trackman",
+      "date": "2025-10-13",
+      "clubs": [
+        {
+          "club": "IRON7",
+          "typical": -5.64,
+          "best": -0.2,
+          "n": 36
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwOWQ2NTdiMi01MjI3LTVmYjEtYTczYy05NWRhNDRhNDdjM2Y=",
+      "type": "trackman",
+      "date": "2025-10-13",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -5.37,
+          "best": -0.1,
+          "n": 14
+        },
+        {
+          "club": "IRON6",
+          "typical": -3.86,
+          "best": -1.8,
+          "n": 10
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -5.77,
+          "best": -0.8,
+          "n": 15
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwMWMyNzVkYi01MDJjLTU2MGMtYjc2Ny0xOTExY2E3ZmRkNDk=",
+      "type": "trackman",
+      "date": "2025-10-16",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -3.6,
+          "best": 0.1,
+          "n": 22
+        },
+        {
+          "club": "IRON7",
+          "typical": -4.31,
+          "best": -0.9,
+          "n": 20
+        },
+        {
+          "club": "IRON9",
+          "typical": -5.35,
+          "best": -1,
+          "n": 6
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -7.8,
+          "best": -7.8,
+          "n": 1
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRkZjVmMDRmYy0wYWVlLTVkYzgtOTU3MS1iYWIyNzRjOTcwYjA=",
+      "type": "trackman",
+      "date": "2025-10-18",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -6.62,
+          "best": -1.5,
+          "n": 17
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.19,
+          "best": -0.2,
+          "n": 43
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -3.56,
+          "best": 0,
+          "n": 14
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -6.21,
+          "best": -2.6,
+          "n": 15
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwNWQyNmM5OS03ZDFhLTVjOGItOGQzMy05YzNmZDFiYjA4YWU=",
+      "type": "trackman",
+      "date": "2025-10-23",
+      "clubs": [
+        {
+          "club": "IRON8",
+          "typical": -1.3,
+          "best": -0.1,
+          "n": 6
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQzOThmZDI5Ni0zMjNjLTU0MTMtOTg0NS03YjIzMzE1OGIyYmY=",
+      "type": "trackman",
+      "date": "2025-10-23",
+      "clubs": [
+        {
+          "club": "IRON8",
+          "typical": -8.1,
+          "best": -7.9,
+          "n": 2
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -7.65,
+          "best": -6.7,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRmNGY5ZjJiOS0zNDQ1LTUyNzUtYjVhMi1iNzAzY2YzN2FiZTU=",
+      "type": "trackman",
+      "date": "2025-10-23",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.35,
+          "best": -2.9,
+          "n": 4
+        },
+        {
+          "club": "WOOD5",
+          "typical": -1.96,
+          "best": -1.1,
+          "n": 7
+        },
+        {
+          "club": "IRON6",
+          "typical": -1.87,
+          "best": -2.5,
+          "n": 4
+        },
+        {
+          "club": "IRON8",
+          "typical": -0.8,
+          "best": -0.7,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRiYmJmZTM5YS1kYjRhLTU4YWItODRhOC1hZjc1M2E5ZGNiYzE=",
+      "type": "trackman",
+      "date": "2025-11-01",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -7.74,
+          "best": -2.5,
+          "n": 15
+        },
+        {
+          "club": "WOOD5",
+          "typical": -3.67,
+          "best": 0.6,
+          "n": 12
+        },
+        {
+          "club": "IRON4",
+          "typical": -4.16,
+          "best": -1.4,
+          "n": 10
+        },
+        {
+          "club": "IRON5",
+          "typical": -1.96,
+          "best": -0.1,
+          "n": 14
+        },
+        {
+          "club": "IRON7",
+          "typical": -2.04,
+          "best": -2,
+          "n": 5
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -2.92,
+          "best": -0.2,
+          "n": 10
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRlZDc1YjljYS00ZGUzLTVlNzktYjQwZC1hNzNmMTEwNzdiM2Q=",
+      "type": "trackman",
+      "date": "2025-11-01",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -2.86,
+          "best": 0,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1OGY2YjJiZi1lMWRkLTUyNTgtOTk1YS1iZGJmYzhiNmE2YzU=",
+      "type": "trackman",
+      "date": "2025-11-02",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -3.52,
+          "best": 0.1,
+          "n": 32
+        },
+        {
+          "club": "IRON5",
+          "typical": -1.48,
+          "best": -0.2,
+          "n": 13
+        },
+        {
+          "club": "IRON7",
+          "typical": -1.55,
+          "best": -0.6,
+          "n": 22
+        },
+        {
+          "club": "IRON9",
+          "typical": 0.2,
+          "best": -0.6,
+          "n": 8
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -1.15,
+          "best": -0.5,
+          "n": 6
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRmOTgxZjgzOS0yOGZlLTUxZGQtODg0Ni1kMTY3YjE0NjE5OTY=",
+      "type": "trackman",
+      "date": "2025-11-08",
+      "clubs": [
+        {
+          "club": "IRON6",
+          "typical": -3.88,
+          "best": -1.2,
+          "n": 18
+        },
+        {
+          "club": "IRON7",
+          "typical": -1.69,
+          "best": 0.2,
+          "n": 15
+        },
+        {
+          "club": "IRON9",
+          "typical": -1,
+          "best": 0,
+          "n": 50
+        },
+        {
+          "club": "WEDGE58",
+          "typical": 0.89,
+          "best": -0.4,
+          "n": 15
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0MjJkYjM5Mi1mNmU1LTViOTctYWMxMS0wZTc2YjUyNTI4MTk=",
+      "type": "trackman",
+      "date": "2025-11-26",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -7.89,
+          "best": -6.5,
+          "n": 7
+        },
+        {
+          "club": "WOOD5",
+          "typical": -5.44,
+          "best": -0.9,
+          "n": 9
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.39,
+          "best": 0.6,
+          "n": 20
+        },
+        {
+          "club": "IRON6",
+          "typical": -3.21,
+          "best": 0,
+          "n": 11
+        },
+        {
+          "club": "IRON9",
+          "typical": -2.6,
+          "best": -1.6,
+          "n": 3
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -8,
+          "best": -6,
+          "n": 2
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0ZmQ4MDc5MC1kNDQyLTU0MDYtYWYwZC04ZmQzZjMzMDhkNjM=",
+      "type": "trackman",
+      "date": "2025-11-29",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -5.99,
+          "best": -3.1,
+          "n": 7
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.29,
+          "best": -2.8,
+          "n": 7
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.93,
+          "best": -4,
+          "n": 6
+        },
+        {
+          "club": "IRON9",
+          "typical": -5.8,
+          "best": -2.8,
+          "n": 8
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -8.7,
+          "best": -5.2,
+          "n": 6
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -8.1,
+          "best": -2.9,
+          "n": 6
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwZjUxMGE3Ny01Zjg4LTViMzItOWVhYi03Mzk3YWVjYzkwYjI=",
+      "type": "trackman",
+      "date": "2025-12-06",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -6.05,
+          "best": -2.7,
+          "n": 20
+        },
+        {
+          "club": "IRON6",
+          "typical": -7.11,
+          "best": -1.6,
+          "n": 14
+        },
+        {
+          "club": "IRON8",
+          "typical": -6.59,
+          "best": -3.6,
+          "n": 10
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -5.37,
+          "best": -2.8,
+          "n": 7
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -5.05,
+          "best": -3.3,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyNDU2MjI0Mi05OTE0LTU5N2YtOTE0MS1kOGQ1MzQwMzkxNjI=",
+      "type": "trackman",
+      "date": "2025-12-06",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.38,
+          "best": -3.1,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0ZTEyN2JhYy00ZTU3LTU5MWQtYTkzOC01ZDQ4ZWM0NDM5NDU=",
+      "type": "trackman",
+      "date": "2026-02-02",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -4.4,
+          "best": -0.5,
+          "n": 17
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.72,
+          "best": -1.6,
+          "n": 5
+        },
+        {
+          "club": "IRON5",
+          "typical": -2.09,
+          "best": 0,
+          "n": 8
+        },
+        {
+          "club": "IRON9",
+          "typical": -4.62,
+          "best": -0.2,
+          "n": 9
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -4.32,
+          "best": -1,
+          "n": 16
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -6.97,
+          "best": -3.5,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ4NWQ3ZTUwYi1jNjk0LTUwNDctOTBkOC1lMGYwNjE5MTM5MWU=",
+      "type": "trackman",
+      "date": "2026-02-16",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -10.32,
+          "best": -7.7,
+          "n": 8
+        },
+        {
+          "club": "WOOD3",
+          "typical": -4.35,
+          "best": -1.9,
+          "n": 8
+        },
+        {
+          "club": "IRON5",
+          "typical": -4.95,
+          "best": -0.2,
+          "n": 11
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.46,
+          "best": -0.6,
+          "n": 7
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -4.4,
+          "best": -2.8,
+          "n": 4
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -5.43,
+          "best": -2.8,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwZTI5YmRiZC1kMjQ1LTVhNzgtYTdiYi0wNmM0MzNhMDZmMDA=",
+      "type": "trackman",
+      "date": "2026-02-23",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.37,
+          "best": -4.4,
+          "n": 3
+        },
+        {
+          "club": "WOOD5",
+          "typical": -3.04,
+          "best": 0.2,
+          "n": 14
+        },
+        {
+          "club": "IRON4",
+          "typical": -2.6,
+          "best": 0.2,
+          "n": 7
+        },
+        {
+          "club": "IRON6",
+          "typical": -4.38,
+          "best": -0.4,
+          "n": 22
+        },
+        {
+          "club": "IRON8",
+          "typical": -4.93,
+          "best": -2.4,
+          "n": 9
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -2.13,
+          "best": -1.2,
+          "n": 3
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyMTUwNWFmNy03ZGM5LTU4YjItYjc2OC1hMmZjNmYzYTczYzU=",
+      "type": "trackman",
+      "date": "2026-02-23",
+      "clubs": [
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -5.2,
+          "best": -5.2,
+          "n": 2
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ4NjNkZTAxMC1kYWEwLTU1MzktYTBmMS0xM2VhZWM5OWQ1OTA=",
+      "type": "trackman",
+      "date": "2026-03-02",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.07,
+          "best": -2.5,
+          "n": 10
+        },
+        {
+          "club": "WOOD3",
+          "typical": -3.61,
+          "best": 1.1,
+          "n": 10
+        },
+        {
+          "club": "IRON4",
+          "typical": -4.11,
+          "best": -1,
+          "n": 15
+        },
+        {
+          "club": "IRON6",
+          "typical": -1.89,
+          "best": -0.6,
+          "n": 9
+        },
+        {
+          "club": "IRON8",
+          "typical": -1.15,
+          "best": 0.2,
+          "n": 14
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -3.37,
+          "best": -0.4,
+          "n": 6
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRlZjE3ZDc1Yy1kNGJjLTU3Y2ItYjc5ZC00NjU1MjA3Njc4OGY=",
+      "type": "trackman",
+      "date": "2026-03-09",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -3.55,
+          "best": 0,
+          "n": 37
+        },
+        {
+          "club": "IRON6",
+          "typical": -3.06,
+          "best": 0,
+          "n": 27
+        },
+        {
+          "club": "IRON7",
+          "typical": -2.43,
+          "best": 0,
+          "n": 23
+        },
+        {
+          "club": "IRON8",
+          "typical": -1.82,
+          "best": -0.4,
+          "n": 12
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -1.2,
+          "best": -0.6,
+          "n": 11
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyYjAwM2Y4NC03NDI2LTVjNjktOWE2Ni01MjBlOWJiYWI0ZDg=",
+      "type": "trackman",
+      "date": "2026-03-20",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -7.79,
+          "best": -4.1,
+          "n": 8
+        },
+        {
+          "club": "WOOD3",
+          "typical": -3.15,
+          "best": 0.5,
+          "n": 16
+        },
+        {
+          "club": "IRON4",
+          "typical": -4.73,
+          "best": -0.6,
+          "n": 15
+        },
+        {
+          "club": "IRON6",
+          "typical": -4.02,
+          "best": 0,
+          "n": 10
+        },
+        {
+          "club": "IRON8",
+          "typical": -4.5,
+          "best": -1.8,
+          "n": 8
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -5.2,
+          "best": -1.2,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxNjVkNzg0Zi1lMGY5LTU2YjMtOGVkOS1iNThkMjE0Yzc4ZDA=",
+      "type": "trackman",
+      "date": "2026-03-23",
+      "clubs": [
+        {
+          "club": "WOOD5",
+          "typical": -4.09,
+          "best": -1.3,
+          "n": 10
+        },
+        {
+          "club": "IRON6",
+          "typical": -6.02,
+          "best": -2.6,
+          "n": 9
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.54,
+          "best": 0.6,
+          "n": 13
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -5.01,
+          "best": -0.3,
+          "n": 14
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0YzIxMGNjZi04ZTAxLTUwZDktODI0NC04ZWQ3NWViOGIzNzI=",
+      "type": "trackman",
+      "date": "2026-04-01",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -4.7,
+          "best": 0.1,
+          "n": 26
+        },
+        {
+          "club": "IRON4",
+          "typical": -2.05,
+          "best": 0.2,
+          "n": 15
+        },
+        {
+          "club": "IRON6",
+          "typical": -4.36,
+          "best": -0.2,
+          "n": 57
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.47,
+          "best": 0.2,
+          "n": 16
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -6.25,
+          "best": -1.8,
+          "n": 22
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5YzA1MDhiMC04ZGFkLTVlZWMtYTMxYi1lZDI1NGIxODljYTk=",
+      "type": "trackman",
+      "date": "2026-04-08",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -10.77,
+          "best": -4.5,
+          "n": 17
+        },
+        {
+          "club": "WOOD3",
+          "typical": -6.46,
+          "best": -1.9,
+          "n": 8
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.51,
+          "best": -3.4,
+          "n": 12
+        },
+        {
+          "club": "IRON6",
+          "typical": -6.07,
+          "best": -3,
+          "n": 8
+        },
+        {
+          "club": "IRON8",
+          "typical": -7.59,
+          "best": -3.4,
+          "n": 12
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -5.8,
+          "best": -3.2,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRlMzk2MTVmMy0xNTBkLTUwMWQtOWUzZC1lMGM5Y2RkOWM0NmE=",
+      "type": "trackman",
+      "date": "2026-04-15",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -10.4,
+          "best": -7.7,
+          "n": 4
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.03,
+          "best": -3.5,
+          "n": 12
+        },
+        {
+          "club": "IRON6",
+          "typical": -4.64,
+          "best": 0.9,
+          "n": 8
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.91,
+          "best": 1,
+          "n": 15
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -5.45,
+          "best": -1,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ1MjE1ZWI4Yy1mMWM2LTUzMmItYjg4NC0wMjFmYTc0OWIwYjM=",
+      "type": "trackman",
+      "date": "2026-04-20",
+      "clubs": [
+        {
+          "club": "IRON4",
+          "typical": -2.89,
+          "best": 0.7,
+          "n": 15
+        },
+        {
+          "club": "IRON6",
+          "typical": -3.55,
+          "best": -0.4,
+          "n": 20
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.95,
+          "best": -1,
+          "n": 11
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -3.6,
+          "best": 0,
+          "n": 11
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -5.57,
+          "best": -2.6,
+          "n": 7
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRhM2U4ODUwYi0zZDZiLTU0OWQtYTQ1NS05MGJhZWYyMTE5OTQ=",
+      "type": "trackman",
+      "date": "2026-04-20",
+      "clubs": [
+        {
+          "club": "IRON8",
+          "typical": -3.21,
+          "best": -0.4,
+          "n": 14
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRmZDdhMTllZC0wNGNlLTU0NzItOGU0OC02ZDk5YzAzNzkyZWI=",
+      "type": "trackman",
+      "date": "2026-05-04",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -8.73,
+          "best": -4.3,
+          "n": 13
+        },
+        {
+          "club": "WOOD3",
+          "typical": -1.55,
+          "best": -0.3,
+          "n": 4
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.56,
+          "best": -0.8,
+          "n": 11
+        },
+        {
+          "club": "IRON6",
+          "typical": -3.92,
+          "best": -2.2,
+          "n": 5
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.59,
+          "best": 0.3,
+          "n": 10
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -4.35,
+          "best": -2.6,
+          "n": 4
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -3.8,
+          "best": -3.4,
+          "n": 2
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ2ZDA5MjY5OS05ZWI0LTU0ZDEtYTA2ZS0wNWZmYjY1MTBhYWE=",
+      "type": "trackman",
+      "date": "2026-05-11",
+      "clubs": [
+        {
+          "club": "WOOD3",
+          "typical": -7.84,
+          "best": -2.9,
+          "n": 14
+        },
+        {
+          "club": "IRON4",
+          "typical": -3.73,
+          "best": -2.1,
+          "n": 13
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.4,
+          "best": -5.4,
+          "n": 1
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.4,
+          "best": -1,
+          "n": 10
+        },
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -2.6,
+          "best": -1.6,
+          "n": 4
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRlYjNjZmE5OS1mMWE1LTUyNWUtYTE1MC01NTI5ZDA3ZTNiNGY=",
+      "type": "trackman",
+      "date": "2026-05-11",
+      "clubs": [
+        {
+          "club": "PITCHING_WEDGE",
+          "typical": -0.2,
+          "best": 0.8,
+          "n": 2
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0YWUxOTY5Mi1jY2M2LTViZjktYWVlYi1mNDVhM2I4ODYyZDM=",
+      "type": "trackman",
+      "date": "2026-05-18",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -9.87,
+          "best": -8.3,
+          "n": 6
+        },
+        {
+          "club": "WOOD3",
+          "typical": -5.64,
+          "best": 1.7,
+          "n": 5
+        },
+        {
+          "club": "IRON4",
+          "typical": -6.07,
+          "best": -2,
+          "n": 8
+        },
+        {
+          "club": "IRON6",
+          "typical": -5.82,
+          "best": -3.6,
+          "n": 8
+        },
+        {
+          "club": "IRON8",
+          "typical": -4.04,
+          "best": 0,
+          "n": 10
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -3.48,
+          "best": 1.4,
+          "n": 8
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ2ZTlmZGJiMC05ODAyLTU3NzktYTI4Yy00NmQzMDBkZGQ1Yjk=",
+      "type": "trackman",
+      "date": "2026-05-28",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -8.18,
+          "best": -4.7,
+          "n": 5
+        },
+        {
+          "club": "WOOD3",
+          "typical": -0.88,
+          "best": -0.3,
+          "n": 5
+        },
+        {
+          "club": "IRON4",
+          "typical": -5.53,
+          "best": -3.4,
+          "n": 3
+        },
+        {
+          "club": "IRON6",
+          "typical": -3.45,
+          "best": -2.4,
+          "n": 4
+        },
+        {
+          "club": "IRON8",
+          "typical": -4.86,
+          "best": -2.2,
+          "n": 8
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -2.29,
+          "best": 1.4,
+          "n": 7
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQwZTFjZGMzNi1hMmJhLTU3MjEtOWU0OC1lZDg4ZDc3MDNkMDI=",
+      "type": "trackman",
+      "date": "2026-06-24",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.57,
+          "best": -4.5,
+          "n": 3
+        },
+        {
+          "club": "WOOD3",
+          "typical": -4.9,
+          "best": -0.9,
+          "n": 10
+        },
+        {
+          "club": "IRON4",
+          "typical": -6.54,
+          "best": 0.1,
+          "n": 9
+        },
+        {
+          "club": "IRON7",
+          "typical": -5.2,
+          "best": -2.4,
+          "n": 4
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -5.93,
+          "best": -2.2,
+          "n": 6
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQyZGEzNDM4YS1kYjhmLTU2MzItOWQyYS0xM2UwYTAyOTE5MDU=",
+      "type": "trackman",
+      "date": "2026-06-29",
+      "clubs": [
+        {
+          "club": "WOOD3",
+          "typical": -6.47,
+          "best": -4.3,
+          "n": 6
+        },
+        {
+          "club": "IRON4",
+          "typical": -4.6,
+          "best": -2.6,
+          "n": 5
+        },
+        {
+          "club": "IRON8",
+          "typical": -3.53,
+          "best": -0.8,
+          "n": 6
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -4.53,
+          "best": 0.2,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxZTFjYmM4MS0zNWZmLTU4YzgtODEwMy05MmI5NTYzZjY1ZWE=",
+      "type": "trackman",
+      "date": "2026-07-06",
+      "clubs": [
+        {
+          "club": "WOOD3",
+          "typical": -5.28,
+          "best": -1.7,
+          "n": 12
+        },
+        {
+          "club": "IRON4",
+          "typical": -6.12,
+          "best": -3.4,
+          "n": 15
+        },
+        {
+          "club": "IRON6",
+          "typical": -6.93,
+          "best": -4,
+          "n": 6
+        },
+        {
+          "club": "IRON9",
+          "typical": -6.73,
+          "best": -3.6,
+          "n": 6
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -5.41,
+          "best": -2,
+          "n": 9
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxNmUzMjkxZS1kNjdmLTU1ZWUtOTljNy1iMTJmMmI5OWZmNjU=",
+      "type": "trackman",
+      "date": "2026-07-13",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -8.51,
+          "best": -5.3,
+          "n": 14
+        },
+        {
+          "club": "IRON4",
+          "typical": -7.53,
+          "best": -2.2,
+          "n": 6
+        },
+        {
+          "club": "IRON6",
+          "typical": -6.57,
+          "best": -2.2,
+          "n": 9
+        },
+        {
+          "club": "IRON8",
+          "typical": -4.97,
+          "best": -3.2,
+          "n": 6
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -6.81,
+          "best": -4.7,
+          "n": 10
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxODRiYjI1Ny1hODJmLTViMGItOTQyNS01YmU5NWVmNmZlYWY=",
+      "type": "trackman",
+      "date": "2026-07-20",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -11.53,
+          "best": -8.5,
+          "n": 3
+        },
+        {
+          "club": "WOOD3",
+          "typical": -8.78,
+          "best": -5,
+          "n": 6
+        },
+        {
+          "club": "IRON4",
+          "typical": -9.38,
+          "best": -6.8,
+          "n": 9
+        },
+        {
+          "club": "IRON6",
+          "typical": -4,
+          "best": -0.4,
+          "n": 3
+        },
+        {
+          "club": "IRON9",
+          "typical": -7.6,
+          "best": -5.6,
+          "n": 4
+        },
+        {
+          "club": "WEDGE58",
+          "typical": -5.83,
+          "best": -4.8,
+          "n": 3
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ5ZmYwZDQ4My1mYTFmLTViOWQtYmMxMC02OGQzMzdkN2RlMjI=",
+      "type": "trackman",
+      "date": "2026-07-22",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -6.3,
+          "best": -3.3,
+          "n": 4
+        },
+        {
+          "club": "IRON6",
+          "typical": -7.72,
+          "best": -0.8,
+          "n": 12
+        },
+        {
+          "club": "WEDGE50",
+          "typical": -5.88,
+          "best": -3.8,
+          "n": 5
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQxNzk2NWJhYy1kYWFhLTUwZmItYTYyMC1hZDkyZDE4YzRlMmY=",
+      "type": "trackman",
+      "date": "2026-07-22",
+      "clubs": [
+        {
+          "club": "DRIVER",
+          "typical": -3.18,
+          "best": -1.5,
+          "n": 5
+        },
+        {
+          "club": "IRON4",
+          "typical": -2.45,
+          "best": -0.2,
+          "n": 35
+        }
+      ],
+      "source": "api"
+    },
+    {
+      "id": "VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmQ0N2EzMzhiNS0zNjllLTVjNzUtYWQyMi0xOGI5ZDBjMDQyM2E=",
+      "type": "trackman",
+      "date": "2026-07-27",
+      "clubs": [
+        {
+          "club": "WOOD3",
+          "typical": -8.11,
+          "best": 0.1,
+          "n": 21
+        },
+        {
+          "club": "IRON5",
+          "typical": -7.57,
+          "best": -3.4,
+          "n": 7
+        },
+        {
+          "club": "IRON7",
+          "typical": -10.27,
+          "best": -6.8,
+          "n": 10
+        },
+        {
+          "club": "IRON9",
+          "typical": -11.46,
+          "best": -9.4,
+          "n": 7
+        },
+        {
+          "club": "SAND_WEDGE",
+          "typical": -7.8,
+          "best": -4.4,
+          "n": 5
+        }
+      ],
+      "source": "api"
+    }
+  ]
+}
