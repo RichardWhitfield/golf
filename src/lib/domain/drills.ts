@@ -10,6 +10,7 @@ export const DRILLS: Drill[] = [
     description:
       "Your money drill. Feet together, ball forward. Start back, and as you reach the top, step the lead foot toward the target and swing. Your on-course reset whenever the slice creeps back.",
     reps: '10–15',
+    defaultSwings: 12,
     feelsLike: 'pressure in the lead foot before the arms move',
   },
   {
@@ -19,6 +20,7 @@ export const DRILLS: Drill[] = [
     description:
       'Swing to the top. Pump the hands down toward the trail pocket 2–3 times by bumping and rotating the hips — arms passive — then let the last one go and strike.',
     reps: '8–10',
+    defaultSwings: 9,
     feelsLike: 'hands dropping while the hips clear',
   },
   {
@@ -28,6 +30,7 @@ export const DRILLS: Drill[] = [
     description:
       'Full backswing, freeze for a genuine one-count, then start down with the lead hip. Kills the rushed upper-body snatch that throws the club out.',
     reps: '10',
+    defaultSwings: 10,
     feelsLike: 'an unhurried change of direction',
   },
   {
@@ -37,6 +40,7 @@ export const DRILLS: Drill[] = [
     description:
       'Set a headcover (or spare airflow ball) a grip-length outside the ball and slightly behind it, on the line. Over-the-top clips it; an inside path misses it clean.',
     reps: '15–20 balls',
+    defaultSwings: 18,
     feelsLike: 'club coming from behind you, not across',
   },
   {
@@ -46,6 +50,7 @@ export const DRILLS: Drill[] = [
     description:
       "Trail hand only, choked down, small three-quarter swings at airflow balls. You physically can't come over the top one-handed — the arm has to drop and rotate.",
     reps: '15–20',
+    defaultSwings: 18,
     feelsLike: 'the forearm rotating over through impact',
   },
   {
@@ -55,6 +60,7 @@ export const DRILLS: Drill[] = [
     description:
       'Push an alignment stick into the ground angled up and away, just outside the trail hip. Swing so the club stays under the stick coming down. A clear visual for the slot.',
     reps: '10 rehearsals + 5 hits',
+    defaultSwings: 15,
     feelsLike: 'the club travelling below the shaft line',
   },
   {
@@ -64,6 +70,7 @@ export const DRILLS: Drill[] = [
     description:
       'Half-speed full swings, or swishes with a weighted/flexible trainer, focused only on the order: pressure → hips → torso → arms → club. Rushing from the top is what fires the arms first.',
     reps: '20–30 / 2–3 min',
+    defaultSwings: 25,
     feelsLike: 'smooth, in no hurry, the club whipping late',
   },
 ]

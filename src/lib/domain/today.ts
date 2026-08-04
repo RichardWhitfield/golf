@@ -1,4 +1,4 @@
-import type { DayKey } from './types'
+import type { DayKey, ISODate } from './types'
 import { DAY_ORDER } from './plan'
 
 /** The plan is anchored to Sydney, not the visitor's clock, so it stays correct when travelling. */
@@ -40,4 +40,20 @@ export function formatDayLabel(now: Date = new Date()): string {
   } catch {
     return ''
   }
+}
+
+/** The Sydney date as `YYYY-MM-DD`. `en-CA` formats ISO-style natively, so no re-assembly. */
+export function resolveISODate(now: Date = new Date()): ISODate {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now)
+  } catch {
+    /* fall through to the visitor's clock */
+  }
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
