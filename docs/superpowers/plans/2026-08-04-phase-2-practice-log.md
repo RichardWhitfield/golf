@@ -2986,7 +2986,23 @@ The `{#key}` wrapper added in Step 2 remounts the whole component whenever the e
 
 Removing the effect also drops `draftFromSession` from the set of things the effect referenced — **check whether it is still used** by the initialiser (it is) before touching the import line.
 
-After this change `npm run check` must report **0 errors and 0 warnings**. The three `state_referenced_locally` warnings introduced in Task 9 should be gone. If any remain, stop and report it — do not suppress them with an ignore comment.
+**The `{#key}` wrapper alone will NOT clear the three `state_referenced_locally` warnings, and nothing else will either.** That lint is lexical and per-component: it fires for *any* `$state(someProp)` initialiser, because the initialiser genuinely runs once. Whether the parent remounts the component is a runtime fact in a different file that the lint cannot see. There is no restructuring that both keeps a mutable draft seeded from a prop and satisfies the lint.
+
+So suppress it explicitly, directly above the two initialisers, with a comment that names the invariant *and what enforces it*:
+
+```svelte
+  // The capture-once semantics the lint is warning about are exactly what is wanted here:
+  // `LogView` keys this component on `editing?.id`, so a different session means a fresh
+  // component rather than a mutated one, and the initialiser always sees the right value.
+  // If that `{#key}` ever goes away, this suppression becomes a bug — check it before removing.
+  // svelte-ignore state_referenced_locally
+  let draft = $state<SessionDraft>(editing ? draftFromSession(editing) : fresh())
+  /** Once the drills have been changed by hand, a date change must not re-seed over the top. */
+  // svelte-ignore state_referenced_locally
+  let drillsTouched = $state(editing !== null)
+```
+
+After this, `npm run check` must report **0 errors and 0 warnings**, restoring the project's clean-check invariant. If the directive does not take effect where placed, try the adjacent placement and **report which one worked** — do not leave the warnings standing and do not disable the rule project-wide.
 
 - [ ] **Step 1: Write the list**
 
