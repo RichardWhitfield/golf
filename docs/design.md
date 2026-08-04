@@ -101,6 +101,10 @@ you'd read it aloud as a value, it's mono.
 | Eyebrow | `.72rem`, `.22em` tracking, uppercase | Mono, `--ball`. |
 | Tag | `.62rem`, `.08em` tracking | Mono. Smallest text on the page. |
 
+The `h1` row above is the **hero** treatment and belongs to the Plan view. The Log view's `h1`
+takes the section `h2` scale — a form page shouldn't open with a poster headline. Each view
+still has exactly one `h1`.
+
 ### Headline treatment
 
 Headings use `line-height: 1.02` and `letter-spacing: -.02em` — very tight, which is what gives
@@ -203,6 +207,14 @@ carried by `aria-pressed`, not by class alone.
 ### Warning panel
 `.warn` — `--flag` border, 6%-opacity red wash, red eyebrow. Custom list markers drawn with
 `clip-path` as small triangular flags. Reserved for genuine watch-outs.
+
+### Site nav
+`.sitenav` — a mono pill row at the top of the page, above everything, with a hairline beneath.
+Active view carries `aria-current="page"` and renders in `--ball` with a `--ball-dim` border.
+Progress is not a link — it is a `<span>` with a `SOON` badge, because a dead link reads as a
+broken app and hiding it hides the shape of what's being built. Its unavailability is carried
+by the badge text, never by the dimming alone. `44px` minimum, and `order:-2` below the
+breakpoint so the Today panel's `order:-1` cannot float above it.
 
 ---
 
