@@ -21,6 +21,26 @@ describe('migrate', () => {
     expect(migrate({ schemaVersion: SCHEMA_VERSION })).toEqual(emptyDocument())
   })
 
+  it('refuses a sessions field that is present but not an array', () => {
+    // The distinction that matters: absent means first run, malformed means damage. Collapsing
+    // the second into an empty log would discard the user's only copy of their history.
+    expect(() => migrate({ schemaVersion: SCHEMA_VERSION, sessions: 'corrupt' })).toThrow(
+      UnreadableStoreError,
+    )
+    expect(() => migrate({ schemaVersion: SCHEMA_VERSION, sessions: 42 })).toThrow(
+      UnreadableStoreError,
+    )
+  })
+
+  it('refuses a settings field that is present but not an object', () => {
+    expect(() => migrate({ schemaVersion: SCHEMA_VERSION, sessions: [], settings: 42 })).toThrow(
+      UnreadableStoreError,
+    )
+    expect(() => migrate({ schemaVersion: SCHEMA_VERSION, sessions: [], settings: [] })).toThrow(
+      UnreadableStoreError,
+    )
+  })
+
   it('refuses a document written by a newer build', () => {
     expect(() => migrate({ schemaVersion: SCHEMA_VERSION + 1, sessions: [], settings: {} })).toThrow(
       FutureSchemaError,
@@ -40,9 +60,12 @@ describe('migrate', () => {
     expect(() => migrate({ schemaVersion: 1.5 })).toThrow(UnreadableStoreError)
   })
 
-  it('refuses a version gap it has no migration for', () => {
-    // Guards the future: if v3 ships without a 1 -> 2 step, this must fail loudly
-    // rather than hand back a half-migrated document.
+  it('rejects a negative version before it can reach the migration loop', () => {
+    // Honest about what this covers: the `version < 1` guard, not the loop. While
+    // SCHEMA_VERSION is 1 there is NO valid input that enters the loop body at all, so the
+    // "no migration for this gap" branch is unreachable and therefore untested. When
+    // SCHEMA_VERSION next rises, add a case with a genuine registered gap — a test named for
+    // a branch it cannot reach ships false confidence.
     expect(() => migrate({ schemaVersion: -1 })).toThrow(UnreadableStoreError)
   })
 })

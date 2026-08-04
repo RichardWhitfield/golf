@@ -73,9 +73,22 @@ export function migrate(raw: unknown): StoreDocument {
     doc = step(doc)
   }
 
+  // `undefined` means the field was never written — fill it in, that's a first run. A field that
+  // is *present but the wrong shape* is corruption, and must throw so the caller quarantines the
+  // document instead of silently zeroing it. `sessions: "corrupt"` is not `sessions: []`: the
+  // first is damage worth recovering, the second is an empty log. Collapsing them would lose
+  // months of practice data without a word, which is the exact failure this function exists to
+  // prevent — the same bug the comment above warns about, one level down.
+  if (doc.sessions !== undefined && !Array.isArray(doc.sessions)) {
+    throw new UnreadableStoreError('The stored data has a malformed "sessions" field.')
+  }
+  if (doc.settings !== undefined && !isRecord(doc.settings)) {
+    throw new UnreadableStoreError('The stored data has a malformed "settings" field.')
+  }
+
   return {
     schemaVersion: SCHEMA_VERSION,
-    sessions: Array.isArray(doc.sessions) ? (doc.sessions as PracticeSession[]) : [],
-    settings: isRecord(doc.settings) ? (doc.settings as Settings) : {},
+    sessions: (doc.sessions as PracticeSession[] | undefined) ?? [],
+    settings: (doc.settings as Settings | undefined) ?? {},
   }
 }
