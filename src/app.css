@@ -24,6 +24,7 @@
   --home:#8fd0a6;
   --home-dim:#2f5a3f;
   --flag-wash:rgba(224,83,59,.06);
+  --ball-wash:rgba(239,198,75,.10);  /* --ball at 10%; the target band's fill */
 
   --maxw:900px;
 }

@@ -3,9 +3,17 @@
   import { router } from '../lib/stores/router.svelte'
   import SectionHead from '../lib/components/SectionHead.svelte'
   import SiteFooter from '../lib/components/SiteFooter.svelte'
+  import { clubSeries, dateBounds } from '../lib/domain/series'
+  import { KPI_CLUB } from '../lib/domain/clubs'
+  import ClubPathChart from '../lib/components/ClubPathChart.svelte'
 
   const hasTrackman = $derived(sessions.trackman.length > 0)
   const blockStart = $derived(sessions.settings.blockStart)
+
+  const series = $derived(clubSeries(sessions.list))
+  const bounds = $derived(dateBounds(series))
+  const kpi = $derived(series.find((s) => s.club === KPI_CLUB))
+  const rest = $derived(series.filter((s) => s.club !== KPI_CLUB))
 </script>
 
 <section class="progress reveal" aria-labelledby="progress-title">
@@ -27,8 +35,21 @@
       <a href={router.href('log')} onclick={(e) => router.onNavClick(e, 'log')}>Log</a> page and
       the charts appear here.
     </p>
-  {:else}
-    <p class="empty">Charts arrive in the next step.</p>
+  {:else if bounds}
+    {#if kpi}
+      <ClubPathChart series={kpi} first={bounds.first} last={bounds.last} {blockStart} headline />
+    {/if}
+    <p class="note">
+      The band is <span class="mono">−2°</span> to <span class="mono">+2°</span>. Red on
+      <em>both</em> sides — too far in-to-out is a fault too. Dot size is the shot count, so a
+      three-shot reading does not shout as loudly as a seventy-shot one. A hollow dot was typed
+      by hand and has no count.
+    </p>
+    <div class="grid">
+      {#each rest as s (s.club)}
+        <ClubPathChart series={s} first={bounds.first} last={bounds.last} {blockStart} />
+      {/each}
+    </div>
   {/if}
 </section>
 
@@ -63,4 +84,6 @@
   .progress .sub{color:var(--dim);font-size:.95rem;max-width:60ch}
   .empty{color:var(--dim);font-size:.94rem;max-width:60ch}
   .empty a{color:var(--ball)}
+  .note{color:var(--dim);font-size:.88rem;max-width:70ch;margin:14px 0 18px}
+  .note .mono{font-family:'Space Mono',monospace;color:var(--chalk)}
 </style>
