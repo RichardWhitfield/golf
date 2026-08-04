@@ -3231,6 +3231,33 @@ EOF
 - Consumes: `sessions` store (Task 7).
 - Produces: `DataPanel` — no props.
 
+- [ ] **Step 0: Cancel smooth scrolling under reduced motion**
+
+Surfaced by Task 10. `app.css:32` sets `html{scroll-behavior:smooth}` globally, and the
+`prefers-reduced-motion` block further down never cancels it — so the Edit button's
+`scrollIntoView` animates even for users who have asked the OS for no motion. That breaks
+`docs/design.md`'s rule that **every** animation carries a reduced-motion override.
+
+It predates this phase, but Task 10 is what made the site scroll programmatically, so it is now
+load-bearing rather than theoretical. It belongs in `app.css` because `scroll-behavior` is set on
+`html`, which no component owns — this is one of the few rules that genuinely lives in the global
+layer.
+
+Add `html` to the existing global reduced-motion block in `src/app.css` (do not create a second
+block):
+
+```css
+@media (prefers-reduced-motion:reduce){
+  /* `scroll-behavior:smooth` is motion too. Anchor links and the log view's scroll-to-form
+     both animate without this, for users who explicitly asked the OS for none. */
+  html{scroll-behavior:auto}
+  .reveal,.trace{animation:none;opacity:1;transform:none;stroke-dashoffset:0}
+}
+```
+
+Jumping instantly is the correct degradation: the destination is identical, only the travel is
+removed, so content stays fully visible either way.
+
 - [ ] **Step 1: Write the panel**
 
 Create `src/lib/components/DataPanel.svelte`:
