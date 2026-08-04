@@ -1288,6 +1288,25 @@ describe('settings', () => {
   })
 })
 
+describe('exportDocument', () => {
+  it('returns the whole document, sessions and settings together', async () => {
+    await repo.saveSession(session('a'))
+    await repo.saveSettings({ blockStart: '2026-08-03' })
+    const doc = await repo.exportDocument()
+    expect(doc.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(doc.sessions).toEqual([session('a')])
+    expect(doc.settings).toEqual({ blockStart: '2026-08-03' })
+  })
+
+  it('exports an empty document from an untouched store', async () => {
+    expect(await repo.exportDocument()).toEqual({
+      schemaVersion: SCHEMA_VERSION,
+      sessions: [],
+      settings: {},
+    })
+  })
+})
+
 describe('unreadable stored data', () => {
   beforeEach(() => {
     storage.setItem(STORAGE_KEY, '{ not json')
@@ -1313,6 +1332,13 @@ describe('unreadable stored data', () => {
   it('offers the quarantined text back for download', async () => {
     await repo.listSessions()
     expect(await repo.readQuarantine()).toBe('{ not json')
+  })
+
+  it('refuses to export, even when export is the first call on a fresh repository', async () => {
+    // The fault is detected *by* reading, so a fault check placed before `read()` would pass on
+    // a fresh instance and hand back an empty document that looks like a successful backup.
+    // Export is the safety valve for rescuing data — it must fail loudly, not quietly.
+    await expect(new LocalStorageRepo(storage).exportDocument()).rejects.toThrow(/could not be read/i)
   })
 
   it('does not overwrite an existing quarantine with a second failure', async () => {
@@ -1416,8 +1442,14 @@ export class LocalStorageRepo implements Repository {
   }
 
   async exportDocument(): Promise<StoreDocument> {
+    // `read()` FIRST — it is what *detects* a fault. Checking `this.fault` beforehand only sees
+    // one left behind by an earlier call, so on a fresh instance over corrupt data the guard
+    // passes and the empty document `read()` returns is handed back as though it were a
+    // successful backup. That failure would land in the one method whose entire job is getting
+    // the data out safely. Every other method here already has this order right.
+    const doc = this.read()
     if (this.fault) throw new Error(this.fault)
-    return this.read()
+    return doc
   }
 
   async importDocument(raw: unknown): Promise<ImportSummary> {
