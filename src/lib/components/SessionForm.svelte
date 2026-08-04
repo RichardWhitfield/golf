@@ -29,18 +29,17 @@
     return draftForDay(resolveDayKey(), resolveISODate())
   }
 
+  // The capture-once semantics the lint is warning about are exactly what is wanted here:
+  // `LogView` keys this component on `editing?.id`, so a different session means a fresh
+  // component rather than a mutated one, and the initialiser always sees the right value.
+  // If that `{#key}` ever goes away, this suppression becomes a bug — check it before removing.
+  // svelte-ignore state_referenced_locally
   let draft = $state<SessionDraft>(editing ? draftFromSession(editing) : fresh())
   /** Once the drills have been changed by hand, a date change must not re-seed over the top. */
+  // svelte-ignore state_referenced_locally
   let drillsTouched = $state(editing !== null)
   let problems = $state<string[]>([])
   let saved = $state<string | null>(null)
-
-  // Reload the form when the caller switches which session is being edited.
-  $effect(() => {
-    draft = editing ? draftFromSession(editing) : fresh()
-    drillsTouched = editing !== null
-    problems = []
-  })
 
   /** The day the chosen date falls on, so the header names the plan the ticks came from.
    *  Falls back to today when the date box is mid-edit and momentarily unparseable. */

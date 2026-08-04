@@ -246,6 +246,16 @@ a glance which drills you actually judged.
 ### Save button
 Full-width `--ball` fill with `--bg` text, `52px` — the page's only primary action.
 
+### Session row
+`details`/`summary` on `--card` — mono date in `--ball`, a location tag, and the drill numbers
+right-aligned. Expanded, it lists each drill's swings and feel and offers Edit and Delete.
+Native `<details>` is used deliberately: keyboard support, `aria-expanded` and announcement
+come from the browser rather than from hand-written state.
+
+**Delete confirms in place**, with a second `--flag` button, not a native `confirm()` — a
+browser dialog is easy to dismiss by accident on a phone, and this removes the only copy of a
+session.
+
 ---
 
 ## 5. Motion
