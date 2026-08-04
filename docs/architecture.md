@@ -308,6 +308,13 @@ would sit unpublished. The `ingest` job holds `contents: write` only; the `publi
 **Never interpolate the `since` input into a `run:` command.** It reaches the script through
 `env:`, and the script validates its shape again before it goes near a URL.
 
+**The change check stages the file before comparing it** (`git add`, then
+`git diff --cached --quiet`). `git diff` alone only reports changes to *tracked* files and ignores
+untracked ones, so on the first run — the one that creates `public/trackman.json` — it read as "no
+change". The backfill was discarded, `publish` was skipped, and the job still reported success.
+The step also asserts the file exists, so a pull that silently wrote nothing can never again look
+like a quiet day.
+
 **Fragility warning:** any integration built on an undocumented, non-public interface can break
 without notice. It must degrade to manual entry, and never block the app from loading.
 

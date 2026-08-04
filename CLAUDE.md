@@ -131,6 +131,10 @@ so a scoped base rule outranks a global override and the override silently loses
   never widen that.
 - **Never interpolate a workflow input into a `run:` command.** `trackman.yml`'s `since` input
   reaches the script through `env:`; the script re-validates its shape before it reaches a URL.
+- **`git diff` does not see untracked files.** `trackman.yml` stages `public/trackman.json` before
+  comparing the index, because the first run — the one that creates the file — otherwise read as
+  "no change" and threw the whole backfill away while reporting success. Any "commit only if it
+  changed" step needs `git add` first, or `git status --porcelain`.
 - **The refresh token must never be echoed, written to a file, or included in an error message.**
   Workflow logs on a public repo are public. A failed token exchange reports its HTTP status only,
   because the response body of a failed grant can echo the grant back.
