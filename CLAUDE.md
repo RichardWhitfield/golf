@@ -116,6 +116,11 @@ so a scoped base rule outranks a global override and the override silently loses
   `golf:store.unreadable` and every write throws until it is dealt with. That is deliberate —
   the alternative is overwriting data that might still be recoverable. Don't "fix" it by
   falling back to an empty document.
+- **The app must render even when `localStorage` is unavailable.** Reading the global throws
+  outright in private browsing and under "block all cookies", and the store is constructed at
+  module scope — so an eager read blanks the whole site, plan page included. `LocalStorageRepo`
+  resolves storage lazily and treats it as absent rather than fatal. Don't reintroduce a
+  top-level `localStorage` reference.
 
 ## Commands
 

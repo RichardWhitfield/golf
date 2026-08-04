@@ -10,6 +10,24 @@ import {
 import { mergeDocuments, parseDocument } from './transfer'
 
 /**
+ * Resolved defensively, because **merely reading `globalThis.localStorage` throws** in a browser
+ * with site data blocked — private browsing, "block all cookies", an enterprise policy, a
+ * sandboxed iframe. This class is constructed at module scope, so an eager read takes the whole
+ * app down before Svelte can mount anything, blanking even the plan page, which needs no storage.
+ */
+function defaultStorage(): Storage | null {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+const UNAVAILABLE =
+  'This browser is blocking site data, so nothing can be saved here. Your practice log will not ' +
+  'persist. Check the browser’s privacy settings, or use a normal (non-private) window.'
+
+/**
  * The `localStorage` implementation of `Repository`.
  *
  * `Storage` is injected so the tests can run in Node against an in-memory fake — no jsdom.
@@ -19,11 +37,12 @@ import { mergeDocuments, parseDocument } from './transfer'
  * keeps a second tab from clobbering the first with stale in-memory state.
  */
 export class LocalStorageRepo implements Repository {
-  private readonly storage: Storage
+  private readonly storage: Storage | null
   private fault: string | null = null
 
-  constructor(storage: Storage = localStorage) {
-    this.storage = storage
+  /** Pass `null` explicitly to model unavailable storage; omit it to resolve the real one safely. */
+  constructor(storage: Storage | null | undefined = undefined) {
+    this.storage = storage === undefined ? defaultStorage() : storage
   }
 
   get faultMessage(): string | null {
@@ -81,13 +100,32 @@ export class LocalStorageRepo implements Repository {
   }
 
   async readQuarantine(): Promise<string | null> {
-    return this.storage.getItem(QUARANTINE_KEY)
+    if (!this.storage) return null
+    try {
+      return this.storage.getItem(QUARANTINE_KEY)
+    } catch {
+      return null
+    }
   }
 
   /** Reading also detects and records a fault. It always runs before any write, which is what
    *  guarantees the quarantine copy is taken before anything can overwrite the original. */
   private read(): StoreDocument {
-    const raw = this.storage.getItem(STORAGE_KEY)
+    if (!this.storage) {
+      this.fault = UNAVAILABLE
+      return emptyDocument()
+    }
+
+    let raw: string | null
+    try {
+      raw = this.storage.getItem(STORAGE_KEY)
+    } catch {
+      // Reachable object, failing operation — treat it as unavailable rather than as corruption.
+      // Nothing is quarantined, because nothing was read.
+      this.fault = UNAVAILABLE
+      return emptyDocument()
+    }
+
     if (raw === null) {
       this.fault = null
       return emptyDocument()
@@ -116,13 +154,27 @@ export class LocalStorageRepo implements Repository {
     if (this.fault) {
       throw new Error(`Refusing to overwrite the stored data: ${this.fault}`)
     }
-    this.storage.setItem(STORAGE_KEY, JSON.stringify(doc))
+    if (!this.storage) throw new Error(UNAVAILABLE)
+    try {
+      this.storage.setItem(STORAGE_KEY, JSON.stringify(doc))
+    } catch (error) {
+      // Safari private mode throws QuotaExceededError on setItem even when storage is readable.
+      // Surface it: a save that silently did nothing is worse than one that says it failed.
+      this.fault = UNAVAILABLE
+      throw new Error(UNAVAILABLE, { cause: error })
+    }
   }
 
   /** Copy the unreadable text aside once. A second failure must not overwrite the first copy —
    *  the earliest one is the one most likely to still hold real sessions. */
   private quarantine(raw: string): void {
-    if (this.storage.getItem(QUARANTINE_KEY) !== null) return
-    this.storage.setItem(QUARANTINE_KEY, raw)
+    if (!this.storage) return
+    try {
+      if (this.storage.getItem(QUARANTINE_KEY) !== null) return
+      this.storage.setItem(QUARANTINE_KEY, raw)
+    } catch {
+      // Best-effort only — losing the quarantine copy is not worse than the read failure that
+      // triggered it, and quarantine() must never itself throw out of read().
+    }
   }
 }

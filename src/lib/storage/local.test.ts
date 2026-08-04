@@ -204,3 +204,73 @@ describe('data from a newer build', () => {
     expect(storage.getItem(QUARANTINE_KEY)).toBeNull()
   })
 })
+
+/** A `Storage` whose every operation throws, like a browser with site data blocked. */
+class HostileStorage implements Storage {
+  get length(): number {
+    throw new Error('Access is denied for this document.')
+  }
+  clear(): void {
+    throw new Error('Access is denied for this document.')
+  }
+  getItem(): string | null {
+    throw new Error('Access is denied for this document.')
+  }
+  key(): string | null {
+    throw new Error('Access is denied for this document.')
+  }
+  removeItem(): void {
+    throw new Error('Access is denied for this document.')
+  }
+  setItem(): void {
+    throw new Error('Access is denied for this document.')
+  }
+}
+
+describe('storage that is unavailable entirely', () => {
+  it('constructs without throwing when storage is null', () => {
+    expect(() => new LocalStorageRepo(null)).not.toThrow()
+  })
+
+  it('lists nothing rather than throwing', async () => {
+    expect(await new LocalStorageRepo(null).listSessions()).toEqual([])
+  })
+
+  it('returns empty settings rather than throwing', async () => {
+    expect(await new LocalStorageRepo(null).getSettings()).toEqual({})
+  })
+
+  it('reports a fault explaining that nothing can be saved', async () => {
+    const repo = new LocalStorageRepo(null)
+    await repo.listSessions()
+    expect(repo.faultMessage).toMatch(/blocking site data|cannot be saved/i)
+  })
+
+  it('refuses to save rather than pretending it worked', async () => {
+    const repo = new LocalStorageRepo(null)
+    await repo.listSessions()
+    await expect(repo.saveSession(session('a'))).rejects.toThrow()
+  })
+
+  it('refuses to export rather than returning an empty document', async () => {
+    const repo = new LocalStorageRepo(null)
+    await expect(repo.exportDocument()).rejects.toThrow()
+  })
+
+  it('has no quarantine to offer', async () => {
+    expect(await new LocalStorageRepo(null).readQuarantine()).toBeNull()
+  })
+})
+
+describe('storage whose every operation throws', () => {
+  it('does not let a throwing getItem escape listSessions', async () => {
+    const repo = new LocalStorageRepo(new HostileStorage())
+    expect(await repo.listSessions()).toEqual([])
+    expect(repo.faultMessage).toBeTruthy()
+  })
+
+  it('does not let a throwing setItem escape saveSession', async () => {
+    const repo = new LocalStorageRepo(new HostileStorage())
+    await expect(repo.saveSession(session('a'))).rejects.toThrow()
+  })
+})

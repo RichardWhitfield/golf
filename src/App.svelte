@@ -7,7 +7,10 @@
 
   $effect(() => router.start())
   $effect(() => {
-    void sessions.load()
+    sessions.load().catch((error) => {
+      // Never let a storage failure stop the plan page rendering — it needs no storage at all.
+      console.error('Could not load the practice log:', error)
+    })
   })
 </script>
 
