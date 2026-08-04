@@ -2,7 +2,7 @@ import type { ISODate, PracticeSession } from '../domain/types'
 import { resolveISODate } from '../domain/today'
 import type { ImportSummary, Repository, Settings } from '../storage/repository'
 import { LocalStorageRepo } from '../storage/local'
-import { exportFilename, serialiseDocument } from '../storage/transfer'
+import { InvalidImportError, exportFilename, serialiseDocument } from '../storage/transfer'
 
 /**
  * The single point where the app touches storage. **No component may import a repository or
@@ -56,9 +56,23 @@ class SessionStore {
     return exportFilename(resolveISODate())
   }
 
-  /** Throws `InvalidImportError` with a readable reason; the caller shows it. */
+  /**
+   * Throws `InvalidImportError` with a readable reason, and the caller shows `error.message`
+   * as-is.
+   *
+   * The bare `JSON.parse` is wrapped deliberately. Left unguarded it throws a `SyntaxError`
+   * worded by the browser — "Unexpected token < in JSON at position 0" — which is not a stated
+   * reason in this app's voice, and it would give the import UI a second error type to
+   * special-case. One type, one voice, every rejection path.
+   */
   async importText(text: string): Promise<ImportSummary> {
-    const summary = await this.#repo.importDocument(JSON.parse(text))
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      throw new InvalidImportError('That file is not a practice-log export: it is not valid JSON.')
+    }
+    const summary = await this.#repo.importDocument(parsed)
     await this.load()
     return summary
   }
