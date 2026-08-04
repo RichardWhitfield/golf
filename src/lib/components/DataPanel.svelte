@@ -15,6 +15,7 @@
   }
 
   async function exportAll() {
+    message = null
     problem = null
     try {
       download(await sessions.exportText(), sessions.exportName())

@@ -195,6 +195,10 @@ mobile (`≤760px`) `.wrap` becomes a flex column and `.today` takes `order:-1`,
 the hero — on a phone you're there to practise, not to read the poster. This is the only place
 the design reorders content, and it's the reason `.wrap` is flex at all below the breakpoint.
 
+The panel also carries the **block position** when a start date is stored: a solid `--ball`
+`WEEK n` pill beside the phase title, which links to section 04. Outside the three weeks it
+offers to set a new start rather than reporting a week number the plan doesn't have.
+
 ### Day bar
 `.daybar` — a row of mono pill `<button>`s, MON–SUN. Three visual states:
 - default: `--dim` text, `--line` border

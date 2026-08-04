@@ -203,16 +203,14 @@ schedule — is that a code edit or an in-app edit?
 **Recommendation: keep it a code edit.** It changes rarely, it's version-controlled, and in-app
 plan editing is a large feature for one user. Revisit only if the plan starts changing weekly.
 
-### OQ-5 · When did the 3-week block start?
+### OQ-5 · When did the 3-week block start? — **resolved 2026-08-04**
 
-[#10](https://github.com/RichardWhitfield/golf/issues/10)
+[#10](https://github.com/RichardWhitfield/golf/issues/10) · closed
 
-The Today panel knows the day but not which *week of the arc* you're in — so it can't say
-"week 2, transfer phase, mix drill-swings with normal swings", which is arguably the more useful
-instruction. That needs a block start date.
-
-Options: hardcode a start date in the markup, or capture it once and store it. Falls out
-naturally once Phase 2 introduces storage. **Cheap and high value — do it early in Phase 2.**
+Captured once and stored, as Phase 2's storage layer made it cheap. `Settings.blockStart` holds
+the date; `domain/block.ts` turns it into a week and an arc phase; the Today panel shows
+`WEEK 2 · TRANSFER` beside the day. Outside the three weeks it says nothing and offers a new
+start date — a finished plan should not claim "week 7".
 
 ### OQ-6 · Do course rounds get logged?
 
