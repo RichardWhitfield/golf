@@ -2,19 +2,23 @@
   import { CLUBS, clubInfo } from '../domain/clubs'
   import type { ClubRowDraft } from '../domain/trackman'
 
+  // `index`, not the club id, keys the DOM ids. A club can be selected in two rows at once while
+  // the user is mid-edit — validation blocks saving it, but until then club-keyed ids would be
+  // duplicated and every `<label for>` would point at the first row.
   let {
     row = $bindable(),
+    index,
     removable,
     onremove,
-  }: { row: ClubRowDraft; removable: boolean; onremove: () => void } = $props()
+  }: { row: ClubRowDraft; index: number; removable: boolean; onremove: () => void } = $props()
 
   const name = $derived(clubInfo(row.club).name)
 </script>
 
 <div class="row">
   <div class="cell club">
-    <label class="lab" for="club-{row.club}">Club</label>
-    <select id="club-{row.club}" bind:value={row.club}>
+    <label class="lab" for="club-{index}">Club</label>
+    <select id="club-{index}" bind:value={row.club}>
       {#each CLUBS as club (club.id)}
         <option value={club.id}>{club.name}</option>
       {/each}
@@ -25,9 +29,9 @@
        lone `-` while it is still being typed, and the sign is the whole meaning here: negative
        is out-to-in. It also fights a leading `+` on the way in. -->
   <div class="cell">
-    <label class="lab" for="typical-{row.club}">Typical</label>
+    <label class="lab" for="typical-{index}">Typical</label>
     <input
-      id="typical-{row.club}"
+      id="typical-{index}"
       type="text"
       inputmode="decimal"
       autocomplete="off"
@@ -38,9 +42,9 @@
   </div>
 
   <div class="cell">
-    <label class="lab" for="best-{row.club}">Best</label>
+    <label class="lab" for="best-{index}">Best</label>
     <input
-      id="best-{row.club}"
+      id="best-{index}"
       type="text"
       inputmode="decimal"
       autocomplete="off"
@@ -51,9 +55,9 @@
   </div>
 
   <div class="cell">
-    <label class="lab" for="shots-{row.club}">Shots <span class="opt">(opt)</span></label>
+    <label class="lab" for="shots-{index}">Shots <span class="opt">(opt)</span></label>
     <input
-      id="shots-{row.club}"
+      id="shots-{index}"
       type="text"
       inputmode="numeric"
       autocomplete="off"

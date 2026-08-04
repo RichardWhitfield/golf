@@ -86,6 +86,7 @@
       {#each draft.rows as _row, i}
         <ClubPathRow
           bind:row={draft.rows[i]}
+          index={i}
           removable={draft.rows.length > 1}
           onremove={() => removeRow(i)}
         />
