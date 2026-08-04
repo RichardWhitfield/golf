@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-04
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -9,11 +9,13 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 
 ## Where things stand
 
-- `index.html` — self-contained, single file. The complete 3-week plan, plus a Today panel
-  driven by a small vanilla script (see Phase 0.5).
-- `CNAME` — `golf.whitfield.life`, served by GitHub Pages from the repo root.
-- `README.md` — orientation and a documentation index.
-- No build step, no dependencies, no tests.
+- Svelte 5 + Vite + TypeScript, built by GitHub Actions and published to Pages.
+- Two views behind a History-API router: `/` (the plan) and `/log` (the practice log). Deep links
+  depend on a generated `dist/404.html`.
+- Practice sessions persist in `localStorage` behind the async repository seam, with JSON
+  export/import.
+- `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
+- `npm run check` and `npm test` both gate the deploy.
 
 Work is tracked in [GitHub issues](https://github.com/RichardWhitfield/golf/issues); each phase
 and open question below links to its issue.
@@ -68,7 +70,7 @@ considering the phase complete.
 
 ---
 
-## Phase 2 · Log a practice session
+## Phase 2 · Log a practice session — **done (2026-08-04)**
 
 [#3](https://github.com/RichardWhitfield/golf/issues/3)
 
@@ -85,6 +87,14 @@ The first real feature. Highest value per unit of work — six days a week curre
 
 **Done when:** a Tuesday session can be logged outdoors on a phone in under a minute, and the data
 survives a browser restart.
+
+Shipped: the storage seam (`Repository`, `LocalStorageRepo`, `schemaVersion`, migration
+machinery), the log form with the day's drills pre-ticked from `plan.ts`, recent sessions with
+edit and delete, JSON export/import merging by id, and the block start date (OQ-5) surfaced as
+the arc week and phase in the Today panel.
+
+Phase 3 now has a storage layer, a form pattern and an export format to build on — a Trackman
+session is a second session type through the same seam, not new machinery.
 
 ---
 

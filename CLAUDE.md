@@ -37,8 +37,16 @@ The Today panel and the "Core drills" section both render from it. Never restate
 markup — if a drill's text changes, it must change in exactly one place. (This inverts the
 pre-Phase-1 rule, where the *cards* were authoritative and the panel cloned them.)
 
-Only the Phase 1 slice of `docs/architecture.md` §2 exists. `storage/`, `ingest/`, `stores/` and
-`routes/` are **not** scaffolded — they arrive with the phases that need them.
+`storage/`, `stores/` and `routes/` are built (Phase 2, issue #3). `ingest/` arrives with
+Phase 5.
+
+The site has two views behind a History-API router: `/` (the plan page) and `/log`. Deep links
+depend on `dist/404.html`, generated from the built `index.html` by the `pages-spa-fallback`
+plugin in `vite.config.ts` and asserted by the deploy workflow alongside `CNAME`.
+
+Practice data lives in one `localStorage` key, `golf:store`, holding one versioned JSON
+document. **Reach it only through `lib/stores/sessions.svelte.ts`** — that file constructs the
+only `Repository` in the app.
 
 ### Where a style rule belongs
 
@@ -104,6 +112,10 @@ so a scoped base rule outranks a global override and the override silently loses
   a mixed-club mean tracks club selection, not swing change (OQ-7 / issue #14).
 - **Don't redesign.** The user explicitly likes the current look. Extend the system; don't
   replace it.
+- **The store refuses to write when it cannot read.** Unreadable JSON is copied to
+  `golf:store.unreadable` and every write throws until it is dealt with. That is deliberate —
+  the alternative is overwriting data that might still be recoverable. Don't "fix" it by
+  falling back to an empty document.
 
 ## Commands
 
