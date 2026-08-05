@@ -18,7 +18,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D5 | Session types | **Two distinct models**, not one | A Trackman session and a home practice session share almost no fields. Forcing one model produces a form that is mostly blank. |
 | D6 | Trackman data | **Manual entry is the baseline**; automated ingest is a pluggable source | Unchanged by Phase 3. The API works but is undocumented and assumed breakable, so deleting the workflow must leave the app fully usable. |
 | D16 | Club path shape | **Per club, never blended** | OQ-7. A blended average tracks club selection as much as swing change. The KPI club is the driver. |
-| D17 | Ingest publication | **Per-club aggregates committed to `public/trackman.json`** | The repo is public, so a committed file is world-readable. Aggregates carry no stroke data, no location, no identifiers. |
+| D17 | Ingest publication | ~~Per-club aggregates committed to `public/trackman.json`~~ **Superseded by D18** (Phase 6): the ingest writes to the store. | The per-club-aggregates-only rule survives the change — see §4. It was forced by a public repo; it is now a choice, which is what lets the next phase decide what to keep on its merits. |
 | D7 | Language | **TypeScript** | The data model is the core of this app and will outlive any UI. Types are the cheapest documentation of it. |
 | D8 | Tests | **Vitest** for domain logic and the storage layer | Not for UI. The valuable, breakable logic is data shaping and aggregation. |
 | D9 | Navigation | **Client-side views** (Plan, Log, Progress) | The log needs its own screen. The poster page becomes the Plan view, visually unchanged. |

@@ -271,8 +271,8 @@ Native `<details>` is used deliberately: keyboard support, `aria-expanded` and a
 come from the browser rather than from hand-written state.
 
 **Delete confirms in place**, with a second `--flag` button, not a native `confirm()` — a
-browser dialog is easy to dismiss by accident on a phone, and this removes the only copy of a
-session.
+browser dialog is easy to dismiss by accident on a phone, and a delete now propagates to every
+device rather than just this one.
 
 ### Data panel
 Export and import as mono outline buttons; the file input is visually hidden behind a styled
