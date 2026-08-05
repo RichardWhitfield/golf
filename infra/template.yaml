@@ -57,7 +57,12 @@ Resources:
           # nothing, since the ingest workflow's PUT never passes through a browser.
           AllowOrigins:
             - https://golf.whitfield.life
-            - http://localhost:5173
+            - http://localhost:5173 # npm run dev
+            # npm run preview, which serves the *built* bundle — the closest local thing to
+            # production, and therefore the one most worth being able to check. Omitting it made
+            # the preview silently render stale cached data with no error, which reads as data
+            # loss rather than as a blocked origin.
+            - http://localhost:4173
           AllowMethods: [GET, PUT, DELETE]
           AllowHeaders: [content-type]
 
