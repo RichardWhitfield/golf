@@ -17,8 +17,20 @@ never fires.
 
 ## Deploy
 
-Needs credentials that can write. The `claude-code-readonly` IAM user in this workspace
-cannot deploy, deliberately — run these yourself, or with an admin profile.
+### Pick the account first
+
+This stack belongs in the **personal** account, `556684849777` — profile `rich-personal`.
+The `default` profile in this workspace is a read-only user in a *different* account and
+cannot deploy, deliberately.
+
+Export the profile for the whole session rather than passing `--profile` per command. A
+single forgotten flag would put one resource in the wrong account, which is far harder to
+notice than a failure:
+
+    export AWS_PROFILE=rich-personal
+    aws sts get-caller-identity        # expect Account 556684849777
+
+Every command below assumes that is set.
 
 **The SAM CLI is not required.** `AWS::Serverless-2016-10-31` is a CloudFormation *transform*
 and is expanded server-side; SAM CLI only automates zipping the code and uploading it, which
@@ -28,14 +40,14 @@ deployed stack.
 One-off, to hold the code zip. CloudFormation cannot take a local file, and the handler is
 too large for an inline `ZipFile`:
 
-    aws s3 mb s3://golf-store-artifacts-125969980812 --region ap-southeast-2
+    aws s3 mb s3://golf-store-artifacts-556684849777 --region ap-southeast-2
 
 Then, to deploy or redeploy:
 
     cd infra
     aws cloudformation package \
       --template-file template.yaml \
-      --s3-bucket golf-store-artifacts-125969980812 \
+      --s3-bucket golf-store-artifacts-556684849777 \
       --output-template-file packaged.yaml
     aws cloudformation deploy \
       --region ap-southeast-2 \
@@ -99,9 +111,10 @@ The fourth call is the one worth watching. Writes are unauthenticated, so that r
 the only thing stopping an open endpoint being used to store a shape the app cannot parse.
 
 If the first call returns a 500 mentioning module resolution, the runtime does not ship
-`@aws-sdk/client-dynamodb`. Add an `infra/package.json` depending on it and let `sam build`
-install it; the handler code does not change. (It is already a **dev**Dependency at the repo
-root so the tests can run — that copy is not deployed.)
+`@aws-sdk/client-dynamodb`. Add an `infra/function/package.json` depending on it, run
+`npm install` in that directory, and repackage — `aws cloudformation package` zips whatever
+is in `function/`, `node_modules` included. The handler code does not change. (It is already
+a **dev**Dependency at the repo root so the tests can run — that copy is not deployed.)
 
 ## Restore
 
@@ -115,4 +128,6 @@ Writes are unauthenticated by decision (D19), so point-in-time recovery is the s
 
 Restore **beside** the live table, check it, then swap. Never restore over `golf`.
 
-The `Retain` deletion policy means `sam delete` leaves the table behind on purpose.
+The `Retain` deletion policy means `aws cloudformation delete-stack` leaves the table behind
+on purpose. The corollary: after tearing the stack down, a redeploy **fails** trying to create
+a table named `golf` that still exists. Import it back into the new stack, or rename it.
