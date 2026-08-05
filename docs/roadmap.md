@@ -179,8 +179,8 @@ Practice and Trackman data moved from `localStorage` to DynamoDB behind a Lambda
 `localStorage` is now a read cache. `public/trackman.json` and `ingest/published.ts` are gone —
 both writers, the browser and the daily workflow, go through one path.
 
-Shipped: `infra/` (table, function, Function URL, and a `$1` billing alarm in `us-east-1`, which
-is the only region AWS publishes billing metrics in); `storage/remote.ts` and `storage/cached.ts`;
+Shipped: `infra/` (table, function, Function URL, and a `$1` monthly spend alert);
+`storage/remote.ts` and `storage/cached.ts`;
 the ingest rewritten to write to the store; and `StaleNotice`, because the failure this design
 produces is otherwise invisible.
 

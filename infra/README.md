@@ -4,16 +4,15 @@ One DynamoDB table behind one Lambda Function URL. Deployed by hand, never from 
 deploying from a public repo's Actions would require AWS credentials, and this design
 otherwise needs none (D22).
 
-Two stacks, because they must live in different regions:
+Two stacks, both in `ap-southeast-2`:
 
-| Stack | Region | Contents |
-|---|---|---|
-| `golf-store` | `ap-southeast-2` | table, function, Function URL |
-| `golf-billing-alarm` | `us-east-1` | SNS topic, `$1` estimated-charges alarm |
+| Stack | Contents |
+|---|---|
+| `golf-store` | table, function, Function URL |
+| `golf-budget` | `$1` monthly spend alert |
 
-`AWS/Billing` metrics are published in `us-east-1` **only**, whatever region the resources sit
-in. An alarm on that metric created anywhere else sits in `INSUFFICIENT_DATA` for ever and
-never fires.
+They are separate so that redeploying the store does not need the alert's email parameter every
+time — `aws cloudformation deploy` does not reuse previous parameter values.
 
 ## Deploy
 
@@ -76,16 +75,28 @@ That is success, not failure.
 It provisions its own artifact bucket, so the `s3 mb` step is unnecessary.
 </details>
 
-Then the alarm, once:
+Then the spend alert, once:
 
     aws cloudformation deploy \
-      --region us-east-1 \
-      --stack-name golf-billing-alarm \
-      --template-file billing-alarm.yaml \
-      --parameter-overrides AlarmEmail=you@example.com
+      --region ap-southeast-2 \
+      --stack-name golf-budget \
+      --template-file budget.yaml \
+      --parameter-overrides AlertEmail=you@example.com
 
-**Confirm the SNS subscription from your inbox**, or the alarm cannot notify you. Until you
-do, the subscription reads `PendingConfirmation` and the alarm is decorative.
+**Nothing to confirm.** AWS Budgets emails its subscribers directly.
+
+This replaced a CloudWatch `AWS/Billing` alarm with an SNS topic and an email subscription. An
+SNS email subscription must be confirmed by fetching a link, and its *unsubscribe* link is a
+plain GET carrying a token — Chrome's link prefetching fetched that link from the "Subscription
+confirmed!" page without anyone clicking it, so the subscription went from `PendingConfirmation`
+straight to `Deleted`, twice. The alarm meanwhile reported `StateValue: OK` with a valid
+`AlarmActions` ARN, so it looked entirely healthy while notifying nobody.
+
+Check it with:
+
+    aws budgets describe-subscribers-for-notification --account-id 556684849777 \
+      --budget-name golf \
+      --notification NotificationType=ACTUAL,ComparisonOperator=GREATER_THAN,Threshold=100,ThresholdType=PERCENTAGE
 
 The `golf-store` stack outputs `ApiUrl`. Put it in two places:
 
