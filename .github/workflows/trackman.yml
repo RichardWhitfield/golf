@@ -27,13 +27,13 @@ concurrency:
   group: trackman
   cancel-in-progress: false
 
+# The job commits nothing, so it needs no write permission and no publish step: sessions go
+# straight into the practice store and the deployed site reads them at runtime. Writes to the
+# store are unauthenticated by decision (D19), which is why this job carries no AWS credentials
+# — `API_URL` is a repository *variable*, public by design, and ships in the bundle anyway.
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      changed: ${{ steps.commit.outputs.changed }}
     steps:
       # Actions are pinned to full commit SHAs, not tags, and this job holds the Trackman
       # credential. A tag is a movable pointer; a SHA is not. The trailing comment records the
@@ -57,50 +57,12 @@ jobs:
         # base64 or jq. A failed token exchange reports its HTTP status only.
         env:
           TRACKMAN_REFRESH_TOKEN: ${{ secrets.TRACKMAN_REFRESH_TOKEN }}
+          API_URL: ${{ vars.API_URL }}
           SINCE: ${{ inputs.since }}
         run: |
+          test -n "$API_URL" || { echo "::error::The API_URL repository variable is not set — the pull would have nowhere to write"; exit 1; }
           if [ -n "$SINCE" ]; then
             npm run ingest -- --since "$SINCE"
           else
             npm run ingest
           fi
-
-      - name: Commit if the data changed
-        id: commit
-        run: |
-          # A pull that reports success must leave a file behind. Without this, a script that
-          # silently wrote nothing would look identical to a quiet day.
-          test -f public/trackman.json || {
-            echo "::error::The pull reported success but public/trackman.json is missing."
-            exit 1
-          }
-
-          # `git add` FIRST, then compare the *index*.
-          #
-          # `git diff` on its own only reports changes to tracked files — it ignores untracked
-          # ones entirely and exits 0. On the very first run, the one that creates this file,
-          # that read as "no change": the backfill was discarded, publish was skipped, and the
-          # job still reported success. Staging first is what makes a new file visible here.
-          git add public/trackman.json
-          if git diff --cached --quiet -- public/trackman.json; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No new sessions."
-            exit 0
-          fi
-
-          git config user.name  'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Update the Trackman session data'
-          git push
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-
-  # Publishing is a separate job so the ingest never holds pages:write, and so a failed pull
-  # leaves the deployed site exactly as it was.
-  publish:
-    needs: ingest
-    if: needs.ingest.outputs.changed == 'true'
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/deploy.yml
