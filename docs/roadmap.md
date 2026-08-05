@@ -213,9 +213,30 @@ both of which would only have exercised reads.
 **Done when** — met: the same history is on the phone and the laptop, and deleting the workflow
 still leaves the app fully usable with the numbers enterable by hand.
 
-**Unblocked by this:** per-shot Trackman metrics. The `SHOTS#<sessionId>` key space is reserved,
-and the first step is a schema introspection query — field names read from the live schema, never
-guessed, the same discipline `domain/clubs.ts` applies to club spellings.
+**Unblocked by this:** per-shot Trackman metrics — Phase 7 below.
+
+---
+
+## Phase 7 · Every metric, not just club path
+
+[#25](https://github.com/RichardWhitfield/golf/issues/25)
+
+The GraphQL query names one field — `measurement { clubPath }` — so everything else Trackman
+measures is discarded at the query rather than during processing. Widening it is a one-line
+change; the work is everything downstream.
+
+Blocked until Phase 6, and that is why storage moved first: the old channel was a file committed
+to a public repo, which is defensible for per-club aggregates and not for a shot-by-shot record.
+
+The motivating question is whether the swing plane is too steep and *causing* the out-to-in path
+rather than accompanying it. That cannot be tested while only one of the two numbers is stored.
+
+**First step is schema introspection, as its own step.** Field names are read from the live
+schema, never guessed — introspection is enabled (OQ-1), and this project has twice been punished
+for guessing at this API's shapes. The findings decide the rest of the design.
+
+**The KPI does not move.** It stays driver club path (OQ-7). This adds context for *why* the path
+is what it is; it does not change what success means.
 
 ---
 
