@@ -58,8 +58,9 @@
 
 <h2 class="head">Your data</h2>
 <p class="sub">
-  This browser is the only place your practice log lives. Clearing site data would delete it —
-  export a copy somewhere safe now and then.
+  Your practice log is saved online, so it follows you between your phone and your laptop.
+  This browser keeps a copy so the page loads instantly and still works offline. Export a
+  copy somewhere safe now and then anyway — it costs nothing and it is yours.
 </p>
 
 {#if sessions.warning}
