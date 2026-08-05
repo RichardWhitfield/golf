@@ -74,12 +74,16 @@ typically runs 20–30% higher**, shown as an estimate.
 |---|---|---|---|
 | Writes | ~200 WRU (costed at 2,000 — 10× headroom) | $0.0013 | ~$0.0016 |
 | Reads | ~95,000 RRU (deliberately pessimistic — see below) | $0.0119 | ~$0.0149 |
-| Storage | ~1.5 MB | $0.00 (25 GB always-free) | $0.00 |
+| Storage | ~1.5 MB | ~$0.0004 | ~$0.0005 |
 | PITR | ~1.5 MB @ $0.20/GB-month | ~$0.0003 | ~$0.0004 |
-| Lambda requests | ~700 (free tier 1,000,000) | $0.00 | $0.00 |
-| Lambda duration | ~18 GB-s (free tier 400,000) | $0.00 | $0.00 |
-| Data transfer out | ~750 MB (first 100 GB free) | $0.00 | $0.00 |
-| **Total** | | **~$0.013** | **~$0.017** |
+| Lambda requests | ~700 | ~$0.0001 | ~$0.0002 |
+| Lambda duration | ~18 GB-s | ~$0.0003 | ~$0.0004 |
+| Data transfer out | ~750 MB | $0.00 | ~$0.0086 |
+| **Total** | | **~$0.014** | **~$0.026** |
+
+**Costed with no free-tier allowances at all.** The account postdates the mid-2025 restructure
+(confirmed 2026-08-05), so the perpetual DynamoDB storage and Lambda request allowances are not
+assumed. Every line above is list price.
 
 Three notes:
 
@@ -91,10 +95,12 @@ Three notes:
   (~75 MB in reality, against a 100 GB free allowance either way).
 - **The real cost risk is misconfiguration, not usage** — provisioned capacity left running, or a
   retry loop. A **billing alarm at $1** is part of step 1 of the rollout, not a follow-up.
-- **Free-tier caveat.** AWS restructured the free tier in mid-2025; new accounts receive expiring
-  credits rather than perpetual allowances. If this account predates that change the figures hold
-  as shown. If not, storage becomes ~$0.0004/month, which changes nothing material. **Verify on
-  the account before step 1.**
+- **No free tier is assumed, and it does not matter.** The account postdates the mid-2025
+  restructure, so it holds expiring credits rather than perpetual allowances. Removing every
+  free-tier assumption moves the total from ~$0.017 to ~$0.026 — still **under three pence a
+  month**, and still dominated by a read figure that is itself a 10× overestimate. The data
+  transfer line is the most pessimistic of all: it assumes the 100 GB/month allowance does not
+  apply and that every load re-downloads the full pre-D24 payload.
 
 ---
 
@@ -328,6 +334,6 @@ and any change to the plan page.
 |---|---|
 | **Open writes (D19)** — anyone may overwrite or delete a session | PITR (D20), body validation (D21), per-item writes so damage is bounded to one record, JSON export retained |
 | **The AWS account becomes a single point of failure** | Export/import stays; the cache means a total outage degrades to read-only rather than to a blank site |
-| **Storage-cost surprise** | $1 billing alarm in step 1; on-demand only, never provisioned |
+| **Storage-cost surprise** | $1 billing alarm in step 1; on-demand only, never provisioned. Costed at list price with no free-tier assumption, so credit expiry changes nothing |
 | **The Trackman integration breaks during the rerouting** | Steps 4 and 5 are separate, and step 5 is gated on two observed green runs. `public/trackman.json` remains in the repo until then |
-| **Free-tier terms differ on this account** | Verified before step 1; worst case is ~$0.0004/month |
+| **AWS credits expire and the account converts to paid** | Already assumed. §4 costs everything at list price with no allowances, so expiry moves nothing |
