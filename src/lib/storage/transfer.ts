@@ -56,11 +56,13 @@ function checkDrillIds(raw: unknown, where: string): DrillId[] | undefined {
 }
 
 /**
- * **Exported deliberately.** `ingest/published.ts` validates the fetched Trackman file with this
- * same function, so a file picked by hand and a file published by the workflow are held to
- * identical standards and refused in identical words.
+ * Was exported for `ingest/published.ts`, which validated the workflow's committed file with
+ * this same function so a hand-picked import and a published one were refused in identical
+ * words. That file is gone — the ingest writes to the store directly — so this is private
+ * again. The Lambda now holds the only other validator, and it is deliberately a coarser one:
+ * a gate against shapes the client cannot parse, not a second authority on a valid session.
  */
-export function checkTrackmanSession(raw: Record<string, unknown>, where: string): TrackmanSession {
+function checkTrackmanSession(raw: Record<string, unknown>, where: string): TrackmanSession {
   if (typeof raw.id !== 'string' || raw.id === '') reject(`${where} has no id.`)
   if (typeof raw.date !== 'string' || parseISODate(raw.date) === null) {
     reject(`${where} has an invalid date.`)

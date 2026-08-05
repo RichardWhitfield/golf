@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-08-05
+**Last updated:** 2026-08-06
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -12,11 +12,12 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 - Svelte 5 + Vite + TypeScript, built by GitHub Actions and published to Pages.
 - Three views behind the router: `/` (the plan), `/log` (the practice log) and `/progress`
   (the charts). Deep links depend on a generated `dist/404.html`.
-- Practice **and Trackman** sessions persist in `localStorage` behind the async repository seam at
-  `schemaVersion` 2, with JSON export/import.
+- Practice **and Trackman** sessions live in **DynamoDB** behind the async repository seam at
+  `schemaVersion` 2, with JSON export/import. `localStorage` is a read cache, so the same history
+  is on the phone and the laptop.
 - Club path is stored **per club** and never blended. The KPI is **driver** club path.
-- A daily Actions workflow pulls Trackman sessions into `public/trackman.json` and publishes them;
-  the browser merges that file on load without ever overwriting anything typed by hand.
+- A daily Actions workflow pulls Trackman sessions straight into the store, holding no
+  permissions and no AWS credentials, and never overwriting anything typed by hand.
 - `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
 - `npm run check` and `npm test` both gate the deploy.
 
@@ -169,6 +170,55 @@ the app fully usable. Built as part of Phase 3 above.
 
 ---
 
+## Phase 6 · Synced storage — **done (2026-08-06)**
+
+[#8](https://github.com/RichardWhitfield/golf/issues/8) (OQ-3) · design and plan in
+`docs/superpowers/`
+
+Practice and Trackman data moved from `localStorage` to DynamoDB behind a Lambda Function URL.
+`localStorage` is now a read cache. `public/trackman.json` and `ingest/published.ts` are gone —
+both writers, the browser and the daily workflow, go through one path.
+
+Shipped: `infra/` (table, function, Function URL, and a `$1` billing alarm in `us-east-1`, which
+is the only region AWS publishes billing metrics in); `storage/remote.ts` and `storage/cached.ts`;
+the ingest rewritten to write to the store; and `StaleNotice`, because the failure this design
+produces is otherwise invisible.
+
+**Writes are unauthenticated by explicit decision (D19)**, taken after the risk was put. The bounds
+are point-in-time recovery, the handler's structural validation, and per-item writes.
+
+**Three findings from real data and a real browser changed the design:**
+
+- **Trackman ids are 88-character base64 ending in `=`, and Lambda's `rawPath` is
+  percent-encoded.** The first route matched an allowlisted charset that omitted `=` and rejected
+  **all 86 sessions**. Validation is now about safety, not format: it decodes, is non-empty, is
+  bounded, and holds no control characters.
+- **`fetch` stored on an object and called as a method throws in every browser** — "Illegal
+  invocation" — because the receiver is the holder rather than the window. **Node tolerates it**,
+  so the seed, the ingest and 318 tests all passed while the deployed site never reached the store
+  once. It shipped. See below.
+- **A refresh that saves the store's sessions over the cache without dropping what is no longer
+  there makes deletions invisible** — remove a session on the laptop and the phone resurrects it
+  on every refresh.
+
+**The verification lesson is the one worth keeping.** The `fetch` bug survived because it was
+checked in a browser whose cache already held the same 86 sessions, so cache and store were
+indistinguishable and the cached page was read as proof the store worked. Verifying a cache
+against the thing it mirrors proves nothing. Clear site data, then watch for the network request.
+
+The ingest's write path was proven by deleting a real session and confirming the next run restored
+it byte-identically — stronger evidence than the two quiet runs originally planned as the gate,
+both of which would only have exercised reads.
+
+**Done when** — met: the same history is on the phone and the laptop, and deleting the workflow
+still leaves the app fully usable with the numbers enterable by hand.
+
+**Unblocked by this:** per-shot Trackman metrics. The `SHOTS#<sessionId>` key space is reserved,
+and the first step is a schema introspection query — field names read from the live schema, never
+guessed, the same discipline `domain/clubs.ts` applies to club spellings.
+
+---
+
 ## Open questions
 
 ### OQ-1 · Is TrackMan data programmatically accessible? — **resolved 2026-07-31**
@@ -206,16 +256,19 @@ is bending a 13-month trend, and scoping to three weeks leaves the club-path cha
 three points. This needed no `Block` entity. The wider question — what happens after week three,
 and whether sessions get grouped per block — **remains open.**
 
-### OQ-3 · Does storage ever need to leave the device?
+### OQ-3 · Does storage ever need to leave the device? — **resolved 2026-08-06**
 
-[#8](https://github.com/RichardWhitfield/golf/issues/8)
+[#8](https://github.com/RichardWhitfield/golf/issues/8) · closed by Phase 6
 
-Currently `localStorage` only. It becomes a real problem if logging happens on a phone but
-review happens on a laptop — the two devices would hold different data.
+**Yes.** The question asked for evidence of friction rather than a guess, and two things supplied
+it. Logging happens on a phone and review on a laptop, so the two held different histories and
+JSON export/import was a chore nobody performed weekly. More decisively, the **next phase is
+blocked without it**: widening the Trackman query to the full per-shot measurement set has nowhere
+to land while the publication channel is a file committed to a public repo. That is defensible for
+per-club aggregates and not defensible for a shot-by-shot record.
 
-Mitigated short-term by JSON export/import. Revisit once there's evidence of actual friction, not
-before. The async repository interface (see `architecture.md`) exists precisely so this stays a
-contained change.
+The async repository interface did exactly what D2 promised — adding the backend touched
+`stores/sessions.svelte.ts` and nothing else. Decisions D18–D26 are in `architecture.md`.
 
 ### OQ-4 · Should the plan itself become editable?
 
