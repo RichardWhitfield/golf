@@ -213,6 +213,21 @@ carried by `aria-pressed`, not by class alone.
 `.warn` — `--flag` border, 6%-opacity red wash, red eyebrow. Custom list markers drawn with
 `clip-path` as small triangular flags. Reserved for genuine watch-outs.
 
+### Not-synced notice
+`.stale` — a slim strip between the site nav and the view: `--flag` border, `--flag-wash`
+background, a mono `NOT SYNCED` label in `--flag`, one sentence of prose, and a `Try again`
+pill. Shown on **every** view, because stale numbers mislead equally on all three.
+
+It exists because the failure it reports is otherwise invisible. `CachedRepo` serves cached data
+and swallows read failures by design — the plan page has to render with the store down — so a
+site that cannot reach its store looks completely healthy while showing numbers that may be
+weeks old and silently rejecting the next save. **A shipped bug hid behind exactly that for one
+deploy.** The copy says both things plainly: what you are looking at, and that saving will fail.
+
+`--flag`, not `--ball`: this is a bad state, not a target. `role="status"` rather than `alert` —
+persistent condition, not an interruption. `order:-2` below the breakpoint so it sits beside the
+nav rather than under the Today panel; a warning below the fold is a warning nobody reads.
+
 ### Site nav
 `.sitenav` — a mono pill row at the top of the page, above everything, with a hairline beneath.
 Active view carries `aria-current="page"` and renders in `--ball` with a `--ball-dim` border.

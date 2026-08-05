@@ -1,5 +1,6 @@
 <script lang="ts">
   import SiteNav from './lib/components/SiteNav.svelte'
+  import StaleNotice from './lib/components/StaleNotice.svelte'
   import LogView from './routes/LogView.svelte'
   import PlanView from './routes/PlanView.svelte'
   import ProgressView from './routes/ProgressView.svelte'
@@ -23,6 +24,8 @@
 
 <div class="wrap">
   <SiteNav />
+  <!-- Above the view, not inside one: stale data is equally misleading on all three. -->
+  <StaleNotice />
   {#if router.current === 'log'}
     <LogView />
   {:else if router.current === 'progress'}
