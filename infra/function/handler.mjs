@@ -24,8 +24,37 @@ import {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
-/** Ids come from the Trackman activity id or `crypto.randomUUID()`. No slashes, no dots. */
-const ID = /^[A-Za-z0-9_:-]{1,128}$/
+/**
+ * Longer than any real id, short enough that nobody can use the path as a storage channel.
+ * Trackman activity ids are 88 characters; `crypto.randomUUID()` is 36.
+ */
+const MAX_ID = 512
+
+/**
+ * **`rawPath` arrives percent-encoded** — verified against the deployed Function URL, where
+ * `/sessions/a%3Ab` reaches the handler with the `%3A` intact. The id must therefore be decoded
+ * before it is compared with the body's `id` or used as a sort key, or every Trackman session
+ * fails: their ids are 88-character base64 ending in `=`, which `encodeURIComponent` escapes.
+ *
+ * Returns `null` for anything unusable, which the caller turns into a 404.
+ */
+function decodeId(raw) {
+  let id
+  try {
+    id = decodeURIComponent(raw)
+  } catch {
+    // A malformed percent sequence — `decodeURIComponent` throws URIError on e.g. '%zz'.
+    return null
+  }
+  if (id.length === 0 || id.length > MAX_ID) return null
+  // Control characters only. **Not a charset allowlist**: these ids are opaque values from a
+  // system we do not control, and enumerating "valid" characters guessed wrong once already —
+  // the first version excluded base64 padding and rejected all 86 real sessions. The id becomes
+  // a DynamoDB attribute, never a file path or a URL, so nothing else here is dangerous.
+  // Escapes are explicit rather than literal control characters, which vanish in a diff.
+  if (/[\u0000-\u001f\u007f]/.test(id)) return null
+  return id
+}
 
 /** Kept in step with `SCHEMA_VERSION` in `src/lib/storage/migrations.ts`. */
 const SCHEMA_VERSION = 2
@@ -47,10 +76,15 @@ export function route(method, path) {
   if (path === '/settings' && method === 'GET') return { kind: 'getSettings' }
   if (path === '/settings' && method === 'PUT') return { kind: 'putSettings' }
 
+  // `[^/]+` deliberately: an encoded slash (`%2F`) stays inside one segment and decodes back to
+  // a literal slash, which is fine as an identifier because it only ever becomes a sort key.
   const match = /^\/sessions\/([^/]+)$/.exec(path)
-  if (match && ID.test(match[1])) {
-    if (method === 'PUT') return { kind: 'putSession', id: match[1] }
-    if (method === 'DELETE') return { kind: 'deleteSession', id: match[1] }
+  if (match) {
+    const id = decodeId(match[1])
+    if (id !== null) {
+      if (method === 'PUT') return { kind: 'putSession', id }
+      if (method === 'DELETE') return { kind: 'deleteSession', id }
+    }
   }
   return null
 }

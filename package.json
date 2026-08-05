@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "ingest": "tsx scripts/trackman-ingest.ts"
+    "ingest": "tsx scripts/trackman-ingest.ts",
+    "seed": "tsx scripts/seed-remote.ts"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.1103.0",

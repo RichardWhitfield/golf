@@ -20,6 +20,33 @@ describe('route', () => {
     expect(route('PUT', '/sessions/a1/../b2')).toBeNull()
     expect(route('GET', '/shots/a1')).toBeNull() // reserved, not implemented
   })
+
+  it('decodes a real Trackman id, which is 88-character base64 ending in "="', () => {
+    // rawPath arrives percent-encoded, verified against the deployed Function URL. The first
+    // version of this route matched an allowlisted charset that omitted "=" and rejected all
+    // 86 real sessions — the seed found it, not the tests.
+    const id =
+      'VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRjNTlkNzkzMS1kNjQ0LTU1OTQtYTEyMC04ZTIzOTA5MDQ1MmU='
+    expect(route('PUT', `/sessions/${encodeURIComponent(id)}`)).toEqual({
+      kind: 'putSession',
+      id,
+    })
+  })
+
+  it('keeps an encoded slash inside one segment and decodes it back', () => {
+    // Base64 can emit "/", and it is harmless as an identifier — the id only ever becomes a
+    // DynamoDB sort key, never a path.
+    expect(route('DELETE', '/sessions/ab%2Fcd')).toEqual({ kind: 'deleteSession', id: 'ab/cd' })
+  })
+
+  it('rejects a malformed percent sequence rather than throwing', () => {
+    expect(route('PUT', '/sessions/%zz')).toBeNull()
+  })
+
+  it('rejects an over-long id and one carrying control characters', () => {
+    expect(route('PUT', `/sessions/${'a'.repeat(513)}`)).toBeNull()
+    expect(route('PUT', '/sessions/a%00b')).toBeNull()
+  })
 })
 
 describe('validateSession', () => {
