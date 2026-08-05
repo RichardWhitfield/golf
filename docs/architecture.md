@@ -12,7 +12,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | # | Decision | Choice | Rationale |
 |---|---|---|---|
 | D1 | Framework | **Svelte 5 + Vite** | Existing hand-written CSS ports over near-unchanged as scoped component styles. Minimal boilerplate for a solo project. Small bundle for phone use at the range. |
-| D2 | Storage | **`localStorage` now, behind an async repository interface** | Zero infrastructure, zero cost, works offline. The async interface means adding sync later is a contained change. |
+| D2 | Storage | **DynamoDB behind the async repository interface**; `localStorage` demoted to a read cache | Superseded by D18 (Phase 6, OQ-3). The async interface did its job: adding the backend touched `stores/sessions.svelte.ts` and nothing else. |
 | D3 | Hosting | **GitHub Pages**, custom domain `golf.whitfield.life` | Already configured (`CNAME`). Free, and adequate for a static bundle. |
 | D4 | Build/deploy | **GitHub Actions** builds and publishes `dist/` | A build step is now required; Pages can no longer serve the repo root directly. |
 | D5 | Session types | **Two distinct models**, not one | A Trackman session and a home practice session share almost no fields. Forcing one model produces a form that is mostly blank. |
@@ -23,12 +23,25 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D8 | Tests | **Vitest** for domain logic and the storage layer | Not for UI. The valuable, breakable logic is data shaping and aggregation. |
 | D9 | Navigation | **Client-side views** (Plan, Log, Progress) | The log needs its own screen. The poster page becomes the Plan view, visually unchanged. |
 | D10 | URL scheme | **Clean paths** via the History API, with a generated `404.html` | Real URLs. The shim is copied from `dist/index.html` at build time — a hand-written `public/404.html` would reference stale hashed assets. |
+| D18 | Backend | **DynamoDB (on-demand) behind a Lambda Function URL** | Phase 6, OQ-3. Per-item storage suits per-shot metrics, which a single JSON blob handles badly once it reaches megabytes. About 3p/month at list price, no free tier assumed. |
+| D19 | Access control | **None.** Open reads *and* open writes | Chosen explicitly after the risk was put. A shared write token was offered and declined. Bounded by D20 and D21, not by access control. |
+| D20 | Recovery | **Point-in-time recovery on**, 35 days | The consequence of D19: the only thing between a bad write and permanent loss. Mandatory, not optional. The table also carries `DeletionPolicy: Retain`. |
+| D21 | Validation | **The Lambda validates bodies but does not authenticate them** | Anyone may write; nobody may write a shape the client cannot parse. Bounds D19 to "a valid session replaced by a different valid session" — recoverable — rather than a store that no longer loads. |
+| D22 | Ingest credentials | **None. The workflow `PUT`s to the same public endpoint the browser uses** | A dividend of D19: no OIDC role, no IAM user, no new secret. `TRACKMAN_REFRESH_TOKEN` remains the only secret in the repo. |
+| D23 | Local storage role | **Read cache, written through on save** | The page paints instantly on cold start and still renders with the store unreachable. Only the *remote's* fault state gates writes. |
+| D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~125 KB total). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is reserved. |
+| D25 | Infrastructure as code | **CloudFormation/SAM templates in `infra/`, deployed by hand** | Deploying from a public repo's CI needs AWS credentials — the one thing D22 otherwise avoids. The SAM CLI is not required; the transform expands server-side. |
+| D26 | Sort key | **The session id alone**, never `<date>#<id>` | `saveSession` is upsert-by-id and the date is editable. A mutable key makes an edited date insert a duplicate instead of updating in place. Ordering is done client-side; at ~250 items it is free. |
 
 ### Deliberately excluded (YAGNI)
 
-No accounts, no auth, no server database, no state-management library (Svelte stores suffice),
-no CSS framework, no component library, no analytics, no PWA/offline shell until there's evidence
-it's needed.
+No accounts, no state-management library (Svelte stores suffice), no CSS framework, no component
+library, no analytics, no PWA/offline shell until there's evidence it's needed.
+
+**"No server database" was reversed in Phase 6**, on the evidence OQ-3 asked for: two devices
+holding different histories, and per-shot metrics with nowhere private to land. **"No auth" was
+not reversed** — it was chosen again, explicitly, after the risk was put (D19). Reads and writes
+are both open; the bounds are recovery and validation, not access control.
 
 ---
 
@@ -47,7 +60,7 @@ it's needed.
                    │  async repository interface
 ┌──────────────────▼──────────────────────────┐
 │  Storage  (swappable)                        │
-│  LocalStorageRepo  →  future: RemoteRepo     │
+│  CachedRepo( RemoteRepo, LocalStorageRepo )  │
 └─────────────────────────────────────────────┘
 ```
 
@@ -78,12 +91,13 @@ src/
       local.ts            # LocalStorageRepo implementation
       migrations.ts       # schemaVersion upgrades
       transfer.ts         # JSON export/import, merge by id
+      remote.ts           # RemoteRepo — thin HTTP over the Lambda Function URL
+      cached.ts           # CachedRepo — read cache, write-through, seed-on-empty
     ingest/
       source.ts           # TrackmanSource interface
       aggregate.ts        # strokes → per-club readings. Shared with scripts/
       api.ts              # ApiSource — Node-side, runs under Actions
       merge.ts            # idempotent merge; manual always wins
-      published.ts        # browser-side read of public/trackman.json
     stores/
       router.svelte.ts    # History-API router
       sessions.svelte.ts  # the rune store wrapping the repository
@@ -92,6 +106,13 @@ src/
       LogView.svelte      # the practice log
       …
   app.css                 # tokens + resets (from design.md)
+  env.d.ts                # types VITE_API_URL
+
+infra/                    # deployed by hand, never from CI
+  template.yaml           # table, function, Function URL  (ap-southeast-2)
+  billing-alarm.yaml      # $1 estimated-charges alarm      (us-east-1 — see below)
+  function/handler.mjs    # the Lambda. Plain ESM, no build step
+  handler.test.mjs        # outside function/, so it is never packaged
 ```
 
 `domain/`, `storage/` and `stores/` are built (Phase 2, issue #3); `ingest/` is built (Phase 3,
@@ -199,7 +220,18 @@ valid v2 one — v1 held only `type: 'practice'` sessions, and those are unchang
 so the **build already deployed** refuses to touch a document containing Trackman sessions, which
 its validator would reject as corrupt. Guard 2 below then does exactly the right thing.
 
-Because `localStorage` is the only copy, three guards exist:
+**Phase 6 moved the record to DynamoDB.** `RemoteRepo` assembles the fetched items into this
+same `StoreDocument` — taking the document version as the *lowest* `schemaVersion` among them, so
+a part-migrated table cannot claim to be current — and runs the identical migration chain.
+Migrations still operate on whole documents, which is the shape they are written and tested
+against.
+
+`localStorage` keeps the same key and the same document, now as a cache. The three guards below
+were written for when it was the only copy; the first two still apply to the store, and
+`CachedRepo` deliberately neutralises the first in the *cache* role, where refusing to write
+would block a save the store would have accepted.
+
+Three guards exist:
 
 1. **Unreadable JSON** is copied to `golf:store.unreadable` before anything is written, and all
    further writes are refused. The Data panel surfaces the warning and offers the copy as a
@@ -223,9 +255,14 @@ introspection is enabled, so the surface is verifiable rather than guessed.
 ### The shape
 
 ```
-scripts/trackman-ingest.ts ── Actions, daily ──▶ public/trackman.json ──▶ dist/ ──▶ browser
-   refresh → GraphQL → aggregate                  {version, sessions}       merge into golf:store
+scripts/trackman-ingest.ts ── Actions, daily ──▶ Lambda Function URL ──▶ DynamoDB
+   refresh → GraphQL → aggregate → merge          PUT ?ifNotManual=1        ▲
+                                                                            │
+                              browser ── CachedRepo(RemoteRepo, LocalStorageRepo)
 ```
+
+Both writers go through **one** path. That is what made retiring `public/trackman.json` safe
+rather than creating the two-sources-of-truth problem the merge rules exist to prevent.
 
 ```
 src/lib/ingest/
@@ -233,8 +270,10 @@ src/lib/ingest/
   aggregate.ts    # strokes → ClubPath[] + Sydney date. Pure, tested, SHARED with the script
   api.ts          # ApiSource: refresh-token grant, paged GraphQL query. Node-side only
   merge.ts        # the merge rules below. Pure, tested
-  published.ts    # browser side: fetch /trackman.json, guard the 404 shim, validate
 ```
+
+`published.ts` was deleted in Phase 6 along with `public/trackman.json`. The script now
+constructs a `RemoteRepo` and calls the same `mergeTrackman()` the browser does.
 
 `ApiSource` implements `TrackmanSource`, whose `fetchSince()` maps directly onto
 `activities(timeFrom:, timeTo:)`. **Manual entry deliberately does *not* get a `ManualSource`.**
@@ -265,17 +304,19 @@ can run a `.ts` entry point.
   used**: it cannot report `n`, and OQ-7 requires a shot count on every point.
 - **Store club path per club, never blended** (OQ-7).
 
-### What gets published, and why only that
+### What gets stored
 
-The repo is public, so a committed file is world-readable — as are Actions artifacts. The workflow
-therefore commits **per-club aggregates only**: date, club, typical, best, shot count. No
-stroke-level data, no location, no identifiers. Thirteen months is 369 rows and about 30 KiB.
+**Per-club aggregates only**: date, club, typical, best, shot count. No stroke-level data, no
+location, no identifiers. Thirteen months is 369 rows, about 30 KiB.
 
-The file is `{ "version": 1, "sessions": [...] }`, where `version` describes the *file format*
-independently of the store's `schemaVersion`. There is deliberately **no `generated` timestamp** —
-it would change on every run and force a commit even when no golf happened. Git records when.
-`source` is not in the file: the browser stamps `source: 'api'` on read, so a file cannot claim to
-be hand-typed and thereby make itself unoverwritable.
+That was originally forced by the publication channel — a file committed to a public repo. It is
+now a deliberate choice rather than a constraint, and **the reason storage moved before the
+metrics widened**: per-shot data has somewhere private to land, and the next phase can choose what
+to keep on its merits.
+
+Until Phase 6 this went to `public/trackman.json` as `{ "version": 1, "sessions": [...] }`. That
+file is gone. It was also the seed for the migration — 86 sessions, no refresh token, no call to
+the undocumented API — which is why it was deleted last, after the new path was proven.
 
 ### Merge rules
 
@@ -284,8 +325,15 @@ be hand-typed and thereby make itself unoverwritable.
 3. **A date already carrying a *manual* Trackman session takes no import**, so no chart counts a
    day logged both ways twice. Reversible: delete the manual record.
 
-The browser-side sync is fired on mount and **never awaited**, swallows every failure, and writes
-nothing when the merge produces no change.
+Rules 1 and 2 are enforced twice by design: by the pure merge (fast, tested) and by the database.
+The ingest's writes carry `?ifNotManual=1`, which becomes the condition
+`attribute_not_exists(pk) OR #source <> :manual` — so a hand-typed record survives even if a save
+from the phone lands between the merge's read and its write. A blocked write reports `skipped`,
+not an error: it is the expected outcome, not a failure.
+
+The browser-side refresh is fired on mount and **never awaited**, swallows every failure, and
+writes nothing when nothing changed. The cost of that silence is a site that looks healthy while
+showing stale numbers, which is why `CachedRepo` carries `stale` and `StaleNotice` renders it.
 
 ### Automated pull
 
@@ -304,21 +352,25 @@ secret is set once and never written back — there is no rotation failure mode.
 
 **Workflow triggers are `schedule` and `workflow_dispatch` only.** Never `pull_request_target` or
 `workflow_run`: this repo is public, and those triggers run with secret access under
-attacker-influenced conditions. `deploy.yml` also carries `workflow_call`, which is a different
-thing — an explicit invocation by a workflow already in this repo. It exists because **a commit
-pushed with `GITHUB_TOKEN` does not trigger another workflow**, so without it the committed data
-would sit unpublished. The `ingest` job holds `contents: write` only; the `publish` job that calls
-`deploy.yml` is separate and holds `pages: write`.
+attacker-influenced conditions.
+
+**The job holds no permissions at all**, and carries **no AWS credentials**. It commits nothing —
+sessions go straight to the store — so `contents: write` went with the commit step, and the
+`publish` job went with it. `deploy.yml`'s `workflow_call` trigger was removed at the same time:
+it existed only because a commit pushed with `GITHUB_TOKEN` does not trigger another workflow, and
+with nothing being committed it had no caller. That job holds `pages: write`; an entry point with
+no caller is surface for nothing.
+
+`API_URL` is a repository **variable**, not a secret — writes are open (D19), and the URL ships in
+the client bundle regardless. The step asserts it is set, because an empty value would send the
+pull nowhere.
 
 **Never interpolate the `since` input into a `run:` command.** It reaches the script through
 `env:`, and the script validates its shape again before it goes near a URL.
 
-**The change check stages the file before comparing it** (`git add`, then
-`git diff --cached --quiet`). `git diff` alone only reports changes to *tracked* files and ignores
-untracked ones, so on the first run — the one that creates `public/trackman.json` — it read as "no
-change". The backfill was discarded, `publish` was skipped, and the job still reported success.
-The step also asserts the file exists, so a pull that silently wrote nothing can never again look
-like a quiet day.
+**A missed or lost session self-heals.** The default 14-day window overlaps and the merge is
+keyed on the activity id, so the next run re-adds anything absent and writes nothing otherwise.
+Verified by deleting a real session and watching the following run restore it byte-identically.
 
 **Fragility warning:** any integration built on an undocumented, non-public interface can break
 without notice. It must degrade to manual entry, and never block the app from loading.

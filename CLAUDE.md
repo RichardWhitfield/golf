@@ -39,8 +39,9 @@ pre-Phase-1 rule, where the *cards* were authoritative and the panel cloned them
 
 `storage/`, `stores/` and `routes/` are built (Phase 2, issue #3). `ingest/` is built (Phase 3,
 issue #4), along with `scripts/trackman-ingest.ts` — the Node entry point the daily Actions
-workflow runs. It imports from `lib/ingest/`, so the null-filtering, Sydney-date and merge rules
-exist once and are shared with the browser. That is why `tsx` is a devDependency.
+workflow runs. It imports from `lib/ingest/` and `lib/storage/`, so the null-filtering,
+Sydney-date and merge rules exist once and are shared with the browser. That is why `tsx` is a
+devDependency.
 
 The site has three views behind a History-API router: `/` (the plan page), `/log` and
 `/progress`. Deep links depend on `dist/404.html`, generated from the built `index.html` by the
@@ -51,9 +52,14 @@ Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/d
 `scale.ts` (the shared fixed axis), `series.ts` (per-club series), `coverage.ts` (done vs
 scheduled) and `feel.ts` (feel per arc phase). **Components render; they never calculate.**
 
-Practice data lives in one `localStorage` key, `golf:store`, holding one versioned JSON
-document at `schemaVersion` 2. **Reach it only through `lib/stores/sessions.svelte.ts`** — that
-file constructs the only `Repository` in the app.
+Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
+read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 2.
+**Reach either only through `lib/stores/sessions.svelte.ts`** — that file constructs the only
+`Repository` in the app, a `CachedRepo` wrapping a `RemoteRepo` and a `LocalStorageRepo`.
+
+Infrastructure lives in `infra/` and is deployed by hand, never from CI — see `infra/README.md`.
+**Writes are unauthenticated by explicit decision (D19):** the bounds are point-in-time recovery,
+the handler's structural validation, and writing one item at a time.
 
 The store holds **two session types**: `PracticeSession` (Tue–Sun) and `TrackmanSession` (the bay
 session, with per-club club path). `Session` is the union; narrow with `isPractice`/`isTrackman`.
@@ -123,30 +129,45 @@ so a scoped base rule outranks a global override and the override silently loses
   guard. `public/favicon.ico` matters for the same reason: browsers request it from the root.
 - Anything in `dist/` is publicly readable. **No secrets in the client bundle** — credentials
   belong in GitHub Actions secrets only.
+- **`VITE_API_URL` is public and is not a secret.** The browser must call it, so it ships in
+  `dist/` either way. It is the repository *variable* `API_URL`, never an Actions secret — filing
+  a non-secret as a secret blurs the rule that matters. The deploy asserts it reached the bundle.
+- **`infra/` is deployed by hand, never from CI.** Deploying from a public repo's Actions would
+  need AWS credentials, and nothing else in this design does. See `infra/README.md`.
 - Every phase must leave `golf.whitfield.life` working.
 
 ## Things to be careful about
 
 - **This is a live site on a real domain.** Verify a deploy before considering work done.
-- **`localStorage` is the only copy of the user's practice data.** Clearing site data destroys
-  it. JSON export/import is a requirement, not a nicety. Never write code that can wipe the store
-  without an explicit user action.
+- **DynamoDB is the record; `localStorage` is a cache.** Reads paint from the cache and refresh
+  from the store; writes go remote-first. A failed **read** degrades to cached data and must never
+  blank the site. A failed **write** must *throw* — silently losing a session is the one failure
+  mode `localStorage` never had. JSON export/import stays the escape hatch. Never write code that
+  can wipe the store without an explicit user action.
+- **A swallowed read failure looks exactly like a healthy site.** That is why `StaleNotice` exists
+  and why `CachedRepo` carries `stale`. A bug that stopped the app reaching the store entirely
+  once shipped and looked fine, because the cache held the same data. **Never verify the store
+  against a browser whose cache is already populated** — clear site data first, and watch for the
+  network request.
+- **`fetch` must be bound before it is stored on an object.** `this.#fetch(...)` makes the holder
+  the receiver, and browsers reject `window.fetch` on any other receiver with "Illegal
+  invocation". **Node tolerates it**, so the whole test suite passes while the browser fails.
 - **Trackman integration is built, and undocumented** (Phase 3, issue #4). A GraphQL API at
   `api.trackmangolf.com/graphql` works with the player's own token — see `docs/architecture.md` §4.
   It is unofficial and **must be assumed to break without notice**: never let it block app load, and
-  keep manual entry working as the baseline. `syncPublished()` is fired without `await` and
-  swallows every failure by design.
-- **Deleting `.github/workflows/trackman.yml` and `public/trackman.json` must leave the app fully
-  usable.** That is the phase's stated "done when", not a nicety. Manual entry is the baseline (D6).
-- **The repo is public, so `public/trackman.json` is world-readable.** It carries per-club
-  aggregates only — never stroke-level data, never location, never identifiers. The workflow must
-  never widen that.
+  keep manual entry working as the baseline. `sync()` is fired without `await` and swallows every
+  failure by design.
+- **Deleting `.github/workflows/trackman.yml` must leave the app fully usable.** That is a stated
+  "done when", not a nicety. Manual entry is the baseline (D6).
+- **The ingest carries no AWS credentials, and must not acquire any.** Writes are open, so the
+  workflow simply `PUT`s to the public Function URL. `API_URL` is a repository *variable*, never a
+  secret — it ships in `dist/` because the browser has to call it.
 - **Never interpolate a workflow input into a `run:` command.** `trackman.yml`'s `since` input
   reaches the script through `env:`; the script re-validates its shape before it reaches a URL.
-- **`git diff` does not see untracked files.** `trackman.yml` stages `public/trackman.json` before
-  comparing the index, because the first run — the one that creates the file — otherwise read as
-  "no change" and threw the whole backfill away while reporting success. Any "commit only if it
-  changed" step needs `git add` first, or `git status --porcelain`.
+- **Ids from Trackman are 88-character base64 ending in `=`, and `rawPath` arrives
+  percent-encoded.** The Lambda decodes before comparing or storing. Do not "validate" such an id
+  against an allowlist of characters — that guessed wrong once and rejected all 86 real sessions.
+  Check what matters: it decodes, is non-empty, is bounded, and holds no control characters.
 - **The refresh token must never be echoed, written to a file, or included in an error message.**
   Workflow logs on a public repo are public. A failed token exchange reports its HTTP status only,
   because the response body of a failed grant can echo the grant back.
@@ -154,10 +175,12 @@ so a scoped base rule outranks a global override and the override silently loses
   a mixed-club mean tracks club selection, not swing change (OQ-7 / issue #14).
 - **Don't redesign.** The user explicitly likes the current look. Extend the system; don't
   replace it.
-- **The store refuses to write when it cannot read.** Unreadable JSON is copied to
-  `golf:store.unreadable` and every write throws until it is dealt with. That is deliberate —
-  the alternative is overwriting data that might still be recoverable. Don't "fix" it by
-  falling back to an empty document.
+- **`LocalStorageRepo` refuses to write when it cannot read.** Unreadable JSON is copied to
+  `golf:store.unreadable` and every write throws until it is dealt with. That is deliberate when
+  it is the only copy — the alternative is overwriting data that might still be recoverable.
+  **`CachedRepo` neutralises it in the cache role**, where an unreadable cache must not block a
+  save the store would have accepted: only the *remote's* fault gates writes. Don't "fix" either
+  by falling back to an empty document.
 - **The app must render even when `localStorage` is unavailable.** Reading the global throws
   outright in private browsing and under "block all cookies", and the store is constructed at
   module scope — so an eager read blanks the whole site, plan page included. `LocalStorageRepo`
@@ -173,12 +196,17 @@ npm run build     # production build into dist/
 npm run preview   # serve the built dist/ locally
 npm run check     # svelte-check (TypeScript + template type errors)
 npm test          # Vitest, domain logic only
-npm run ingest    # pull Trackman sessions — needs TRACKMAN_REFRESH_TOKEN in the environment
+npm run ingest    # pull Trackman sessions — needs TRACKMAN_REFRESH_TOKEN and API_URL
 ```
 
-`npm run ingest` accepts `--since YYYY-MM-DD` (default: the last 14 days) and `--out` (default:
-`public/trackman.json`). It merges with whatever is already in that file, so a narrow window never
-truncates history, and an unchanged pull rewrites the file byte-for-byte identically.
+`npm run ingest` accepts `--since YYYY-MM-DD` (default: the last 14 days) and merges into the
+practice store, so a narrow window never truncates history and an unchanged pull writes nothing
+at all. A session deleted by accident is restored by the next run inside the window — that is
+what the 14-day default is for.
+
+`VITE_API_URL` must be set for `npm run dev`, `build` and `preview`; copy `.env.example` to
+`.env`. An unset value builds a bundle that requests `undefined/sessions`, which renders from
+cache and looks perfectly healthy — the deploy workflow asserts against exactly that.
 
 `npm run check` and `npm test` both run in CI before a deploy — a failure there blocks
 publication.

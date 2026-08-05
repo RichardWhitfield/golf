@@ -39,8 +39,8 @@ export class RemoteRepo implements Repository {
     // Node's fetch tolerates a foreign receiver, so the ingest script, the seed and every test
     // passed while the browser threw on the first request. `CachedRepo` then caught it and
     // served cached data exactly as designed, so the site looked fine and simply never synced.
-    // `ingest/published.ts` escaped this only because it calls its fetcher as a bare function,
-    // where the receiver is `undefined` and the browser allows it.
+    // The since-deleted `ingest/published.ts` escaped this only because it called its fetcher as
+    // a bare function, where the receiver is `undefined` and the browser allows it.
     this.#fetch = fetcher.bind(globalThis)
   }
 
