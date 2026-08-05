@@ -66,7 +66,7 @@ no Cognito, no VPC, no custom API domain, no CI-driven infrastructure deploys.
 
 ## 4. Cost
 
-Costed against real history: 91 Trackman sessions over 13 months, six practice sessions a week,
+Costed against real history: 86 stored Trackman sessions over 13 months, six practice sessions a week,
 20 app loads a day. AWS publishes list prices for N. Virginia; **Sydney (`ap-southeast-2`)
 typically runs 20–30% higher**, shown as an estimate.
 
@@ -262,7 +262,7 @@ Five steps. Each leaves `golf.whitfield.life` working (roadmap principle 1).
 | # | Step | Verification |
 |---|---|---|
 | 1 | Deploy infra only — table, function, URL, PITR, **$1 billing alarm**. No app change | `curl` the endpoint; confirm PITR and the alarm in the console |
-| 2 | Seed. Practice data from a JSON export; Trackman history from `public/trackman.json` | Session counts match the file (91) and the export, before proceeding |
+| 2 | Seed. Practice data from a JSON export; Trackman history from `public/trackman.json` | Session counts match the file (86) and the export, before proceeding |
 | 3 | Switch the app to `CachedRepo(RemoteRepo)`. Deploy | Log a session on the phone; confirm it appears on the laptop |
 | 4 | Switch the workflow to `PUT` at the Function URL | **Two** daily runs observed green, with data landing |
 | 5 | Delete `public/trackman.json` and `ingest/published.ts` | Site still renders the full history from DynamoDB |

@@ -1278,7 +1278,7 @@ git commit -m "Add CachedRepo, the read cache in front of the remote store"
 
 ### Task 5: Seed the table from `public/trackman.json`
 
-Two seeds are needed and they come from different places. The 91 Trackman sessions live in the repo and are seeded by this script. The practice sessions live only in the user's browser and are seeded by `CachedRepo.refresh()`, built in Task 4 and wired up in Task 6.
+Two seeds are needed and they come from different places. The 86 Trackman sessions live in the repo and are seeded by this script. The practice sessions live only in the user's browser and are seeded by `CachedRepo.refresh()`, built in Task 4 and wired up in Task 6.
 
 **Files:**
 - Create: `scripts/seed-remote.ts`
@@ -1346,7 +1346,7 @@ Run, substituting the Function URL from Task 2:
 ```bash
 API_URL=https://xxxx.lambda-url.ap-southeast-2.on.aws npm run seed
 ```
-Expected: `public/trackman.json holds 91 session(s).`, then `Seeded: 91 added · 0 updated · 0 skipped.`, then `Verified: 91 Trackman session(s) in the store.`
+Expected: `public/trackman.json holds 86 session(s).`, then `Seeded: 86 added · 0 updated · 0 skipped.`, then `Verified: 86 Trackman session(s) in the store.`
 
 If the counts disagree, the script fails loudly. Do not proceed to Task 6 until they match.
 
@@ -1510,7 +1510,7 @@ Expected: all PASS. `rg -n 'syncPublished' src/` returns nothing.
 Run: `VITE_API_URL=https://xxxx.lambda-url.ap-southeast-2.on.aws npm run dev`
 
 Check, in order:
-1. `/progress` shows the 91 seeded Trackman sessions.
+1. `/progress` shows the 86 seeded Trackman sessions.
 2. Log a practice session on `/log`; reload; it is still there.
 3. In DevTools, delete the `golf:store` key and reload — the session reappears from DynamoDB.
 4. Go offline in DevTools and reload — the page still renders from cache.
