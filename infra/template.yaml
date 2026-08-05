@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: golf.whitfield.life practice store
+
+# The billing alarm is NOT here. AWS/Billing metrics are published in us-east-1 only, whatever
+# region the resources sit in, so it lives in `billing-alarm.yaml` and deploys separately. A
+# CloudFormation Condition would have skipped it silently here — an alarm that looks configured
+# and never fires is worse than one that is visibly absent.
+
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    # Retain on stack delete. The table is the only copy of the practice log once localStorage
+    # is demoted to a cache; a mistyped `sam delete` must not be able to destroy it.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: golf
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      # D20. With writes unauthenticated this is the only thing between a bad write and
+      # permanent loss, so it is mandatory rather than a nicety.
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  Api:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: golf-store
+      CodeUri: ./
+      Handler: handler.handler
+      Runtime: nodejs22.x
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref Table
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Table
+      FunctionUrlConfig:
+        # D19: no authentication, by explicit decision.
+        AuthType: NONE
+        Cors:
+          # A convenience, not a control — it lets the browser make the call and prevents
+          # nothing, since the ingest workflow's PUT never passes through a browser.
+          AllowOrigins:
+            - https://golf.whitfield.life
+            - http://localhost:5173
+          AllowMethods: [GET, PUT, DELETE]
+          AllowHeaders: [content-type]
+
+Outputs:
+  ApiUrl:
+    Description: Public Function URL. Not a secret — it ships in the client bundle.
+    Value: !GetAtt ApiUrl.FunctionUrl
