@@ -40,6 +40,9 @@ export default defineConfig({
   base: '/',
   plugins: [svelte(), pagesSpaFallback()],
   test: {
-    include: ['src/**/*.test.ts'],
+    // `infra/` is plain ESM, not TypeScript, and sits outside `tsconfig.json`'s `include` — the
+    // Lambda deploys as a single file with no build step, so there is nothing to type-check.
+    // Tests are therefore the only gate on it, which is why it is listed here explicitly.
+    include: ['src/**/*.test.ts', 'infra/**/*.test.mjs'],
   },
 })

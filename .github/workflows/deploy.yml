@@ -4,15 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Called by trackman.yml once it has committed new session data. A commit pushed with
-  # GITHUB_TOKEN does not trigger another workflow, so without this the data would sit in the
-  # repo unpublished until some unrelated push happened to deploy it.
-  workflow_call:
+
+# `workflow_call` was removed with the Trackman ingest's commit step. It existed because a
+# commit pushed with GITHUB_TOKEN does not trigger another workflow, so freshly committed
+# session data would have sat unpublished. The ingest now writes to the practice store, which
+# the deployed site reads at runtime — nothing needs republishing when new sessions arrive, so
+# the trigger had no remaining caller. This job holds pages:write; an entry point with no
+# caller is surface for nothing.
 
 # Never add pull_request_target or workflow_run: this repo is public, and those triggers
-# run with secret access under attacker-influenced conditions. workflow_call above is a
-# different thing entirely — an explicit invocation by a workflow already in this repo,
-# running with permissions the calling job grants it.
+# run with secret access under attacker-influenced conditions.
 
 # Actions are pinned to full commit SHAs, not tags. This job holds `pages: write` and
 # `id-token: write`, so a retagged or compromised action could publish to golf.whitfield.life.
@@ -50,16 +51,30 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        # A repository *variable*, not a secret. The browser has to call this URL, so it ships
+        # in dist/ regardless — filing a non-secret as a secret would blur the rule that matters.
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+        run: |
+          # Vite substitutes an unset import.meta.env.VITE_API_URL with `undefined`, producing a
+          # bundle that requests `undefined/sessions`. The site would still render from cache and
+          # look healthy while silently never syncing — exactly the kind of quiet failure the
+          # CNAME and 404 assertions below exist to prevent.
+          test -n "$VITE_API_URL" || { echo "::error::The API_URL repository variable is not set — the build would ship a store URL of 'undefined'"; exit 1; }
+          npm run build
 
-      - name: Verify CNAME and the 404 shim survived the build
+      - name: Verify CNAME, the 404 shim and the store URL survived the build
         # Losing CNAME drops the custom domain; losing 404.html breaks every deep link
         # (/log). Both fail silently otherwise — the site still builds and still deploys.
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
         run: |
           test -f dist/CNAME || { echo "::error::dist/CNAME is missing — the custom domain would be dropped"; exit 1; }
           grep -qx 'golf.whitfield.life' dist/CNAME || { echo "::error::dist/CNAME has unexpected contents"; exit 1; }
           test -f dist/404.html || { echo "::error::dist/404.html is missing — deep links like /log would 404"; exit 1; }
           grep -q 'id="app"' dist/404.html || { echo "::error::dist/404.html is not the built app shell"; exit 1; }
+          # Belt and braces: proves the value actually reached the bundle, not merely the shell.
+          grep -qrF "$VITE_API_URL" dist/assets || { echo "::error::The store URL is not in the built bundle — practice data would never sync"; exit 1; }
 
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 

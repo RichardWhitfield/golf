@@ -14,10 +14,10 @@
         // Never let a storage failure stop the plan page rendering — it needs no storage at all.
         console.error('Could not load the practice log:', error)
       })
-      // Deliberately not awaited by anything that renders. A slow, hanging or failing fetch of
-      // the published Trackman file must not delay first paint, and `syncPublished` swallows
-      // every error itself — manual entry is the baseline and works without any of this.
-      .then(() => sessions.syncPublished())
+      // Deliberately not awaited by anything that renders. `load()` answers from the cache so
+      // the page paints immediately; this then refreshes from the store. A slow, hanging or
+      // unreachable store must not delay first paint, and `sync` swallows every error itself.
+      .then(() => sessions.sync())
   })
 </script>
 

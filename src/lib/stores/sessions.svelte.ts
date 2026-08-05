@@ -8,9 +8,10 @@ import {
 } from '../domain/types'
 import { resolveISODate } from '../domain/today'
 import type { ImportSummary, Repository, Settings } from '../storage/repository'
+import { CachedRepo } from '../storage/cached'
 import { LocalStorageRepo } from '../storage/local'
+import { RemoteRepo } from '../storage/remote'
 import { InvalidImportError, exportFilename, serialiseDocument } from '../storage/transfer'
-import { fetchPublished } from '../ingest/published'
 
 /**
  * The single point where the app touches storage. **No component may import a repository or
@@ -29,6 +30,8 @@ class SessionStore {
   warning = $state<string | null>(null)
   /** What the last Trackman sync did, in a sentence. Null until one has changed something. */
   syncMessage = $state<string | null>(null)
+  /** True when the store could not be reached, so the view is showing cached data. */
+  stale = $state(false)
 
   #repo: Repository
 
@@ -42,7 +45,16 @@ class SessionStore {
     return this.list.filter(isTrackman)
   }
 
-  constructor(repo: Repository = new LocalStorageRepo()) {
+  /**
+   * The one place the app decides where data lives — the entire justification for the async
+   * interface, cashed in. `CachedRepo` paints from `localStorage` and refreshes from DynamoDB.
+   */
+  constructor(
+    repo: Repository = new CachedRepo(
+      new RemoteRepo(import.meta.env.VITE_API_URL),
+      new LocalStorageRepo(),
+    ),
+  ) {
     this.#repo = repo
   }
 
@@ -102,29 +114,26 @@ class SessionStore {
   }
 
   /**
-   * Fold in whatever the scheduled workflow has published.
+   * Pull the store into the cache after first paint.
    *
-   * **Never awaited by the caller, and never allowed to throw.** The site must render with this
-   * integration broken, switched off, or never set up at all — the plan page needs none of this
-   * data, and the API behind it is undocumented and assumed breakable.
+   * **Never awaited by the caller, and never allowed to throw.** The site must render with the
+   * network down, the store unreachable, or the whole thing never set up — the plan page needs
+   * no stored data at all.
+   *
+   * Note the asymmetry with `save()`, which deliberately *does* throw. A failed refresh shows
+   * cached data and says so; a failed save would silently lose a session, which is the one
+   * failure mode `localStorage` never had.
    */
-  async syncPublished(): Promise<void> {
+  async sync(): Promise<void> {
     try {
-      const incoming = await fetchPublished()
-      if (incoming === null || incoming.length === 0) return
-
-      const result = await this.#repo.mergeTrackman(incoming)
-      if (!result.changed && result.skipped === 0) return
-      if (result.changed) await this.load()
-
-      const parts: string[] = []
-      if (result.added > 0) parts.push(`${result.added} new`)
-      if (result.updated > 0) parts.push(`${result.updated} updated`)
-      // Reported, not swallowed: a skip that says nothing looks exactly like data going missing.
-      if (result.skipped > 0) parts.push(`${result.skipped} skipped, already logged by hand`)
-      this.syncMessage = `Trackman: ${parts.join(' · ')}.`
+      const repo = this.#repo
+      if (!(repo instanceof CachedRepo)) return
+      await repo.refresh()
+      this.stale = repo.stale
+      await this.load()
     } catch {
-      // Silent by design. Manual entry is the baseline and is completely unaffected.
+      // Cached data is still usable, and the plan page never needed the store.
+      this.stale = true
     }
   }
 }

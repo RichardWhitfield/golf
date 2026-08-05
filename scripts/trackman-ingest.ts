@@ -1,23 +1,22 @@
 /**
- * Pull Trackman sessions and write them to the published data file.
+ * Pull Trackman sessions and write them to the practice store.
  *
  * Run by `.github/workflows/trackman.yml`; also runnable locally against a token in the
- * environment. **Argument parsing, fetching and file writing only** — every rule about what a
- * reading means lives in `src/lib/ingest/`, where Vitest covers it and the browser shares it.
+ * environment. **Argument parsing and fetching only** — every rule about what a reading means
+ * lives in `src/lib/ingest/`, where Vitest covers it and the browser shares it.
  *
- *   npm run ingest -- --since 2025-06-01 --out public/trackman.json
+ *   npm run ingest -- --since 2025-06-01
  *
  * The token is read from `TRACKMAN_REFRESH_TOKEN` and never printed, never written to a file,
  * and never included in an error message. This output is a public workflow log.
+ *
+ * `API_URL` is the Function URL. It is deliberately **not** a secret — writes are open by
+ * decision (D19), so this job needs no AWS credentials of any kind.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { ApiSource } from '../src/lib/ingest/api'
-import { mergeTrackmanSessions } from '../src/lib/ingest/merge'
-import { PUBLISHED_FORMAT_VERSION, parsePublished } from '../src/lib/ingest/published'
+import { RemoteRepo } from '../src/lib/storage/remote'
 import { resolveISODate } from '../src/lib/domain/today'
 import type { ISODate, TrackmanSession } from '../src/lib/domain/types'
-
-const DEFAULT_OUT = 'public/trackman.json'
 
 /** A missed run self-heals: the window overlaps, and the merge is idempotent. */
 const DEFAULT_WINDOW_DAYS = 14
@@ -47,25 +46,13 @@ function since(): ISODate {
   return resolveISODate(from)
 }
 
-/** What is already published, so a short window never truncates the history. */
-function existing(path: string): TrackmanSession[] {
-  if (!existsSync(path)) return []
-  try {
-    return parsePublished(JSON.parse(readFileSync(path, 'utf8')))
-  } catch (error) {
-    // Refuse rather than overwrite. The file is in git, so a bad one is recoverable — but only
-    // if this job does not replace it with a partial rewrite first.
-    fail(
-      `${path} exists but could not be read: ${error instanceof Error ? error.message : 'unknown'}`,
-    )
-  }
-}
-
 async function main(): Promise<void> {
   const token = process.env.TRACKMAN_REFRESH_TOKEN
   if (!token) fail('Set TRACKMAN_REFRESH_TOKEN.')
 
-  const out = arg('out') ?? DEFAULT_OUT
+  const url = process.env.API_URL
+  if (!url) fail('Set API_URL to the Function URL.')
+
   const from = since()
 
   const unknownClubs = new Set<string>()
@@ -84,18 +71,19 @@ async function main(): Promise<void> {
     console.log(`::warning::Unmapped club "${name}" — its strokes were skipped. Add it to src/lib/domain/clubs.ts.`)
   }
 
-  const before = existing(out)
-  const result = mergeTrackmanSessions(before, fetched)
-  const sessions = result.sessions.filter((s): s is TrackmanSession => s.type === 'trackman')
-  sessions.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-
-  // No `generated` timestamp: it would change on every run and force a commit even when no golf
-  // happened. Git already records when.
-  writeFileSync(out, `${JSON.stringify({ version: PUBLISHED_FORMAT_VERSION, sessions }, null, 2)}\n`)
+  // The same merge the browser uses, against the store rather than a file. `mergeTrackman` adds
+  // `?ifNotManual=1` per write, so a hand-typed record survives even if a save from the phone
+  // lands between this read and its write.
+  let result
+  try {
+    result = await new RemoteRepo(url).mergeTrackman(fetched)
+  } catch (error) {
+    fail(error instanceof Error ? error.message : 'The store could not be written.')
+  }
 
   console.log(
     `Pulled from ${from}: ${fetched.length} session(s) measured · ` +
-      `${result.added} new · ${result.updated} updated · ${sessions.length} in ${out}.`,
+      `${result.added} new · ${result.updated} updated · ${result.skipped} skipped.`,
   )
 }
 
