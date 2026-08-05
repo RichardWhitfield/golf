@@ -36,7 +36,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: golf-store
-      CodeUri: ./
+      # `function/` holds exactly one file. `aws cloudformation package` zips the whole of
+      # CodeUri, so anything placed here is deployed — keep tests and templates out of it.
+      CodeUri: function/
       Handler: handler.handler
       Runtime: nodejs22.x
       MemorySize: 256

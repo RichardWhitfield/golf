@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { BadRequest, route, validateSession, makeHandler } from './handler.mjs'
+// The test deliberately sits OUTSIDE `function/`, which is the directory that gets zipped and
+// deployed. `aws cloudformation package` archives the whole CodeUri directory, so a test file
+// living beside the handler would ship to production.
+import { BadRequest, route, validateSession, makeHandler } from './function/handler.mjs'
 
 const PRACTICE = { id: 'a1', type: 'practice', date: '2026-08-05', location: 'home', entries: [] }
 

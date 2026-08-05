@@ -20,17 +20,19 @@ never fires.
 Needs credentials that can write. The `claude-code-readonly` IAM user in this workspace
 cannot deploy, deliberately — run these yourself, or with an admin profile.
 
-**With the SAM CLI**, which provisions its own artifact bucket:
+**The SAM CLI is not required.** `AWS::Serverless-2016-10-31` is a CloudFormation *transform*
+and is expanded server-side; SAM CLI only automates zipping the code and uploading it, which
+`aws cloudformation package` has always done. There is no behavioural difference in the
+deployed stack.
+
+One-off, to hold the code zip. CloudFormation cannot take a local file, and the handler is
+too large for an inline `ZipFile`:
+
+    aws s3 mb s3://golf-store-artifacts-125969980812 --region ap-southeast-2
+
+Then, to deploy or redeploy:
 
     cd infra
-    sam build
-    sam deploy --guided --region ap-southeast-2 --stack-name golf-store
-
-**Or with the `aws` CLI alone**, if SAM is not installed. The `AWS::Serverless` transform runs
-server-side in CloudFormation, so only the code upload needs doing locally:
-
-    cd infra
-    aws s3 mb s3://golf-store-artifacts-125969980812 --region ap-southeast-2   # once
     aws cloudformation package \
       --template-file template.yaml \
       --s3-bucket golf-store-artifacts-125969980812 \
@@ -39,9 +41,28 @@ server-side in CloudFormation, so only the code upload needs doing locally:
       --region ap-southeast-2 \
       --stack-name golf-store \
       --template-file packaged.yaml \
-      --capabilities CAPABILITY_IAM
+      --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
 
-`packaged.yaml` is build output — it is gitignored, and regenerating it is one command.
+    aws cloudformation describe-stacks --region ap-southeast-2 \
+      --stack-name golf-store \
+      --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' --output text
+
+`CAPABILITY_IAM` covers the function's execution role; `CAPABILITY_AUTO_EXPAND` covers the
+serverless transform itself. `packaged.yaml` is build output — gitignored, and one command to
+regenerate.
+
+`aws cloudformation deploy` exits non-zero with `No changes to deploy` when nothing changed.
+That is success, not failure.
+
+<details>
+<summary>With the SAM CLI, if you have it</summary>
+
+    cd infra
+    sam build
+    sam deploy --guided --region ap-southeast-2 --stack-name golf-store
+
+It provisions its own artifact bucket, so the `s3 mb` step is unnecessary.
+</details>
 
 Then the alarm, once:
 
