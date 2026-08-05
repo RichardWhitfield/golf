@@ -109,8 +109,8 @@ src/
   env.d.ts                # types VITE_API_URL
 
 infra/                    # deployed by hand, never from CI
-  template.yaml           # table, function, Function URL  (ap-southeast-2)
-  billing-alarm.yaml      # $1 estimated-charges alarm      (us-east-1 — see below)
+  template.yaml           # table, function, Function URL
+  budget.yaml             # $1 monthly spend alert (AWS Budgets — no SNS, nothing to confirm)
   function/handler.mjs    # the Lambda. Plain ESM, no build step
   handler.test.mjs        # outside function/, so it is never packaged
 ```

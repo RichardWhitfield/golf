@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Spend alert for the golf practice store
+
+# Replaces a CloudWatch AWS/Billing alarm plus an SNS topic and email subscription.
+#
+# **Why:** an SNS email subscription must be confirmed by fetching a link, and its *unsubscribe*
+# link is a plain GET carrying a token. Chrome's link prefetching fetched that link from the
+# "Subscription confirmed!" page without anyone clicking it, so the subscription went straight
+# from PendingConfirmation to Deleted — twice. The alarm meanwhile reported StateValue OK with a
+# valid AlarmActions ARN, so it looked entirely healthy while notifying nobody.
+#
+# AWS Budgets emails its subscribers **directly, with no confirmation step**, so there is no
+# token, no unsubscribe URL, and nothing for a prefetcher to trip over.
+#
+# The point is not the ~3p/month of expected usage. It is misconfiguration: provisioned capacity
+# left running, or a retry loop. This turns a surprise bill into an email.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Address to notify when spend passes the threshold.
+
+Resources:
+  Budget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: golf
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 1
+          Unit: USD
+      NotificationsWithSubscribers:
+        # ACTUAL, not FORECASTED. A forecast on an account this quiet swings wildly on a few
+        # cents of usage and would cry wolf; actual spend passing a dollar is a real event.
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            ThresholdType: PERCENTAGE
+            Threshold: 100
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
