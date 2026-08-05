@@ -33,6 +33,29 @@ describe('RemoteRepo', () => {
     expect(calls[0].url).toBe('https://api.example/sessions')
   })
 
+  it('never calls fetch with itself as the receiver', async () => {
+    // A browser rejects `window.fetch` invoked on any other receiver — "Illegal invocation" —
+    // and holding it as a field makes `this.#fetch(...)` a method call on the repo. **Node's
+    // fetch tolerates this**, so nothing else in the suite can reproduce it: the first version
+    // shipped, every test passed, and the deployed site silently never synced.
+    const receivers: unknown[] = []
+    const fetcher = function (this: unknown) {
+      receivers.push(this)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => '{"sessions":[],"schemaVersion":2}',
+      } as Response)
+    } as unknown as typeof fetch
+
+    const repo = new RemoteRepo('https://api.example', fetcher)
+    await repo.listSessions()
+
+    expect(receivers).toHaveLength(1)
+    expect(receivers[0]).not.toBe(repo)
+    expect(receivers[0]).toBe(globalThis)
+  })
+
   it('PUTs a session to its own id', async () => {
     const { calls, fetcher } = fakeFetch([{ body: { ok: true } }])
     await new RemoteRepo('https://api.example', fetcher).saveSession(PRACTICE)

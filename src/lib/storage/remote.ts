@@ -32,7 +32,16 @@ export class RemoteRepo implements Repository {
   constructor(baseUrl: string, fetcher: typeof fetch = globalThis.fetch) {
     // A trailing slash would produce `//sessions`, which the route table does not match.
     this.#base = baseUrl.replace(/\/+$/, '')
-    this.#fetch = fetcher
+    // **Bound, and it must be.** Held as a field, `this.#fetch(...)` is a *method* call, so the
+    // receiver is this repo — and a browser rejects `window.fetch` invoked on anything but the
+    // window: "Failed to execute 'fetch' on 'Window': Illegal invocation".
+    //
+    // Node's fetch tolerates a foreign receiver, so the ingest script, the seed and every test
+    // passed while the browser threw on the first request. `CachedRepo` then caught it and
+    // served cached data exactly as designed, so the site looked fine and simply never synced.
+    // `ingest/published.ts` escaped this only because it calls its fetcher as a bare function,
+    // where the receiver is `undefined` and the browser allows it.
+    this.#fetch = fetcher.bind(globalThis)
   }
 
   get faultMessage(): string | null {
