@@ -132,6 +132,52 @@ describe('parseDocument · Trackman sessions', () => {
     const original = parseDocument(doc([session('a'), trackman()]))
     expect(parseDocument(JSON.parse(serialiseDocument(original)))).toEqual(original)
   })
+
+  it('preserves the wider metrics through an export and import round trip', () => {
+    // The reason for the version bump: a build that drops `metrics` on import would lose them
+    // silently, and the loss would only show up as charts quietly going empty.
+    const doc = {
+      schemaVersion: 3,
+      sessions: [
+        { id: 'a', type: 'trackman', date: '2026-07-27', source: 'api',
+          clubs: [{
+            club: 'DRIVER', typical: -5.4, best: -0.19, n: 618,
+            metrics: { swingPlane: { typical: 49.75, n: 666 }, faceToPath: { typical: 4.36, best: 0.97, n: 556 } },
+          }] },
+      ],
+      settings: {},
+    }
+    const parsed = parseDocument(doc)
+    expect(parsed.sessions[0]).toMatchObject({
+      clubs: [{ metrics: { swingPlane: { typical: 49.75, n: 666 } } }],
+    })
+  })
+
+  it('rejects a metric reading with a non-finite typical', () => {
+    const doc = {
+      schemaVersion: 3,
+      sessions: [
+        { id: 'a', type: 'trackman', date: '2026-07-27', source: 'api',
+          clubs: [{ club: 'DRIVER', typical: -5.4, best: -0.19, n: 618,
+                    metrics: { swingPlane: { typical: 'steep', n: 4 } } }] },
+      ],
+      settings: {},
+    }
+    expect(() => parseDocument(doc)).toThrow()
+  })
+
+  it('drops a metric it does not know, rather than storing a name it cannot chart', () => {
+    const doc = {
+      schemaVersion: 3,
+      sessions: [
+        { id: 'a', type: 'trackman', date: '2026-07-27', source: 'api',
+          clubs: [{ club: 'DRIVER', typical: -5.4, best: -0.19, n: 618,
+                    metrics: { swingDirection: { typical: -8, n: 4 } } }] },
+      ],
+      settings: {},
+    }
+    expect(parseDocument(doc).sessions[0]).toMatchObject({ clubs: [{ metrics: {} }] })
+  })
 })
 
 describe('parseDocument', () => {

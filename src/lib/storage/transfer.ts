@@ -1,14 +1,17 @@
 import type {
   ClubPath,
   DrillId,
+  ExtraMetricId,
   ISODate,
   Location,
+  MetricReading,
   PracticeSession,
   Session,
   TrackmanSession,
 } from '../domain/types'
 import { DRILLS } from '../domain/drills'
 import { MAX_PATH_DEGREES, compareClubs, isClub, type Club } from '../domain/clubs'
+import { isMetricId } from '../domain/metrics'
 import { parseISODate } from '../domain/block'
 import type { ImportSummary, StoreDocument } from './repository'
 import { SCHEMA_VERSION, migrate } from './migrations'
@@ -53,6 +56,38 @@ function checkDrillIds(raw: unknown, where: string): DrillId[] | undefined {
     }
     return id as DrillId
   })
+}
+
+/**
+ * **Unknown metrics are dropped, not rejected.** An export written by a newer build may name a
+ * metric this one cannot chart, and refusing the whole document over it would turn a forward-
+ * compatible addition into a failed restore. An unknown *club* is different and still rejects:
+ * a club is the key a reading is filed under, so guessing there loses the reading itself.
+ */
+function checkMetrics(raw: unknown, where: string): Partial<Record<ExtraMetricId, MetricReading>> | undefined {
+  if (raw === undefined) return undefined
+  if (!isRecord(raw)) reject(`${where} has a malformed metrics map.`)
+
+  const out: Partial<Record<ExtraMetricId, MetricReading>> = {}
+  for (const [id, value] of Object.entries(raw)) {
+    if (!isMetricId(id) || id === 'clubPath') continue
+    if (!isRecord(value)) reject(`${where} has a malformed "${id}" reading.`)
+    if (typeof value.typical !== 'number' || !Number.isFinite(value.typical)) {
+      reject(`${where} has a "${id}" reading with no usable value.`)
+    }
+    if (typeof value.n !== 'number' || !Number.isInteger(value.n) || value.n < 1) {
+      reject(`${where} has a "${id}" reading with no usable shot count.`)
+    }
+    const entry: MetricReading = { typical: value.typical, n: value.n }
+    if (value.best !== undefined) {
+      if (typeof value.best !== 'number' || !Number.isFinite(value.best)) {
+        reject(`${where} has a "${id}" reading with a malformed best.`)
+      }
+      entry.best = value.best
+    }
+    out[id as ExtraMetricId] = entry
+  }
+  return out
 }
 
 /**
@@ -109,6 +144,7 @@ function checkTrackmanSession(raw: Record<string, unknown>, where: string): Trac
       best: entry.best as number,
     }
     if (entry.n !== undefined) path.n = entry.n as number
+    if (entry.metrics !== undefined) path.metrics = checkMetrics(entry.metrics, what)
     return path
   })
   // Bag order, so a stored session reads the same way however it was assembled.
