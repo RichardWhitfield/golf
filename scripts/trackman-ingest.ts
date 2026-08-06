@@ -14,9 +14,10 @@
  * decision (D19), so this job needs no AWS credentials of any kind.
  */
 import { ApiSource } from '../src/lib/ingest/api'
+import { shotsToWrite } from '../src/lib/ingest/merge'
 import { RemoteRepo } from '../src/lib/storage/remote'
 import { resolveISODate } from '../src/lib/domain/today'
-import { isTrackman, type ISODate } from '../src/lib/domain/types'
+import type { ISODate } from '../src/lib/domain/types'
 
 /** A missed run self-heals: the window overlaps, and the merge is idempotent. */
 const DEFAULT_WINDOW_DAYS = 14
@@ -83,30 +84,29 @@ async function main(): Promise<void> {
     fail(error instanceof Error ? error.message : 'The store could not be written.')
   }
 
-  // Shots follow the sessions, and only for what the merge actually wrote. A session skipped
-  // because it is hand-typed must not have machine shots attached to it — that would put an
-  // imported record behind a manual one, which is the guarantee `ifNotManual` exists to keep.
-  let shotSessions = 0
+  // Shots follow the sessions. The bound is the **pull window**, not what changed: every api
+  // session still inside it has its shots rewritten on every run. That is deliberate and matches
+  // why the window defaults to 14 days — a session lost by accident is restored by the next run
+  // inside it, and without this the shots item would be the one thing nothing ever repaired.
+  // A session skipped because it is hand-typed must never have machine shots attached, which
+  // would put an imported record behind a manual one.
+  const pending = shotsToWrite(result.sessions, fetched.shots)
   let shotCount = 0
-  for (const session of result.sessions) {
-    if (!isTrackman(session) || session.source !== 'api') continue
-    const shots = fetched.shots.get(session.id)
-    if (!shots || shots.length === 0) continue
+  for (const { id, shots } of pending) {
     try {
-      await repo.saveShots(session.id, shots)
+      await repo.saveShots(id, shots)
     } catch (error) {
       // Loud, never swallowed: the session aggregates already landed, so a silent failure here
       // would leave the two halves out of step with nothing to show for it.
-      fail(error instanceof Error ? error.message : `Could not write shots for ${session.id}.`)
+      fail(error instanceof Error ? error.message : `Could not write shots for ${id}.`)
     }
-    shotSessions += 1
     shotCount += shots.length
   }
 
   console.log(
     `Pulled from ${from}: ${fetched.sessions.length} session(s) measured · ` +
       `${result.added} new · ${result.updated} updated · ${result.skipped} skipped · ` +
-      `${shotCount} shot(s) across ${shotSessions} session(s).`,
+      `${shotCount} shot(s) across ${pending.length} session(s).`,
   )
 }
 

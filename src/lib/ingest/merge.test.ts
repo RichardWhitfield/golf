@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Session, TrackmanSession } from '../domain/types'
-import { mergeTrackmanSessions } from './merge'
+import type { Session, Shot, TrackmanSession } from '../domain/types'
+import { mergeTrackmanSessions, shotsToWrite } from './merge'
 
 const api = (id: string, date: string, typical = -7): TrackmanSession => ({
   id,
@@ -94,5 +94,33 @@ describe('mergeTrackmanSessions', () => {
     const stored: Session[] = [practice]
     mergeTrackmanSessions(stored, [api('a', '2026-07-27')])
     expect(stored).toEqual([practice])
+  })
+})
+
+describe('shotsToWrite', () => {
+  const shots: Shot[] = [{ club: 'DRIVER', metrics: { clubPath: -6 } }]
+
+  it('never gives machine shots to a hand-typed session', () => {
+    // The guarantee this function exists for. `ifNotManual` guards the SESSION partition only;
+    // the SHOTS# key space inherits nothing, so if this rule is not kept here it is kept nowhere.
+    expect(shotsToWrite([manual('a', '2026-07-27')], new Map([['a', shots]]))).toEqual([])
+  })
+
+  it('writes shots for an imported session', () => {
+    expect(shotsToWrite([api('a', '2026-07-27')], new Map([['a', shots]]))).toEqual([
+      { id: 'a', shots },
+    ])
+  })
+
+  it('skips a session outside the pull window', () => {
+    expect(shotsToWrite([api('a', '2026-07-27')], new Map())).toEqual([])
+  })
+
+  it('writes no item for a session whose shots list is empty', () => {
+    expect(shotsToWrite([api('a', '2026-07-27')], new Map([['a', []]]))).toEqual([])
+  })
+
+  it('ignores practice sessions, which have no source and no shots', () => {
+    expect(shotsToWrite([practice], new Map([['p1', shots]]))).toEqual([])
   })
 })
