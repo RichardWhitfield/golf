@@ -15,6 +15,8 @@
  * Diagnostic, not production. It duplicates the token grant and paging from
  * `src/lib/ingest/api.ts` rather than widening that class's private surface for a one-off.
  */
+export {}
+
 const TOKEN_URL = 'https://login.trackmangolf.com/connect/token'
 const GRAPHQL_URL = 'https://api.trackmangolf.com/graphql'
 const CLIENT_ID = 'old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae'
@@ -62,9 +64,29 @@ const METRICS = [
   'totalSide',
 ] as const
 
-type Metric = (typeof METRICS)[number]
+/**
+ * Fields whose *type* is not a plain `Float`, probed alongside the metrics because each would
+ * change the design if it were readable: `reducedAccuracy` is Trackman's own quality flag,
+ * `normalizedMeasurement` is a second reading of the same shot.
+ */
+const EXTRAS = [
+  'kind',
+  'detectedClubCategory',
+  'reducedAccuracy',
+  '__normalizedMeasurement',
+] as const
 
-const QUERY = `
+/**
+ * A selection set over just `fields`. `__normalizedMeasurement` is a sentinel rather than a real
+ * field name: it sits on `Stroke`, not on `Measurement`, and needs a sub-selection of its own.
+ */
+function query(fields: string[]): string {
+  const onMeasurement = fields.filter((f) => f !== '__normalizedMeasurement')
+  const normalized = fields.includes('__normalizedMeasurement')
+    ? 'normalizedMeasurement { clubPath swingPlane }'
+    : ''
+  const measurement = onMeasurement.length > 0 ? `measurement { ${onMeasurement.join(' ')} }` : ''
+  return `
 query Probe($from: DateTime!, $to: DateTime!, $take: Int!, $skip: Int!) {
   me {
     activities(kinds: [VIRTUAL_RANGE], timeFrom: $from, timeTo: $to, take: $take, skip: $skip) {
@@ -75,16 +97,13 @@ query Probe($from: DateTime!, $to: DateTime!, $take: Int!, $skip: Int!) {
         time
         ... on VirtualRangeSessionActivity {
           strokeCount
-          strokes {
-            club
-            measurement { kind detectedClubCategory reducedAccuracy ${METRICS.join(' ')} }
-            normalizedMeasurement { clubPath swingPlane }
-          }
+          strokes { club ${measurement} ${normalized} }
         }
       }
     }
   }
 }`
+}
 
 interface RawMeasurement {
   kind?: string | null
@@ -135,45 +154,80 @@ async function accessToken(refreshToken: string): Promise<string> {
   return body.access_token
 }
 
-async function fetchAll(token: string, from: string): Promise<RawActivity[]> {
+interface Page {
+  totalCount: number
+  pageInfo: { hasNextPage: boolean }
+  items: RawActivity[]
+}
+
+/**
+ * One page. Returns the GraphQL `errors` rather than failing on them, because for this script an
+ * error **is** the finding: a field the schema exposes but the player's own token cannot read
+ * comes back exactly this way, inside a 200.
+ */
+async function page(
+  token: string,
+  fields: string[],
+  from: string,
+  take: number,
+  skip: number,
+): Promise<{ page?: Page; errors?: string[] }> {
+  let res: Response
+  try {
+    res = await fetch(GRAPHQL_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        query: query(fields),
+        variables: { from, to: '2100-01-01T00:00:00Z', take, skip },
+      }),
+    })
+  } catch (error) {
+    fail(`Could not reach the API: ${error instanceof Error ? error.message : 'unknown'}`)
+  }
+  if (!res.ok) fail(`The API returned HTTP ${res.status}.`)
+
+  const body = (await res.json()) as {
+    data?: { me?: { activities?: Page } }
+    errors?: { message?: string }[]
+  }
+  if (body.errors?.length) return { errors: body.errors.map((e) => e.message ?? 'unknown') }
+  const node = body.data?.me?.activities
+  if (!node || !Array.isArray(node.items)) fail('The API returned no activities node.')
+  return { page: node }
+}
+
+/**
+ * Which fields this token may actually read, one query each.
+ *
+ * **Existence and authorization are separate questions**, and the first probe proved it: a single
+ * unauthorized field fails the whole request rather than returning the rest as null. Bisecting
+ * would be fewer round trips, but one field per query is the only form whose answer is
+ * unambiguous — and the answer is what the ingest query gets built from.
+ */
+async function authorized(token: string, from: string, candidates: string[]): Promise<string[]> {
+  const allowed: string[] = []
+  const denied: [string, string][] = []
+  for (const field of candidates) {
+    const { errors } = await page(token, [field], from, 1, 0)
+    if (errors) denied.push([field, errors.join('; ')])
+    else allowed.push(field)
+  }
+  console.log(`\n=== authorization — ${allowed.length} of ${candidates.length} readable ===`)
+  console.log(`  readable: ${allowed.join(', ') || '(none)'}`)
+  for (const [field, message] of denied) console.log(`  DENIED ${field}: ${message}`)
+  return allowed
+}
+
+async function fetchAll(token: string, fields: string[], from: string): Promise<RawActivity[]> {
   const items: RawActivity[] = []
   for (let skip = 0; ; skip += PAGE_SIZE) {
-    let res: Response
-    try {
-      res = await fetch(GRAPHQL_URL, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          query: QUERY,
-          variables: { from, to: '2100-01-01T00:00:00Z', take: PAGE_SIZE, skip },
-        }),
-      })
-    } catch (error) {
-      fail(`Could not reach the API: ${error instanceof Error ? error.message : 'unknown'}`)
-    }
-    if (!res.ok) fail(`The API returned HTTP ${res.status}.`)
-
-    const body = (await res.json()) as {
-      data?: {
-        me?: {
-          activities?: {
-            totalCount: number
-            pageInfo: { hasNextPage: boolean }
-            items: RawActivity[]
-          }
-        }
-      }
-      errors?: { message?: string }[]
-    }
-    if (body.errors?.length) {
-      fail(`The API reported errors: ${body.errors.map((e) => e.message ?? 'unknown').join('; ')}`)
-    }
-    const page = body.data?.me?.activities
-    if (!page || !Array.isArray(page.items)) fail('The API returned no activities node.')
-
-    items.push(...page.items)
-    if (!page.pageInfo.hasNextPage) break
-    if (items.length >= page.totalCount) break
+    const { page: node, errors } = await page(token, fields, from, PAGE_SIZE, skip)
+    if (errors) fail(`The API reported errors: ${errors.join('; ')}`)
+    if (!node) fail('The API returned no activities node.')
+    items.push(...node.items)
+    if (!node.pageInfo.hasNextPage) break
+    if (items.length >= node.totalCount) break
   }
   return items
 }
@@ -220,10 +274,10 @@ function correlate(pairs: [number, number][]): number | null {
   return denom === 0 ? null : sxy / denom
 }
 
-function report(label: string, strokes: RawStroke[]): void {
+function report(label: string, strokes: RawStroke[], metrics: string[]): void {
   console.log(`\n=== ${label} — ${strokes.length} strokes ===`)
   console.log('  metric              present   null%      min      p05      p50      p95      max')
-  for (const metric of METRICS) {
+  for (const metric of metrics) {
     const values: number[] = []
     for (const s of strokes) {
       const v = num(s.measurement?.[metric])
@@ -251,10 +305,10 @@ function report(label: string, strokes: RawStroke[]): void {
 }
 
 /** How strongly each metric moves with club path. The phase's motivating question in one column. */
-function correlations(label: string, strokes: RawStroke[]): void {
+function correlations(label: string, strokes: RawStroke[], metrics: string[]): void {
   console.log(`\n=== ${label} — correlation with clubPath (Pearson r) ===`)
   const rows: [string, number, number][] = []
-  for (const metric of METRICS) {
+  for (const metric of metrics) {
     if (metric === 'clubPath') continue
     const pairs: [number, number][] = []
     for (const s of strokes) {
@@ -278,10 +332,24 @@ const since = process.env.SINCE && /^\d{4}-\d{2}-\d{2}$/.test(process.env.SINCE)
   ? process.env.SINCE
   : '2025-06-01'
 
-const activities = await fetchAll(token, `${since}T00:00:00Z`)
+const from = `${since}T00:00:00Z`
+const access = await accessToken(token)
+
+// Authorization first. The first run of this script asked for everything at once and the API
+// refused the entire request — so the readable set has to be established before anything can be
+// counted, and it is the readable set, not the schema, that the ingest query is built from.
+const readable = await authorized(access, from, [...METRICS, ...EXTRAS])
+const metrics = METRICS.filter((m) => readable.includes(m))
+const extras = new Set(EXTRAS.filter((e) => readable.includes(e)))
+
+if (!metrics.includes('clubPath')) {
+  fail('clubPath is not readable. Nothing below would mean anything.')
+}
+
+const activities = await fetchAll(access, readable, from)
 const strokes = activities.flatMap((a) => a.strokes ?? []).filter((s): s is RawStroke => !!s)
 
-console.log(`Sessions: ${activities.length}   Strokes: ${strokes.length}   Since: ${since}`)
+console.log(`\nSessions: ${activities.length}   Strokes: ${strokes.length}   Since: ${since}`)
 
 // Volume, which decides whether per-shot data can be stored per session at all (D24).
 const perSession = activities.map((a) => a.strokes?.length ?? 0).sort((a, b) => a - b)
@@ -292,7 +360,7 @@ console.log(
 
 // `measurement.kind` and `detectedClubCategory` may distinguish a real swing from a putt or a
 // misread. Frequencies first — nothing can be filtered on a value nobody has seen.
-for (const field of ['kind', 'detectedClubCategory'] as const) {
+for (const field of (['kind', 'detectedClubCategory'] as const).filter((f) => extras.has(f))) {
   const counts = new Map<string, number>()
   for (const s of strokes) {
     const key = s.measurement?.[field] ?? '(null)'
@@ -304,40 +372,45 @@ for (const field of ['kind', 'detectedClubCategory'] as const) {
 
 // Trackman's own data-quality flag. If it is populated it is a better filter than a null check,
 // because it marks a reading the radar itself distrusts rather than one it never took.
-const flags = new Map<string, number>()
-let withFlags = 0
-for (const s of strokes) {
-  const list = s.measurement?.reducedAccuracy
-  if (!Array.isArray(list) || list.length === 0) continue
-  withFlags += 1
-  for (const f of list) flags.set(String(f), (flags.get(String(f)) ?? 0) + 1)
+if (extras.has('reducedAccuracy')) {
+  const flags = new Map<string, number>()
+  let withFlags = 0
+  for (const s of strokes) {
+    const list = s.measurement?.reducedAccuracy
+    if (!Array.isArray(list) || list.length === 0) continue
+    withFlags += 1
+    for (const f of list) flags.set(String(f), (flags.get(String(f)) ?? 0) + 1)
+  }
+  console.log(`\n=== measurement.reducedAccuracy — ${withFlags} strokes carry a flag ===`)
+  const listed = [...flags].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`)
+  console.log(`  ${listed.join('\n  ') || '(none)'}`)
 }
-console.log(`\n=== measurement.reducedAccuracy — ${withFlags} strokes carry at least one flag ===`)
-console.log(`  ${[...flags].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`).join('\n  ') || '(none)'}`)
 
 // Two readings of the same shot. If they disagree, the phase has to choose one and say why.
-let both = 0
-let differ = 0
-let maxDelta = 0
-let normalisedOnly = 0
-for (const s of strokes) {
-  const a = num(s.measurement?.clubPath)
-  const b = num(s.normalizedMeasurement?.clubPath)
-  if (a === null && b !== null) normalisedOnly += 1
-  if (a === null || b === null) continue
-  both += 1
-  const delta = Math.abs(a - b)
-  if (delta > 0.005) differ += 1
-  if (delta > maxDelta) maxDelta = delta
+if (extras.has('__normalizedMeasurement')) {
+  let both = 0
+  let differ = 0
+  let maxDelta = 0
+  let normalisedOnly = 0
+  for (const s of strokes) {
+    const a = num(s.measurement?.clubPath)
+    const b = num(s.normalizedMeasurement?.clubPath)
+    if (a === null && b !== null) normalisedOnly += 1
+    if (a === null || b === null) continue
+    both += 1
+    const delta = Math.abs(a - b)
+    if (delta > 0.005) differ += 1
+    if (delta > maxDelta) maxDelta = delta
+  }
+  console.log(
+    `\n=== measurement vs normalizedMeasurement (clubPath) ===\n` +
+      `  both present: ${both}   differing: ${differ}   max delta: ${round(maxDelta, 3)}°\n` +
+      `  present only on normalizedMeasurement: ${normalisedOnly}`,
+  )
 }
-console.log(
-  `\n=== measurement vs normalizedMeasurement (clubPath) ===\n` +
-    `  both present: ${both}   differing: ${differ}   max delta: ${round(maxDelta, 3)}°\n` +
-    `  present only on normalizedMeasurement: ${normalisedOnly}`,
-)
 
-report('ALL CLUBS', strokes)
-correlations('ALL CLUBS', strokes)
+report('ALL CLUBS', strokes, metrics)
+correlations('ALL CLUBS', strokes, metrics)
 
 // Per club for the KPI club and the two most-hit others. Never blended: the correlation that
 // matters is within one club, since club selection alone moves every one of these numbers.
@@ -355,10 +428,11 @@ console.log(
     .join('\n  ')}`,
 )
 
-const focus = ['Driver', ...[...byClub].sort((a, b) => b[1].length - a[1].length).map(([c]) => c)]
-for (const club of [...new Set(focus)].slice(0, 4)) {
+const mostHit = [...byClub].sort((a, b) => b[1].length - a[1].length).map(([c]) => c)
+// The KPI club first whether or not it is the most hit, then the rest by volume.
+for (const club of [...new Set(['Driver', ...mostHit])].slice(0, 4)) {
   const list = byClub.get(club)
   if (!list || list.length < 30) continue
-  report(club, list)
-  correlations(club, list)
+  report(club, list, metrics)
+  correlations(club, list, metrics)
 }

@@ -1,22 +1,23 @@
 /**
  * Read the Trackman GraphQL schema and report the per-stroke measurement surface.
  *
- * Run by `.github/workflows/trackman-introspect.yml`, which holds the credential. The point is
- * the standing rule in `CLAUDE.md`: **field names are read from the live schema, never written
- * from memory.** Guessing at this API's shapes has cost the project twice.
+ *   npm run introspect
  *
- * The token is read from `TRACKMAN_REFRESH_TOKEN` and never printed, never written to a file,
- * and never included in an error message. This output is a public workflow log.
+ * Serves the standing rule in `CLAUDE.md`: **field names are read from the live schema, never
+ * written from memory.** Guessing at this API's shapes has cost the project twice.
  *
- * **No stroke data is fetched here.** Only the schema, which is public surface on an API with
- * introspection enabled. Per-shot readings are the user's own and have no business in a public
- * artifact — that is the whole reason Phase 6 moved storage off a public repo.
+ * **It needs no credential** — introspection is open to an anonymous caller, verified against the
+ * live endpoint. That is worth stating rather than assuming, because it is also the reason the
+ * schema cannot be read as a statement of permission: it describes the whole facility and partner
+ * surface, and a player's own token reads only part of it. `scripts/trackman-probe.ts` is what
+ * establishes the readable subset, and it *does* need the token.
+ *
+ * **No stroke data is fetched here**, which is why this can run anywhere without care. Per-shot
+ * readings are the user's own; keeping them off a public channel is what Phase 6 was for.
  */
-const TOKEN_URL = 'https://login.trackmangolf.com/connect/token'
-const GRAPHQL_URL = 'https://api.trackmangolf.com/graphql'
+import { writeFile } from 'node:fs/promises'
 
-/** The public mobile OAuth client, as used by the ingest. No client secret. */
-const CLIENT_ID = 'old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae'
+const GRAPHQL_URL = 'https://api.trackmangolf.com/graphql'
 
 /**
  * The two field names this script is allowed to assume, and it assumes them only because the
@@ -82,43 +83,12 @@ function fail(message: string): never {
   process.exit(1)
 }
 
-/**
- * Refresh-token grant. Mirrors `ApiSource`, deliberately duplicated rather than exported from it:
- * that class's token handling is private, and widening its surface for a diagnostic would be the
- * tail wagging the dog.
- */
-async function accessToken(refreshToken: string): Promise<string> {
-  let res: Response
-  try {
-    res = await fetch(TOKEN_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: CLIENT_ID,
-        refresh_token: refreshToken,
-      }),
-    })
-  } catch (error) {
-    fail(`Could not reach the token endpoint: ${error instanceof Error ? error.message : 'unknown'}`)
-  }
-  // Status only. The response body of a failed grant can echo the grant back, and this message
-  // ends up in a public workflow log.
-  if (!res.ok) fail(`The token exchange failed with HTTP ${res.status}.`)
-
-  const body = (await res.json()) as { access_token?: unknown }
-  if (typeof body.access_token !== 'string' || body.access_token === '') {
-    fail('The token endpoint returned no access token.')
-  }
-  return body.access_token
-}
-
-async function introspect(token: string): Promise<FullType[]> {
+async function introspect(): Promise<FullType[]> {
   let res: Response
   try {
     res = await fetch(GRAPHQL_URL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ query: QUERY }),
     })
   } catch (error) {
@@ -216,13 +186,9 @@ function main(types: FullType[], byName: Map<string, FullType>): void {
   console.log(`\nFull schema written to ${OUT_FILE} — ${types.length} types.`)
 }
 
-const token = process.env.TRACKMAN_REFRESH_TOKEN
-if (!token) fail('Set TRACKMAN_REFRESH_TOKEN.')
-
-const types = await introspect(await accessToken(token))
+const types = await introspect()
 const byName = new Map(types.filter((t) => t.name).map((t) => [t.name as string, t]))
 
-const { writeFile } = await import('node:fs/promises')
 await writeFile(OUT_FILE, JSON.stringify(types, null, 2))
 
 main(types, byName)
