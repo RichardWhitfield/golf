@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Session } from '../domain/types'
-import { RemoteRepo } from './remote'
+import type { Session, Shot } from '../domain/types'
+import { RemoteRepo, RemoteStoreError } from './remote'
 
 const PRACTICE: Session = {
   id: 'a1',
@@ -119,5 +119,31 @@ describe('RemoteRepo', () => {
     const result = await new RemoteRepo('https://api.example', fetcher).mergeTrackman([trackman])
     expect(result.changed).toBe(false)
     expect(calls).toHaveLength(1)
+  })
+})
+
+describe('shots', () => {
+  const SHOTS: Shot[] = [{ club: 'DRIVER', metrics: { clubPath: -6 } }]
+
+  it('writes to the shots key space, percent-encoding the id', async () => {
+    // Trackman ids are 88-character base64 ending in "=", which must survive the URL.
+    const { calls, fetcher } = fakeFetch([{ body: { ok: true, count: 1 } }])
+    await new RemoteRepo('https://api.example', fetcher).saveShots('a=b', SHOTS)
+    expect(calls[0].url).toBe('https://api.example/shots/a%3Db')
+    expect(calls[0].init?.method).toBe('PUT')
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ shots: SHOTS })
+  })
+
+  it('reads shots back, which is what makes the write verifiable', async () => {
+    const { fetcher } = fakeFetch([{ body: { shots: SHOTS } }])
+    expect(await new RemoteRepo('https://api.example', fetcher).getShots('a')).toEqual(SHOTS)
+  })
+
+  it('throws when the store refuses the write, never swallowing it', async () => {
+    // A silently lost write is the one failure mode localStorage never had.
+    const { fetcher } = fakeFetch([{ status: 400, body: { message: 'no' } }])
+    await expect(new RemoteRepo('https://api.example', fetcher).saveShots('a', [])).rejects.toThrow(
+      RemoteStoreError,
+    )
   })
 })

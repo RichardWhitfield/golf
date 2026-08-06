@@ -16,7 +16,7 @@
 import { ApiSource } from '../src/lib/ingest/api'
 import { RemoteRepo } from '../src/lib/storage/remote'
 import { resolveISODate } from '../src/lib/domain/today'
-import type { ISODate, TrackmanSession } from '../src/lib/domain/types'
+import { isTrackman, type ISODate } from '../src/lib/domain/types'
 
 /** A missed run self-heals: the window overlaps, and the merge is idempotent. */
 const DEFAULT_WINDOW_DAYS = 14
@@ -58,12 +58,9 @@ async function main(): Promise<void> {
   const unknownClubs = new Set<string>()
   const source = new ApiSource(token)
 
-  let fetched: TrackmanSession[]
+  let fetched
   try {
-    // The per-shot records come back alongside the sessions. Nothing writes them yet — that
-    // needs its own key in the store, so it lands with the rest of the shot storage.
-    const pulled = await source.fetchSince(from, (name) => unknownClubs.add(name))
-    fetched = pulled.sessions
+    fetched = await source.fetchSince(from, (name) => unknownClubs.add(name))
   } catch (error) {
     fail(error instanceof Error ? error.message : 'The pull failed for an unknown reason.')
   }
@@ -77,16 +74,39 @@ async function main(): Promise<void> {
   // The same merge the browser uses, against the store rather than a file. `mergeTrackman` adds
   // `?ifNotManual=1` per write, so a hand-typed record survives even if a save from the phone
   // lands between this read and its write.
+  const repo = new RemoteRepo(url)
+
   let result
   try {
-    result = await new RemoteRepo(url).mergeTrackman(fetched)
+    result = await repo.mergeTrackman(fetched.sessions)
   } catch (error) {
     fail(error instanceof Error ? error.message : 'The store could not be written.')
   }
 
+  // Shots follow the sessions, and only for what the merge actually wrote. A session skipped
+  // because it is hand-typed must not have machine shots attached to it — that would put an
+  // imported record behind a manual one, which is the guarantee `ifNotManual` exists to keep.
+  let shotSessions = 0
+  let shotCount = 0
+  for (const session of result.sessions) {
+    if (!isTrackman(session) || session.source !== 'api') continue
+    const shots = fetched.shots.get(session.id)
+    if (!shots || shots.length === 0) continue
+    try {
+      await repo.saveShots(session.id, shots)
+    } catch (error) {
+      // Loud, never swallowed: the session aggregates already landed, so a silent failure here
+      // would leave the two halves out of step with nothing to show for it.
+      fail(error instanceof Error ? error.message : `Could not write shots for ${session.id}.`)
+    }
+    shotSessions += 1
+    shotCount += shots.length
+  }
+
   console.log(
-    `Pulled from ${from}: ${fetched.length} session(s) measured · ` +
-      `${result.added} new · ${result.updated} updated · ${result.skipped} skipped.`,
+    `Pulled from ${from}: ${fetched.sessions.length} session(s) measured · ` +
+      `${result.added} new · ${result.updated} updated · ${result.skipped} skipped · ` +
+      `${shotCount} shot(s) across ${shotSessions} session(s).`,
   )
 }
 
