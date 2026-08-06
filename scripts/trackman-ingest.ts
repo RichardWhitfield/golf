@@ -60,7 +60,10 @@ async function main(): Promise<void> {
 
   let fetched: TrackmanSession[]
   try {
-    fetched = await source.fetchSince(from, (name) => unknownClubs.add(name))
+    // The per-shot records come back alongside the sessions. Nothing writes them yet — that
+    // needs its own key in the store, so it lands with the rest of the shot storage.
+    const pulled = await source.fetchSince(from, (name) => unknownClubs.add(name))
+    fetched = pulled.sessions
   } catch (error) {
     fail(error instanceof Error ? error.message : 'The pull failed for an unknown reason.')
   }
