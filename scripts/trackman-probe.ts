@@ -304,6 +304,68 @@ function report(label: string, strokes: RawStroke[], metrics: string[]): void {
   }
 }
 
+/**
+ * Session-mean ranges, per club per metric — **the level the charts actually plot at.**
+ *
+ * Not the same question as the per-shot spread above, and using the wrong one would misdraw every
+ * panel. `scale.ts`'s existing club-path domain is `-14…4`, authored from session means; per-shot
+ * club path spans `-18…10.9`. A domain taken from per-shot ranges would leave every plotted point
+ * huddled in the middle of its panel.
+ *
+ * Reported as an observed range so the constant can be **authored** from it with headroom. The
+ * domain must stay a frozen constant in source: one fitted at render time would move between
+ * visits and quietly redefine "good" as "better than recent".
+ */
+function aggregateRanges(activities: RawActivity[], metrics: string[]): void {
+  console.log('\n=== SESSION-MEAN RANGES (what the charts plot) ===')
+  console.log('  metric              means      min      p05      p50      p95      max')
+
+  // One mean per session per club per metric — exactly what `aggregate.ts` will store.
+  const means = new Map<string, number[]>()
+  for (const activity of activities) {
+    const byClub = new Map<string, RawStroke[]>()
+    for (const s of activity.strokes ?? []) {
+      if (!s?.club) continue
+      const list = byClub.get(s.club)
+      if (list) list.push(s)
+      else byClub.set(s.club, [s])
+    }
+    for (const [, list] of byClub) {
+      for (const metric of metrics) {
+        const values: number[] = []
+        for (const s of list) {
+          const v = num(s.measurement?.[metric])
+          if (v !== null) values.push(v)
+        }
+        // Absent, never zero: a club with no reading for this metric contributes no point at all.
+        if (values.length === 0) continue
+        const mean = values.reduce((a, b) => a + b, 0) / values.length
+        const into = means.get(metric)
+        if (into) into.push(mean)
+        else means.set(metric, [mean])
+      }
+    }
+  }
+
+  for (const metric of metrics) {
+    const values = (means.get(metric) ?? []).slice().sort((a, b) => a - b)
+    if (values.length === 0) {
+      console.log(`  ${metric.padEnd(18)} ${String(0).padStart(7)}`)
+      continue
+    }
+    const cells = [
+      values[0],
+      quantile(values, 0.05),
+      quantile(values, 0.5),
+      quantile(values, 0.95),
+      values[values.length - 1],
+    ]
+      .map((v) => String(round(v)).padStart(9))
+      .join('')
+    console.log(`  ${metric.padEnd(18)} ${String(values.length).padStart(7)}${cells}`)
+  }
+}
+
 /** How strongly each metric moves with club path. The phase's motivating question in one column. */
 function correlations(label: string, strokes: RawStroke[], metrics: string[]): void {
   console.log(`\n=== ${label} — correlation with clubPath (Pearson r) ===`)
@@ -408,6 +470,44 @@ if (extras.has('__normalizedMeasurement')) {
       `  present only on normalizedMeasurement: ${normalisedOnly}`,
   )
 }
+
+aggregateRanges(activities, metrics)
+
+/**
+ * Correlation between two metrics at **session-mean level, within one club** — what `/progress`
+ * will compute from stored aggregates.
+ *
+ * Deliberately separate from the per-shot figure. 618 driver shots become 44 session means, and
+ * the two r values are not interchangeable: a per-shot r quoted next to a per-session chart would
+ * be a number the page cannot reproduce. Within one club, never across — club selection alone
+ * moves every one of these.
+ */
+function sessionCorrelations(club: string, activities: RawActivity[], metrics: string[]): void {
+  console.log(`\n=== ${club} — session-mean correlation with clubPath ===`)
+  const rows: [string, number, number][] = []
+  for (const metric of metrics) {
+    if (metric === 'clubPath') continue
+    const pairs: [number, number][] = []
+    for (const activity of activities) {
+      const list = (activity.strokes ?? []).filter((s) => s?.club === club)
+      const mean = (field: string): number | null => {
+        const values = list.map((s) => num(s.measurement?.[field])).filter((v) => v !== null)
+        return values.length === 0 ? null : values.reduce((a, b) => a + b, 0) / values.length
+      }
+      const path = mean('clubPath')
+      const other = mean(metric)
+      if (path !== null && other !== null) pairs.push([path, other])
+    }
+    const r = correlate(pairs)
+    if (r !== null && pairs.length >= 10) rows.push([metric, r, pairs.length])
+  }
+  rows.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+  for (const [metric, r, n] of rows) {
+    console.log(`  ${metric.padEnd(18)} r=${String(round(r, 3)).padStart(7)}   sessions=${n}`)
+  }
+}
+
+sessionCorrelations('Driver', activities, metrics)
 
 report('ALL CLUBS', strokes, metrics)
 correlations('ALL CLUBS', strokes, metrics)
