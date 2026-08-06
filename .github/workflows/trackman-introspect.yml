@@ -40,6 +40,14 @@ jobs:
           TRACKMAN_REFRESH_TOKEN: ${{ secrets.TRACKMAN_REFRESH_TOKEN }}
         run: npm run introspect
 
+      # Which fields exist is not which fields are populated. This prints **aggregates only** —
+      # null rates, ranges, correlations — the same class of figure `docs/architecture.md`
+      # already publishes. No individual reading reaches the log.
+      - name: Probe the real readings
+        env:
+          TRACKMAN_REFRESH_TOKEN: ${{ secrets.TRACKMAN_REFRESH_TOKEN }}
+        run: npm run probe
+
       # The GraphQL schema only. Artifacts on a public repository are publicly downloadable, so
       # no stroke data is fetched by this job at all — per-shot readings are the user's own, and
       # keeping them off a public channel is precisely what Phase 6 was for.

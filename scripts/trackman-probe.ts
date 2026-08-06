@@ -1,0 +1,364 @@
+/**
+ * Report statistics on the per-stroke metrics the schema exposes, over real history.
+ *
+ * Introspection says which fields *exist*; only real data says which are *populated*, what range
+ * they occupy, and whether they carry any signal about club path. All three decide the Phase 7
+ * design (#25), and none can be guessed — `clubPath` alone is null on 976 of 5,877 strokes.
+ *
+ * **Aggregates only, never a reading.** This output is a public workflow log. Null rates and
+ * ranges are the same class of figure `docs/architecture.md` already publishes; a shot-by-shot
+ * record is not, and keeping it off a public channel is what Phase 6 was for.
+ *
+ * The token is read from `TRACKMAN_REFRESH_TOKEN` and never printed, never written to a file,
+ * and never included in an error message.
+ *
+ * Diagnostic, not production. It duplicates the token grant and paging from
+ * `src/lib/ingest/api.ts` rather than widening that class's private surface for a one-off.
+ */
+const TOKEN_URL = 'https://login.trackmangolf.com/connect/token'
+const GRAPHQL_URL = 'https://api.trackmangolf.com/graphql'
+const CLIENT_ID = 'old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae'
+const PAGE_SIZE = 50
+
+/**
+ * The shortlist, read from the introspection output and narrowed to what could bear on an
+ * out-to-in path. The putting-green fields (`break`, `effectiveStimp`, `bounces`, `rollSpeed`)
+ * and the per-shot trajectory arrays are deliberately absent — a range session has no use for
+ * the first, and the second would dwarf everything else stored.
+ */
+const METRICS = [
+  // Club delivery. `swingPlane` is the motivating question of the whole phase.
+  'clubPath',
+  'swingPlane',
+  'swingDirection',
+  'attackAngle',
+  'faceAngle',
+  'faceToPath',
+  'dynamicLoft',
+  'spinLoft',
+  'dynamicLie',
+  'clubSpeed',
+  // Strike. Where on the face, and where the arc bottoms out.
+  'impactOffset',
+  'impactHeight',
+  'lowPointDistance',
+  'lowPointSide',
+  // Tempo, in case a steep plane tracks a rushed transition.
+  'strokeLength',
+  'backswingTime',
+  'forwardswingTime',
+  'tempo',
+  // Outcome. What the miss actually cost.
+  'ballSpeed',
+  'smashFactor',
+  'launchAngle',
+  'launchDirection',
+  'spinRate',
+  'spinAxis',
+  'curve',
+  'carry',
+  'total',
+  'carrySide',
+  'totalSide',
+] as const
+
+type Metric = (typeof METRICS)[number]
+
+const QUERY = `
+query Probe($from: DateTime!, $to: DateTime!, $take: Int!, $skip: Int!) {
+  me {
+    activities(kinds: [VIRTUAL_RANGE], timeFrom: $from, timeTo: $to, take: $take, skip: $skip) {
+      totalCount
+      pageInfo { hasNextPage }
+      items {
+        id
+        time
+        ... on VirtualRangeSessionActivity {
+          strokeCount
+          strokes {
+            club
+            measurement { kind detectedClubCategory reducedAccuracy ${METRICS.join(' ')} }
+            normalizedMeasurement { clubPath swingPlane }
+          }
+        }
+      }
+    }
+  }
+}`
+
+interface RawMeasurement {
+  kind?: string | null
+  detectedClubCategory?: string | null
+  reducedAccuracy?: (string | null)[] | null
+  [metric: string]: unknown
+}
+
+interface RawStroke {
+  club?: string | null
+  measurement?: RawMeasurement | null
+  normalizedMeasurement?: { clubPath?: number | null; swingPlane?: number | null } | null
+}
+
+interface RawActivity {
+  id: string
+  time: string
+  strokeCount?: number | null
+  strokes?: RawStroke[] | null
+}
+
+function fail(message: string): never {
+  console.error(`::error::${message}`)
+  process.exit(1)
+}
+
+async function accessToken(refreshToken: string): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: CLIENT_ID,
+        refresh_token: refreshToken,
+      }),
+    })
+  } catch (error) {
+    fail(`Could not reach the token endpoint: ${error instanceof Error ? error.message : 'unknown'}`)
+  }
+  // Status only — the body of a failed grant can echo the grant back into a public log.
+  if (!res.ok) fail(`The token exchange failed with HTTP ${res.status}.`)
+  const body = (await res.json()) as { access_token?: unknown }
+  if (typeof body.access_token !== 'string' || body.access_token === '') {
+    fail('The token endpoint returned no access token.')
+  }
+  return body.access_token
+}
+
+async function fetchAll(token: string, from: string): Promise<RawActivity[]> {
+  const items: RawActivity[] = []
+  for (let skip = 0; ; skip += PAGE_SIZE) {
+    let res: Response
+    try {
+      res = await fetch(GRAPHQL_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          query: QUERY,
+          variables: { from, to: '2100-01-01T00:00:00Z', take: PAGE_SIZE, skip },
+        }),
+      })
+    } catch (error) {
+      fail(`Could not reach the API: ${error instanceof Error ? error.message : 'unknown'}`)
+    }
+    if (!res.ok) fail(`The API returned HTTP ${res.status}.`)
+
+    const body = (await res.json()) as {
+      data?: {
+        me?: {
+          activities?: {
+            totalCount: number
+            pageInfo: { hasNextPage: boolean }
+            items: RawActivity[]
+          }
+        }
+      }
+      errors?: { message?: string }[]
+    }
+    if (body.errors?.length) {
+      fail(`The API reported errors: ${body.errors.map((e) => e.message ?? 'unknown').join('; ')}`)
+    }
+    const page = body.data?.me?.activities
+    if (!page || !Array.isArray(page.items)) fail('The API returned no activities node.')
+
+    items.push(...page.items)
+    if (!page.pageInfo.hasNextPage) break
+    if (items.length >= page.totalCount) break
+  }
+  return items
+}
+
+/** Finite numbers only. A null is absence, and a NaN is not a reading either. */
+function num(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function round(value: number, dp = 2): number {
+  const f = 10 ** dp
+  return Math.round(value * f) / f
+}
+
+function quantile(sorted: number[], q: number): number {
+  if (sorted.length === 0) return NaN
+  const at = (sorted.length - 1) * q
+  const lo = Math.floor(at)
+  const hi = Math.ceil(at)
+  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (at - lo)
+}
+
+/** Pearson r over pairs where both values are present. */
+function correlate(pairs: [number, number][]): number | null {
+  const n = pairs.length
+  if (n < 2) return null
+  let sx = 0
+  let sy = 0
+  for (const [x, y] of pairs) {
+    sx += x
+    sy += y
+  }
+  const mx = sx / n
+  const my = sy / n
+  let sxy = 0
+  let sxx = 0
+  let syy = 0
+  for (const [x, y] of pairs) {
+    sxy += (x - mx) * (y - my)
+    sxx += (x - mx) ** 2
+    syy += (y - my) ** 2
+  }
+  const denom = Math.sqrt(sxx * syy)
+  return denom === 0 ? null : sxy / denom
+}
+
+function report(label: string, strokes: RawStroke[]): void {
+  console.log(`\n=== ${label} — ${strokes.length} strokes ===`)
+  console.log('  metric              present   null%      min      p05      p50      p95      max')
+  for (const metric of METRICS) {
+    const values: number[] = []
+    for (const s of strokes) {
+      const v = num(s.measurement?.[metric])
+      if (v !== null) values.push(v)
+    }
+    const nullPct = strokes.length === 0 ? 0 : (1 - values.length / strokes.length) * 100
+    if (values.length === 0) {
+      console.log(`  ${metric.padEnd(18)} ${String(0).padStart(7)}  ${'100.0'.padStart(5)}%`)
+      continue
+    }
+    values.sort((a, b) => a - b)
+    const cells = [
+      values[0],
+      quantile(values, 0.05),
+      quantile(values, 0.5),
+      quantile(values, 0.95),
+      values[values.length - 1],
+    ]
+      .map((v) => String(round(v)).padStart(9))
+      .join('')
+    console.log(
+      `  ${metric.padEnd(18)} ${String(values.length).padStart(7)}  ${String(round(nullPct, 1)).padStart(5)}%${cells}`,
+    )
+  }
+}
+
+/** How strongly each metric moves with club path. The phase's motivating question in one column. */
+function correlations(label: string, strokes: RawStroke[]): void {
+  console.log(`\n=== ${label} — correlation with clubPath (Pearson r) ===`)
+  const rows: [string, number, number][] = []
+  for (const metric of METRICS) {
+    if (metric === 'clubPath') continue
+    const pairs: [number, number][] = []
+    for (const s of strokes) {
+      const path = num(s.measurement?.clubPath)
+      const other = num(s.measurement?.[metric])
+      if (path !== null && other !== null) pairs.push([path, other])
+    }
+    const r = correlate(pairs)
+    if (r !== null && pairs.length >= 30) rows.push([metric, r, pairs.length])
+  }
+  rows.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+  for (const [metric, r, n] of rows) {
+    console.log(`  ${metric.padEnd(18)} r=${String(round(r, 3)).padStart(7)}   n=${n}`)
+  }
+}
+
+const token = process.env.TRACKMAN_REFRESH_TOKEN
+if (!token) fail('Set TRACKMAN_REFRESH_TOKEN.')
+
+const since = process.env.SINCE && /^\d{4}-\d{2}-\d{2}$/.test(process.env.SINCE)
+  ? process.env.SINCE
+  : '2025-06-01'
+
+const activities = await fetchAll(token, `${since}T00:00:00Z`)
+const strokes = activities.flatMap((a) => a.strokes ?? []).filter((s): s is RawStroke => !!s)
+
+console.log(`Sessions: ${activities.length}   Strokes: ${strokes.length}   Since: ${since}`)
+
+// Volume, which decides whether per-shot data can be stored per session at all (D24).
+const perSession = activities.map((a) => a.strokes?.length ?? 0).sort((a, b) => a - b)
+console.log(
+  `Strokes per session: min ${perSession[0]}  p50 ${quantile(perSession, 0.5)}  ` +
+    `p95 ${quantile(perSession, 0.95)}  max ${perSession[perSession.length - 1]}`,
+)
+
+// `measurement.kind` and `detectedClubCategory` may distinguish a real swing from a putt or a
+// misread. Frequencies first — nothing can be filtered on a value nobody has seen.
+for (const field of ['kind', 'detectedClubCategory'] as const) {
+  const counts = new Map<string, number>()
+  for (const s of strokes) {
+    const key = s.measurement?.[field] ?? '(null)'
+    counts.set(String(key), (counts.get(String(key)) ?? 0) + 1)
+  }
+  const shown = [...counts].sort((a, b) => b[1] - a[1])
+  console.log(`\n=== measurement.${field} ===\n  ${shown.map(([k, v]) => `${k}: ${v}`).join('\n  ')}`)
+}
+
+// Trackman's own data-quality flag. If it is populated it is a better filter than a null check,
+// because it marks a reading the radar itself distrusts rather than one it never took.
+const flags = new Map<string, number>()
+let withFlags = 0
+for (const s of strokes) {
+  const list = s.measurement?.reducedAccuracy
+  if (!Array.isArray(list) || list.length === 0) continue
+  withFlags += 1
+  for (const f of list) flags.set(String(f), (flags.get(String(f)) ?? 0) + 1)
+}
+console.log(`\n=== measurement.reducedAccuracy — ${withFlags} strokes carry at least one flag ===`)
+console.log(`  ${[...flags].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`).join('\n  ') || '(none)'}`)
+
+// Two readings of the same shot. If they disagree, the phase has to choose one and say why.
+let both = 0
+let differ = 0
+let maxDelta = 0
+let normalisedOnly = 0
+for (const s of strokes) {
+  const a = num(s.measurement?.clubPath)
+  const b = num(s.normalizedMeasurement?.clubPath)
+  if (a === null && b !== null) normalisedOnly += 1
+  if (a === null || b === null) continue
+  both += 1
+  const delta = Math.abs(a - b)
+  if (delta > 0.005) differ += 1
+  if (delta > maxDelta) maxDelta = delta
+}
+console.log(
+  `\n=== measurement vs normalizedMeasurement (clubPath) ===\n` +
+    `  both present: ${both}   differing: ${differ}   max delta: ${round(maxDelta, 3)}°\n` +
+    `  present only on normalizedMeasurement: ${normalisedOnly}`,
+)
+
+report('ALL CLUBS', strokes)
+correlations('ALL CLUBS', strokes)
+
+// Per club for the KPI club and the two most-hit others. Never blended: the correlation that
+// matters is within one club, since club selection alone moves every one of these numbers.
+const byClub = new Map<string, RawStroke[]>()
+for (const s of strokes) {
+  if (!s.club) continue
+  const list = byClub.get(s.club)
+  if (list) list.push(s)
+  else byClub.set(s.club, [s])
+}
+console.log(
+  `\n=== strokes per club ===\n  ${[...byClub]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([c, l]) => `${c}: ${l.length}`)
+    .join('\n  ')}`,
+)
+
+const focus = ['Driver', ...[...byClub].sort((a, b) => b[1].length - a[1].length).map(([c]) => c)]
+for (const club of [...new Set(focus)].slice(0, 4)) {
+  const list = byClub.get(club)
+  if (!list || list.length < 30) continue
+  report(club, list)
+  correlations(club, list)
+}
