@@ -200,10 +200,17 @@ async function page(
 /**
  * Which fields this token may actually read, one query each.
  *
- * **Existence and authorization are separate questions**, and the first probe proved it: a single
- * unauthorized field fails the whole request rather than returning the rest as null. Bisecting
- * would be fewer round trips, but one field per query is the only form whose answer is
- * unambiguous — and the answer is what the ingest query gets built from.
+ * Every field has been readable every time it has been run, so this is a guard rather than a
+ * filter. It is kept for two reasons. A single unreadable field fails the **whole request**
+ * rather than nulling itself, so one silent revocation would take the daily ingest down
+ * including `clubPath`; and this API is assumed to break without notice, so the readable set is
+ * worth establishing rather than assuming.
+ *
+ * **It is not evidence that the schema over-promises.** The first run of this script reported
+ * every field as unauthorized, and the cause was local: it sent the *refresh* token as the
+ * bearer, having defined the token exchange and never called it. A bad credential surfaces here
+ * as a field-level "not authorized to access this resource" inside a 200, not as a 401 — which
+ * is worth knowing, and is exactly why the ingest is not made to interpret this error.
  */
 async function authorized(token: string, from: string, candidates: string[]): Promise<string[]> {
   const allowed: string[] = []
@@ -316,8 +323,8 @@ function report(label: string, strokes: RawStroke[], metrics: string[]): void {
  * domain must stay a frozen constant in source: one fitted at render time would move between
  * visits and quietly redefine "good" as "better than recent".
  */
-function aggregateRanges(activities: RawActivity[], metrics: string[]): void {
-  console.log('\n=== SESSION-MEAN RANGES (what the charts plot) ===')
+function aggregateRanges(activities: RawActivity[], metrics: string[], only?: string): void {
+  console.log(`\n=== SESSION-MEAN RANGES${only ? ` \u00b7 ${only}` : ''} (what the charts plot) ===`)
   console.log('  metric              means      min      p05      p50      p95      max')
 
   // One mean per session per club per metric — exactly what `aggregate.ts` will store.
@@ -326,6 +333,10 @@ function aggregateRanges(activities: RawActivity[], metrics: string[]): void {
     const byClub = new Map<string, RawStroke[]>()
     for (const s of activity.strokes ?? []) {
       if (!s?.club) continue
+      // Scoped to one club when asked: the new /progress panels are driver-only, and an
+      // all-club domain would compress them. Swing plane alone runs ~50 deg on a driver
+      // against ~69 on a 4-iron.
+      if (only !== undefined && s.club !== only) continue
       const list = byClub.get(s.club)
       if (list) list.push(s)
       else byClub.set(s.club, [s])
@@ -472,6 +483,7 @@ if (extras.has('__normalizedMeasurement')) {
 }
 
 aggregateRanges(activities, metrics)
+aggregateRanges(activities, metrics, 'Driver')
 
 /**
  * Correlation between two metrics at **session-mean level, within one club** — what `/progress`
