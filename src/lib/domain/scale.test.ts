@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BAND, CHART, DOMAIN, inBand, radiusFor, xFor, yFor } from './scale'
+import { BAND, CHART, DOMAIN, inBand, inRange, radiusFor, xFor, yFor, yIn } from './scale'
 
 describe('DOMAIN', () => {
   it('is fixed, and wide enough to hold every real reading', () => {
@@ -114,5 +114,39 @@ describe('inBand', () => {
     expect(inBand(-2.01)).toBe(false)
     expect(inBand(2.01)).toBe(false)
     expect(inBand(-8.51)).toBe(false)
+  })
+})
+
+describe('yIn', () => {
+  it('places a value against any authored domain, not just club path', () => {
+    const domain = { min: 40, max: 66 }
+    expect(yIn(66, domain)).toBeCloseTo(yIn(DOMAIN.max, DOMAIN), 10)
+    expect(yIn(40, domain)).toBeCloseTo(yIn(DOMAIN.min, DOMAIN), 10)
+  })
+
+  it('clamps rather than drawing off-panel', () => {
+    const domain = { min: 40, max: 66 }
+    expect(yIn(200, domain)).toBe(yIn(66, domain))
+    expect(yIn(0, domain)).toBe(yIn(40, domain))
+  })
+
+  it('leaves yFor behaving exactly as it did', () => {
+    for (const degrees of [-14, -5.4, 0, 2, 4]) {
+      expect(yFor(degrees)).toBe(yIn(degrees, DOMAIN))
+    }
+  })
+})
+
+describe('inRange', () => {
+  it('is inclusive of both edges', () => {
+    expect(inRange(-2, BAND)).toBe(true)
+    expect(inRange(2, BAND)).toBe(true)
+    expect(inRange(2.01, BAND)).toBe(false)
+  })
+
+  it('treats overshooting as a fault, never as better', () => {
+    // The target is a band, not a maximum. +5 is outside it exactly as -5 is.
+    expect(inRange(5, BAND)).toBe(false)
+    expect(inRange(-5, BAND)).toBe(false)
   })
 })
