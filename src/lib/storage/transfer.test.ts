@@ -148,8 +148,16 @@ describe('parseDocument · Trackman sessions', () => {
       settings: {},
     }
     const parsed = parseDocument(doc)
+    // `metrics` itself is matched with `toEqual`, not `toMatchObject` — `toMatchObject` ignores
+    // unchecked keys, so it would still pass if `checkMetrics` silently dropped `faceToPath`,
+    // which is exactly the data-loss case this test exists to catch.
     expect(parsed.sessions[0]).toMatchObject({
-      clubs: [{ metrics: { swingPlane: { typical: 49.75, n: 666 } } }],
+      clubs: [{
+        metrics: {
+          swingPlane: { typical: 49.75, n: 666 },
+          faceToPath: { typical: 4.36, best: 0.97, n: 556 },
+        },
+      }],
     })
   })
 

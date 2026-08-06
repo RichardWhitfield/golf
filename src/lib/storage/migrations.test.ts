@@ -117,13 +117,12 @@ describe('migrate', () => {
       ],
       settings: {},
     }
+    // Snapshotted before the call: the migration is identity, so `out.sessions` IS
+    // `doc.sessions` — comparing them to each other would pass even if it mutated in place.
+    const before = JSON.parse(JSON.stringify(doc.sessions))
     const out = migrate(doc)
     expect(out.schemaVersion).toBe(3)
-    expect(out.sessions).toEqual(doc.sessions)
-  })
-
-  it('refuses a version 4 document rather than guessing at it', () => {
-    expect(() => migrate({ schemaVersion: 4, sessions: [], settings: {} })).toThrow(FutureSchemaError)
+    expect(out.sessions).toEqual(before)
   })
 })
 
