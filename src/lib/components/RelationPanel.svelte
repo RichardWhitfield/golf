@@ -163,8 +163,9 @@
     font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.1em;
   }
   .club{color:var(--chalk);font-weight:700}
-  .pair,.count{color:var(--dim)}
-  .r{color:var(--ball)}
+  /* Neutral deliberately. `--ball` means the goal, and a correlation is neither good nor bad —
+     painting it yellow would borrow a verdict the number does not carry. */
+  .pair,.count,.r{color:var(--dim)}
   svg{width:100%;height:auto;display:block;margin-top:12px}
 
   /* No colour attributes in the markup — every shape takes its colour here. */

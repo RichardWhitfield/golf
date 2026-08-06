@@ -88,6 +88,8 @@
     font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.14em;
     text-transform:uppercase;color:var(--dim);
   }
+  /* Every value in --chalk, including club path, even though #path colours it by band. Four
+     judged numbers in a row would be noise; the story line below carries the verdict instead. */
   .val{font-family:'Space Mono',monospace;font-size:1.35rem;color:var(--chalk);font-weight:700}
   .unit{font-size:.8rem;color:var(--dim);margin-left:2px}
   .n{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--dim)}

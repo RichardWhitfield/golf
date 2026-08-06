@@ -49,6 +49,17 @@
   const planeVsPath = $derived(relate(sessions.list, KPI_CLUB, 'swingPlane', 'clubPath'))
   const faceVsPath = $derived(relate(sessions.list, KPI_CLUB, 'faceToPath', 'clubPath'))
   const hasMetrics = $derived(planeVsPath.points.length > 0 || faceVsPath.points.length > 0)
+
+  const showWhy = $derived(sessions.ready && hasMetrics)
+
+  /** Section numbers are visible on the page, so they must not gap when `#why` is hidden.
+   *  Derived rather than hardcoded: `#why` only appears once a session carries the wider
+   *  metric set, and a missing `02` reads as a broken page rather than an absent section. */
+  const idx = $derived(
+    showWhy
+      ? { why: '02', coverage: '03', feel: '04', where: '05' }
+      : { why: '02', coverage: '02', feel: '03', where: '04' },
+  )
 </script>
 
 <section class="progress reveal" aria-labelledby="progress-title">
@@ -88,9 +99,9 @@
   {/if}
 </section>
 
-{#if sessions.ready && hasMetrics}
+{#if showWhy}
   <section id="why">
-    <SectionHead idx="02" title="Why the ball curves" />
+    <SectionHead idx={idx.why} title="Why the ball curves" />
     <p class="note">
       Club path is the KPI, but it is only half of what bends the ball. The other half is where
       the face points <em>relative to that path</em> — and a square face is still open when the
@@ -110,7 +121,7 @@
 {/if}
 
 <section id="coverage">
-  <SectionHead idx="03" title="Drill coverage" />
+  <SectionHead idx={idx.coverage} title="Drill coverage" />
   <p class="note">
     What the plan asked for against what you logged. A drill sitting at zero against a real
     schedule is the finding.
@@ -119,7 +130,7 @@
 </section>
 
 <section id="feel">
-  <SectionHead idx="04" title="Feel by phase" />
+  <SectionHead idx={idx.feel} title="Feel by phase" />
   {#if sessions.ready && !blockStart}
     <p class="empty">
       No block start date is set, so there are no phases yet. Set one on the
@@ -135,7 +146,7 @@
 </section>
 
 <section id="where">
-  <SectionHead idx="05" title="Where you are" />
+  <SectionHead idx={idx.where} title="Where you are" />
   {#if sessions.ready && !blockStart}
     <p class="empty">
       No block start date is set. Set one on the
