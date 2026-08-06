@@ -10,6 +10,7 @@
  * each one earns its place and why the rest do not.
  */
 import { BAND, DOMAIN } from './scale'
+import type { ClubPath, MetricReading } from './types'
 
 export type MetricId =
   | 'clubPath'
@@ -126,4 +127,18 @@ export function bestOf(values: number[], better: Better): number | undefined {
   if (values.length === 0 || better === 'none') return undefined
   if (better === 'higher') return values.reduce((a, b) => (b > a ? b : a))
   return values.reduce((a, b) => (Math.abs(b) < Math.abs(a) ? b : a))
+}
+
+/**
+ * A uniform view of any metric on a club row.
+ *
+ * Club path lives in `ClubPath`'s own `typical`/`best`/`n` fields and everything else lives in
+ * `metrics`. **This function is the one place that knows that**, so no caller has to special-case
+ * it and no value has to be stored twice.
+ */
+export function readingFor(row: ClubPath, id: MetricId): MetricReading | undefined {
+  if (id !== 'clubPath') return row.metrics?.[id]
+  // `n` is optional on `ClubPath` and required on `MetricReading`, because a hand-typed row has
+  // no count. Cast rather than fabricate: a `0` here would weight a guess as though measured.
+  return { typical: row.typical, best: row.best, n: row.n as number }
 }

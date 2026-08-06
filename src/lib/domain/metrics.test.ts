@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { METRICS, METRIC_FIELDS, bestOf, isMetricId, metricInfo } from './metrics'
+import { METRICS, METRIC_FIELDS, bestOf, isMetricId, metricInfo, readingFor } from './metrics'
 import { BAND, DOMAIN } from './scale'
+import type { ClubPath } from './types'
 
 describe('the registry', () => {
   it('covers exactly the twelve metrics the spec chose', () => {
@@ -80,5 +81,36 @@ describe('isMetricId', () => {
     expect(isMetricId('clubPath')).toBe(true)
     expect(isMetricId('toString')).toBe(false)
     expect(isMetricId('swingDirection')).toBe(false)
+  })
+})
+
+describe('readingFor', () => {
+  const row: ClubPath = {
+    club: 'DRIVER',
+    typical: -5.4,
+    best: -0.19,
+    n: 618,
+    metrics: { swingPlane: { typical: 49.75, n: 666 } },
+  }
+
+  it('reads club path from its own dedicated fields, never from the metrics map', () => {
+    // Club path is NOT duplicated into `metrics`. One value, one home.
+    expect(readingFor(row, 'clubPath')).toEqual({ typical: -5.4, best: -0.19, n: 618 })
+    expect(row.metrics).not.toHaveProperty('clubPath')
+  })
+
+  it('reads every other metric from the map', () => {
+    expect(readingFor(row, 'swingPlane')).toEqual({ typical: 49.75, n: 666 })
+  })
+
+  it('reports an absent metric as absent, never as a zero reading', () => {
+    expect(readingFor(row, 'curve')).toBeUndefined()
+  })
+
+  it('reports a hand-typed row as having no wider metrics and no club-path count', () => {
+    // A hand-typed row has no `metrics` at all and no `n` — the form takes neither.
+    const typed: ClubPath = { club: 'DRIVER', typical: -6, best: -4 }
+    expect(readingFor(typed, 'swingPlane')).toBeUndefined()
+    expect(readingFor(typed, 'clubPath')?.n).toBeUndefined()
   })
 })
