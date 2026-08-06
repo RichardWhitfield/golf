@@ -24,7 +24,6 @@ describe('route', () => {
     expect(route('GET', '/')).toBeNull()
     expect(route('POST', '/sessions')).toBeNull()
     expect(route('PUT', '/sessions/a1/../b2')).toBeNull()
-    expect(route('GET', '/shots/a1')).toEqual({ kind: 'getShots', id: 'a1' })
   })
 
   it('decodes a real Trackman id, which is 88-character base64 ending in "="', () => {
@@ -94,6 +93,13 @@ describe('the shots routes', () => {
 describe('validateShots', () => {
   it('accepts an array of shots with a club and finite readings', () => {
     const shots = [{ club: 'DRIVER', time: '2026-07-27T08:00:00Z', metrics: { clubPath: -6 } }]
+    expect(validateShots({ shots })).toEqual(shots)
+  })
+
+  it('accepts a reading of exactly zero, which is the target, not a missing value', () => {
+    // A club path of 0.00 deg is a perfectly neutral swing — the number this whole app exists
+    // to reach. A truthiness guard would reject it as though it were absent.
+    const shots = [{ club: 'DRIVER', metrics: { clubPath: 0, faceToPath: 0 } }]
     expect(validateShots({ shots })).toEqual(shots)
   })
 
