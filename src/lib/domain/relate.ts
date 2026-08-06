@@ -7,8 +7,15 @@ export interface RelationPoint {
   date: ISODate
   x: number
   y: number
-  /** The smaller of the two metrics' counts — a pair is only as measured as its thinner half. */
-  n: number
+  /**
+   * The smaller of the two metrics' counts — a pair is only as measured as its thinner half.
+   *
+   * **Absent, never zero**, when either side has no count: a hand-typed club-path row carries
+   * none, and `readingFor` casts that absence to `number` rather than admitting it. Guarding
+   * here keeps a `NaN` out of the dot-sizing maths, which would otherwise size a guess as
+   * though it were measured.
+   */
+  n?: number
 }
 
 export interface Relation {
@@ -56,14 +63,14 @@ export function relate(sessions: Session[], club: Club, x: MetricId, y: MetricId
       skipped += 1
       continue
     }
-    points.push({
-      date: session.date,
-      x: a.typical,
-      y: b.typical,
-      // The thinner half. A pair backed by 618 path readings and 12 plane readings is a
-      // 12-reading pair, and sizing it by the larger count would overstate it.
-      n: Math.min(a.n, b.n),
-    })
+    const point: RelationPoint = { date: session.date, x: a.typical, y: b.typical }
+    // The thinner half. A pair backed by 618 path readings and 12 plane readings is a
+    // 12-reading pair, and sizing it by the larger count would overstate it. Assigned
+    // conditionally, exactly as `series.ts` does for `n`: an absent count — a hand-typed
+    // club-path row has none, whatever `readingFor`'s cast claims — must stay absent rather
+    // than becoming `NaN` or `0`.
+    if (Number.isFinite(a.n) && Number.isFinite(b.n)) point.n = Math.min(a.n, b.n)
+    points.push(point)
   }
 
   points.sort((p, q) => p.date.localeCompare(q.date))
