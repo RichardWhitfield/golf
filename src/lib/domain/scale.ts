@@ -33,10 +33,29 @@ const R_MAX = 6.5
 /** Where the radius scale saturates. The largest real `n` in the backfill is 73. */
 const N_FULL = 75
 
-/** Degrees → SVG y. Clamped, so a wild reading draws at the edge rather than off-panel. */
-export function yFor(degrees: number): number {
-  const clamped = Math.min(DOMAIN.max, Math.max(DOMAIN.min, degrees))
-  return CHART.padT + ((DOMAIN.max - clamped) / (DOMAIN.max - DOMAIN.min)) * PLOT_H
+/**
+ * Value → SVG y against **any** authored domain. Clamped, so a wild reading draws at the edge
+ * rather than off-panel.
+ *
+ * The domain is always passed in, never derived from the values: one fitted at render time would
+ * move between visits and quietly redefine "good" as "better than recent" rather than "inside
+ * the band". Every domain in `domain/metrics.ts` is a frozen constant for exactly this reason.
+ */
+export function yIn(value: number, domain: { min: number; max: number }): number {
+  const clamped = Math.min(domain.max, Math.max(domain.min, value))
+  return CHART.padT + ((domain.max - clamped) / (domain.max - domain.min)) * PLOT_H
+}
+
+/**
+ * Value → SVG x against any authored domain. The horizontal twin of `yIn`, and clamped for the
+ * same reason: a wild reading draws at the edge rather than off-panel.
+ *
+ * Note the inversion difference — y grows downward in SVG, so `yIn` maps `domain.max` to the
+ * *smallest* y, while `xIn` maps `domain.min` to the smallest x.
+ */
+export function xIn(value: number, domain: { min: number; max: number }): number {
+  const clamped = Math.min(domain.max, Math.max(domain.min, value))
+  return CHART.padL + ((clamped - domain.min) / (domain.max - domain.min)) * PLOT_W
 }
 
 /**
@@ -69,8 +88,18 @@ export function radiusFor(n: number | undefined): number | null {
   return R_MIN + t * (R_MAX - R_MIN)
 }
 
-/** Inside the target band, inclusive of both edges. **Never `Math.abs` on a signed path** —
- *  that would accept a sign flip, the one error that matters most. */
+/** Inside a band, inclusive of both edges. **Never `Math.abs` on a signed value** — that would
+ *  accept a sign flip, the one error that matters most. */
+export function inRange(value: number, band: { min: number; max: number }): boolean {
+  return value >= band.min && value <= band.max
+}
+
+/** Club path against its own domain. The KPI's shorthand for `yIn`. */
+export function yFor(degrees: number): number {
+  return yIn(degrees, DOMAIN)
+}
+
+/** Club path against its own band. The KPI's shorthand for `inRange`. */
 export function inBand(degrees: number): boolean {
-  return degrees >= BAND.min && degrees <= BAND.max
+  return inRange(degrees, BAND)
 }

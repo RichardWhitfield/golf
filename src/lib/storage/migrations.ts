@@ -2,7 +2,7 @@ import type { Session } from '../domain/types'
 import type { Settings, StoreDocument } from './repository'
 
 /** Bump this and add a migration below for **any** change to the stored shape. */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 /** Stable across schema versions — the version lives inside the document, not in the key. */
 export const STORAGE_KEY = 'golf:store'
@@ -44,6 +44,23 @@ const MIGRATIONS: Record<number, Migration> = {
    * "update the site".
    */
   1: (doc) => doc,
+
+  /**
+   * v2 → v3: the wider Trackman metric set joins each club row. **Identity, deliberately.**
+   * Every v2 document is already a valid v3 one — `metrics` is optional, and club path keeps
+   * the fields it has always had.
+   *
+   * The bump is not for the data. It is so the **build currently deployed** refuses to touch a
+   * document containing `metrics`, which its `checkTrackmanSession` would silently drop on any
+   * export/import round trip. `FutureSchemaError` then does the right thing: refuse, don't
+   * quarantine, and say "update the site". Exactly the v1 → v2 reasoning.
+   *
+   * **That protection is real for the cache and weak for the remote store.** `handler.mjs`
+   * reports `Math.min(...)` across stored items and only rewritten items carry 3, so `/sessions`
+   * keeps reporting `2` for as long as any untouched pre-Phase-7 session exists — potentially
+   * forever. The cache is where the guard bites, and a deploy replaces the build anyway.
+   */
+  2: (doc) => doc,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

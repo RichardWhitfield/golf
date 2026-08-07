@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 // The test deliberately sits OUTSIDE `function/`, which is the directory that gets zipped and
 // deployed. `aws cloudformation package` archives the whole CodeUri directory, so a test file
 // living beside the handler would ship to production.
-import { BadRequest, route, validateSession, makeHandler } from './function/handler.mjs'
+import {
+  BadRequest,
+  route,
+  validateSession,
+  validateShots,
+  makeHandler,
+} from './function/handler.mjs'
 
 const PRACTICE = { id: 'a1', type: 'practice', date: '2026-08-05', location: 'home', entries: [] }
 
@@ -18,7 +24,6 @@ describe('route', () => {
     expect(route('GET', '/')).toBeNull()
     expect(route('POST', '/sessions')).toBeNull()
     expect(route('PUT', '/sessions/a1/../b2')).toBeNull()
-    expect(route('GET', '/shots/a1')).toBeNull() // reserved, not implemented
   })
 
   it('decodes a real Trackman id, which is 88-character base64 ending in "="', () => {
@@ -68,6 +73,64 @@ describe('validateSession', () => {
   })
 })
 
+describe('the shots routes', () => {
+  it('routes a put and a get, and nothing else', () => {
+    expect(route('PUT', '/shots/a1')).toEqual({ kind: 'putShots', id: 'a1' })
+    expect(route('GET', '/shots/a1')).toEqual({ kind: 'getShots', id: 'a1' })
+    expect(route('DELETE', '/shots/a1')).toBeNull()
+    expect(route('PUT', '/shots')).toBeNull()
+  })
+
+  it('decodes a real Trackman id the same way the session routes do', () => {
+    // 88-character base64 ending in "=". Validating these against an invented charset rejected
+    // all 86 real sessions once; the rule is safety, not format.
+    const id =
+      'VmlydHVhbFJhbmdlU2Vzc2lvbkFjdGl2aXR5CmRjNTlkNzkzMS1kNjQ0LTU1OTQtYTEyMC04ZTIzOTA5MDQ1MmU='
+    expect(route('PUT', `/shots/${encodeURIComponent(id)}`)).toEqual({ kind: 'putShots', id })
+  })
+})
+
+describe('validateShots', () => {
+  it('accepts an array of shots with a club and finite readings', () => {
+    const shots = [{ club: 'DRIVER', time: '2026-07-27T08:00:00Z', metrics: { clubPath: -6 } }]
+    expect(validateShots({ shots })).toEqual(shots)
+  })
+
+  it('accepts a reading of exactly zero, which is the target, not a missing value', () => {
+    // A club path of 0.00 deg is a perfectly neutral swing — the number this whole app exists
+    // to reach. A truthiness guard would reject it as though it were absent.
+    const shots = [{ club: 'DRIVER', metrics: { clubPath: 0, faceToPath: 0 } }]
+    expect(validateShots({ shots })).toEqual(shots)
+  })
+
+  it('accepts an empty array — a session where nothing was measured', () => {
+    expect(validateShots({ shots: [] })).toEqual([])
+  })
+
+  it('rejects a body that is not a shots array', () => {
+    expect(() => validateShots({})).toThrow(BadRequest)
+    expect(() => validateShots({ shots: 'lots' })).toThrow(BadRequest)
+  })
+
+  it('rejects a shot with no club, since a reading with no club is meaningless', () => {
+    // Club path without a club tracks nothing: a mixed-club figure follows club selection.
+    expect(() => validateShots({ shots: [{ metrics: { clubPath: -6 } }] })).toThrow(BadRequest)
+  })
+
+  it('rejects a non-finite reading rather than storing a NaN the client cannot render', () => {
+    expect(() =>
+      validateShots({ shots: [{ club: 'DRIVER', metrics: { clubPath: 'left' } }] }),
+    ).toThrow(BadRequest)
+  })
+
+  it('refuses a batch far larger than any real session', () => {
+    // The largest real session is 225 strokes. This bounds an open endpoint (D19), it is not a
+    // statement about the data.
+    const shots = Array.from({ length: 2001 }, () => ({ club: 'DRIVER', metrics: {} }))
+    expect(() => validateShots({ shots })).toThrow(BadRequest)
+  })
+})
+
 describe('handler', () => {
   /** Records commands instead of calling AWS. `reply` is what `send` resolves to. */
   function fakeClient(reply = {}) {
@@ -111,7 +174,7 @@ describe('handler', () => {
 
   it('reports the current version for an empty table, which is a first run, not v0', async () => {
     const res = await makeHandler(fakeClient({ Items: [] }), 'golf')(event('GET', '/sessions'))
-    expect(JSON.parse(res.body)).toEqual({ sessions: [], schemaVersion: 2 })
+    expect(JSON.parse(res.body)).toEqual({ sessions: [], schemaVersion: 3 })
   })
 
   it('rejects an invalid body with 400 and writes nothing', async () => {

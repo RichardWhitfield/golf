@@ -1,4 +1,4 @@
-import type { ISODate, TrackmanSession } from '../domain/types'
+import type { ISODate, Shot, TrackmanSession } from '../domain/types'
 
 /**
  * The ingest seam, as specified in `docs/architecture.md` §4. `ApiSource` implements it.
@@ -13,6 +13,9 @@ export interface TrackmanSource {
   name: string
   /** Cheap liveness check. Must never throw, and must never include the credential in a result. */
   isAvailable(): Promise<boolean>
-  /** Inclusive of `date`. Returns sessions already aggregated per club. */
-  fetchSince(date: ISODate): Promise<TrackmanSession[]>
+  /**
+   * Inclusive of `date`. Returns sessions already aggregated per club, and the per-shot record
+   * keyed by session id — the ingest writes the two to different places (D24).
+   */
+  fetchSince(date: ISODate): Promise<{ sessions: TrackmanSession[]; shots: Map<string, Shot[]> }>
 }

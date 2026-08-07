@@ -14,9 +14,10 @@
  * decision (D19), so this job needs no AWS credentials of any kind.
  */
 import { ApiSource } from '../src/lib/ingest/api'
+import { shotsToWrite } from '../src/lib/ingest/merge'
 import { RemoteRepo } from '../src/lib/storage/remote'
 import { resolveISODate } from '../src/lib/domain/today'
-import type { ISODate, TrackmanSession } from '../src/lib/domain/types'
+import type { ISODate } from '../src/lib/domain/types'
 
 /** A missed run self-heals: the window overlaps, and the merge is idempotent. */
 const DEFAULT_WINDOW_DAYS = 14
@@ -58,7 +59,7 @@ async function main(): Promise<void> {
   const unknownClubs = new Set<string>()
   const source = new ApiSource(token)
 
-  let fetched: TrackmanSession[]
+  let fetched
   try {
     fetched = await source.fetchSince(from, (name) => unknownClubs.add(name))
   } catch (error) {
@@ -74,16 +75,38 @@ async function main(): Promise<void> {
   // The same merge the browser uses, against the store rather than a file. `mergeTrackman` adds
   // `?ifNotManual=1` per write, so a hand-typed record survives even if a save from the phone
   // lands between this read and its write.
+  const repo = new RemoteRepo(url)
+
   let result
   try {
-    result = await new RemoteRepo(url).mergeTrackman(fetched)
+    result = await repo.mergeTrackman(fetched.sessions)
   } catch (error) {
     fail(error instanceof Error ? error.message : 'The store could not be written.')
   }
 
+  // Shots follow the sessions. The bound is the **pull window**, not what changed: every api
+  // session still inside it has its shots rewritten on every run. That is deliberate and matches
+  // why the window defaults to 14 days — a session lost by accident is restored by the next run
+  // inside it, and without this the shots item would be the one thing nothing ever repaired.
+  // A session skipped because it is hand-typed must never have machine shots attached, which
+  // would put an imported record behind a manual one.
+  const pending = shotsToWrite(result.sessions, fetched.shots)
+  let shotCount = 0
+  for (const { id, shots } of pending) {
+    try {
+      await repo.saveShots(id, shots)
+    } catch (error) {
+      // Loud, never swallowed: the session aggregates already landed, so a silent failure here
+      // would leave the two halves out of step with nothing to show for it.
+      fail(error instanceof Error ? error.message : `Could not write shots for ${id}.`)
+    }
+    shotCount += shots.length
+  }
+
   console.log(
-    `Pulled from ${from}: ${fetched.length} session(s) measured · ` +
-      `${result.added} new · ${result.updated} updated · ${result.skipped} skipped.`,
+    `Pulled from ${from}: ${fetched.sessions.length} session(s) measured · ` +
+      `${result.added} new · ${result.updated} updated · ${result.skipped} skipped · ` +
+      `${shotCount} shot(s) across ${pending.length} session(s).`,
   )
 }
 

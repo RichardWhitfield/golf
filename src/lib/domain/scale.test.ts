@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BAND, CHART, DOMAIN, inBand, radiusFor, xFor, yFor } from './scale'
+import { BAND, CHART, DOMAIN, inBand, inRange, radiusFor, xFor, xIn, yFor, yIn } from './scale'
 
 describe('DOMAIN', () => {
   it('is fixed, and wide enough to hold every real reading', () => {
@@ -114,5 +114,61 @@ describe('inBand', () => {
     expect(inBand(-2.01)).toBe(false)
     expect(inBand(2.01)).toBe(false)
     expect(inBand(-8.51)).toBe(false)
+  })
+})
+
+describe('yIn', () => {
+  it('places a value against any authored domain, not just club path', () => {
+    const domain = { min: 40, max: 66 }
+    expect(yIn(66, domain)).toBeCloseTo(yIn(DOMAIN.max, DOMAIN), 10)
+    expect(yIn(40, domain)).toBeCloseTo(yIn(DOMAIN.min, DOMAIN), 10)
+  })
+
+  it('clamps rather than drawing off-panel', () => {
+    const domain = { min: 40, max: 66 }
+    expect(yIn(200, domain)).toBe(yIn(66, domain))
+    expect(yIn(0, domain)).toBe(yIn(40, domain))
+  })
+
+  it('leaves yFor behaving exactly as it did', () => {
+    for (const degrees of [-14, -5.4, 0, 2, 4]) {
+      expect(yFor(degrees)).toBe(yIn(degrees, DOMAIN))
+    }
+  })
+})
+
+describe('xIn', () => {
+  it('places a value against any authored domain', () => {
+    const domain = { min: 40, max: 66 }
+    expect(xIn(domain.min, domain)).toBe(CHART.padL)
+    expect(xIn(domain.max, domain)).toBeCloseTo(CHART.w - CHART.padR, 10)
+    expect(xIn(53, domain)).toBeCloseTo((CHART.padL + (CHART.w - CHART.padR)) / 2, 10)
+  })
+
+  it('clamps rather than drawing off-panel', () => {
+    const domain = { min: 40, max: 66 }
+    expect(xIn(200, domain)).toBe(xIn(66, domain))
+    expect(xIn(0, domain)).toBe(xIn(40, domain))
+  })
+
+  it('grows the opposite way to yIn, because SVG y grows downward', () => {
+    const domain = { min: -4, max: 12 }
+    // `domain.min` is the smallest x but the *largest* y.
+    expect(xIn(domain.min, domain)).toBeLessThan(xIn(domain.max, domain))
+    expect(yIn(domain.min, domain)).toBeGreaterThan(yIn(domain.max, domain))
+  })
+})
+
+describe('inRange', () => {
+  it('is inclusive of both edges', () => {
+    expect(inRange(-2, BAND)).toBe(true)
+    expect(inRange(2, BAND)).toBe(true)
+    expect(inRange(2.01, BAND)).toBe(false)
+  })
+
+  it('treats overshooting as a fault, never as better', () => {
+    // The target is a band, not a maximum. +5 is outside it exactly as -5 is.
+    expect(inRange(5, BAND)).toBe(false)
+    expect(inRange(-5, BAND)).toBe(false)
   })
 })

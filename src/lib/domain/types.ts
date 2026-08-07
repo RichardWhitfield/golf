@@ -1,4 +1,5 @@
 import type { Club } from './clubs'
+import type { MetricId } from './metrics'
 
 /** Stable identifiers. The weekly schedule references drills by digit — never renumber. */
 export type DrillId = '01' | '02' | '03' | '04' | '05' | '06' | '07'
@@ -78,6 +79,29 @@ export interface PracticeSession {
   notes?: string
 }
 
+/** Every metric except club path, which keeps its own dedicated fields on `ClubPath`. */
+export type ExtraMetricId = Exclude<MetricId, 'clubPath'>
+
+/**
+ * One club's session aggregate for one metric.
+ *
+ * **`n` is required here, unlike `ClubPath.n`.** Every reading of this shape is computed from
+ * strokes, so a count always exists; hand entry never produces one of these at all.
+ *
+ * **The count is per metric, and it has to be.** Null rates differ by up to 45 points — on the
+ * driver, swing plane is present on 666 strokes where club path is present on 618. A count
+ * shared across metrics would let `radiusFor()` draw the sparser reading as confidently as the
+ * denser one.
+ */
+export interface MetricReading {
+  /** Session mean for this club and metric. */
+  typical: number
+  /** Present only where the metric has a target — absent whenever `better` is `none`. */
+  best?: number
+  /** Measured strokes behind `typical`. */
+  n: number
+}
+
 /**
  * One club's club path for one session.
  *
@@ -97,6 +121,14 @@ export interface ClubPath {
   best: number
   /** Measured strokes behind `typical`. Absent on hand-typed entries, which have no count. */
   n?: number
+  /**
+   * The wider measurement set, keyed by metric.
+   *
+   * **Absent on hand-typed rows and on everything imported before Phase 7.** Club path is
+   * deliberately *not* duplicated in here: it keeps the fields above, so no existing reader
+   * changes and no migration touches existing data.
+   */
+  metrics?: Partial<Record<ExtraMetricId, MetricReading>>
 }
 
 /** The Trackman session. The numbers live here. */
@@ -115,6 +147,20 @@ export interface TrackmanSession {
    * is what stops the next sync from overwriting the correction.
    */
   source: 'manual' | 'api'
+}
+
+/**
+ * One measured stroke. Stored under `SHOTS#<sessionId>`, **never** alongside the session.
+ *
+ * Embedding these would force a multi-megabyte download on every page load to draw charts that
+ * do not use them (D24). Every metric is optional: absence is the API's own posture — not one
+ * of the 75 fields on `Measurement` is non-nullable — and an absent reading is never a zero.
+ */
+export interface Shot {
+  club: Club
+  /** UTC instant from the stroke, kept for ordering within a session. */
+  time?: string
+  metrics: Partial<Record<MetricId, number>>
 }
 
 export type Session = PracticeSession | TrackmanSession

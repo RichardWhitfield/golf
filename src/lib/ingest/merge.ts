@@ -1,4 +1,4 @@
-import { isTrackman, type Session, type TrackmanSession } from '../domain/types'
+import { isTrackman, type Session, type Shot, type TrackmanSession } from '../domain/types'
 
 export interface TrackmanMergeResult {
   sessions: Session[]
@@ -70,4 +70,29 @@ export function mergeTrackmanSessions(
     skipped,
     changed: added > 0 || updated > 0,
   }
+}
+
+/**
+ * Which sessions should have their per-shot record written, and with what.
+ *
+ * **A session marked `manual` is never given machine shots.** That is the same guarantee
+ * `mergeTrackmanSessions` keeps for the session itself, extended to the `SHOTS#` key space —
+ * which inherits nothing from it, because the database's `ifNotManual` condition guards the
+ * `SESSION` partition alone. If this rule is not enforced here, it is not enforced anywhere.
+ *
+ * Sessions absent from `shots` are simply outside the pull window and are skipped.
+ */
+export function shotsToWrite(
+  sessions: Session[],
+  shots: Map<string, Shot[]>,
+): { id: string; shots: Shot[] }[] {
+  const out: { id: string; shots: Shot[] }[] = []
+  for (const session of sessions) {
+    if (!isTrackman(session) || session.source !== 'api') continue
+    const found = shots.get(session.id)
+    // An empty array is not worth an item: nothing measured, nothing to store.
+    if (!found || found.length === 0) continue
+    out.push({ id: session.id, shots: found })
+  }
+  return out
 }

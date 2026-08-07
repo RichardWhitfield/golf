@@ -1,4 +1,5 @@
-import type { ISODate, TrackmanSession } from '../domain/types'
+import { METRIC_FIELDS } from '../domain/metrics'
+import type { ISODate, Shot, TrackmanSession } from '../domain/types'
 import { aggregateActivities, type RawActivity, type UnknownClubReporter } from './aggregate'
 import type { TrackmanSource } from './source'
 
@@ -13,6 +14,16 @@ const CLIENT_ID = 'old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae'
 
 /** The API pages at 50. The 13-month backfill needed two pages for its 91 sessions. */
 const PAGE_SIZE = 50
+
+/**
+ * **Every field name comes from the registry**, so the wire format is stated once and reviewed
+ * in one place.
+ *
+ * A field the token cannot read fails the **whole request**, `clubPath` included — there is no
+ * partial-field response. No retry logic narrows the selection on failure: a retry that silently
+ * dropped the KPI would be worse than a loud failure, and manual entry is the baseline (D6).
+ */
+const STROKE_FIELDS = METRIC_FIELDS.join(' ')
 
 /**
  * Monday sessions arrive as `VirtualRangeSessionActivity`.
@@ -32,7 +43,7 @@ query Sessions($from: DateTime!, $to: DateTime!, $take: Int!, $skip: Int!) {
         time
         ... on VirtualRangeSessionActivity {
           strokeCount
-          strokes { club time measurement { clubPath } }
+          strokes { club time measurement { ${STROKE_FIELDS} } }
         }
       }
     }
@@ -80,7 +91,10 @@ export class ApiSource implements TrackmanSource {
     }
   }
 
-  async fetchSince(date: ISODate, onUnknownClub?: UnknownClubReporter): Promise<TrackmanSession[]> {
+  async fetchSince(
+    date: ISODate,
+    onUnknownClub?: UnknownClubReporter,
+  ): Promise<{ sessions: TrackmanSession[]; shots: Map<string, Shot[]> }> {
     const token = await this.#accessToken()
     const from = `${date}T00:00:00Z`
     // Open-ended on purpose: "now" would race a session still being written as the job runs.

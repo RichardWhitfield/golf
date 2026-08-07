@@ -57,7 +57,7 @@ function decodeId(raw) {
 }
 
 /** Kept in step with `SCHEMA_VERSION` in `src/lib/storage/migrations.ts`. */
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 /** Rejected before anything reaches DynamoDB. The message is shown to the user as-is. */
 export class BadRequest extends Error {
@@ -68,8 +68,13 @@ export class BadRequest extends Error {
 }
 
 /**
- * `/shots/{id}` is deliberately absent. The `SHOTS#<id>` key space is reserved for per-shot
- * metrics, but reserving a key space costs nothing while an unused endpoint is code to maintain.
+ * `/shots/{id}` holds the per-shot record, in its own item so no chart downloads it (D24).
+ *
+ * `GET` exists because a write nobody can read back is unverifiable, and this project's rule is
+ * to verify a deploy before calling the work done. There is no `DELETE`: the ingest is the only
+ * writer and nothing reads shots back, so an orphaned item costs a few KB and nothing else.
+ * Note that `deleteSession` removes only the `SESSION` item — **deleting a session leaves its
+ * shots behind.**
  */
 export function route(method, path) {
   if (path === '/sessions' && method === 'GET') return { kind: 'listSessions' }
@@ -78,12 +83,21 @@ export function route(method, path) {
 
   // `[^/]+` deliberately: an encoded slash (`%2F`) stays inside one segment and decodes back to
   // a literal slash, which is fine as an identifier because it only ever becomes a sort key.
-  const match = /^\/sessions\/([^/]+)$/.exec(path)
-  if (match) {
-    const id = decodeId(match[1])
+  const session = /^\/sessions\/([^/]+)$/.exec(path)
+  if (session) {
+    const id = decodeId(session[1])
     if (id !== null) {
       if (method === 'PUT') return { kind: 'putSession', id }
       if (method === 'DELETE') return { kind: 'deleteSession', id }
+    }
+  }
+
+  const shots = /^\/shots\/([^/]+)$/.exec(path)
+  if (shots) {
+    const id = decodeId(shots[1])
+    if (id !== null) {
+      if (method === 'PUT') return { kind: 'putShots', id }
+      if (method === 'GET') return { kind: 'getShots', id }
     }
   }
   return null
@@ -116,6 +130,40 @@ export function validateSession(raw, id) {
     }
   }
   return raw
+}
+
+/**
+ * Longer than any real session. The largest in thirteen months is 225 strokes; this bounds what
+ * an open endpoint (D19) can be made to store, and is not a claim about the data.
+ */
+const MAX_SHOTS = 2000
+
+/** Structural only — a gate against shapes the client cannot parse, not a second authority. */
+export function validateShots(raw) {
+  if (!isRecord(raw)) throw new BadRequest('The body must be a JSON object.')
+  if (!Array.isArray(raw.shots)) throw new BadRequest('The body must carry a shots array.')
+  if (raw.shots.length > MAX_SHOTS) {
+    throw new BadRequest(`A session may not carry more than ${MAX_SHOTS} shots.`)
+  }
+  for (const shot of raw.shots) {
+    if (!isRecord(shot)) throw new BadRequest('Every shot must be an object.')
+    // A reading with no club tracks club selection rather than swing change (OQ-7). The club
+    // name itself is the client's to police; this only insists there is one.
+    if (typeof shot.club !== 'string' || shot.club === '') {
+      throw new BadRequest('Every shot must name a club.')
+    }
+    if (shot.time !== undefined && typeof shot.time !== 'string') {
+      throw new BadRequest('A shot time must be a string.')
+    }
+    if (!isRecord(shot.metrics)) throw new BadRequest('Every shot must carry a metrics object.')
+    for (const value of Object.values(shot.metrics)) {
+      // Absent is fine and expected; a NaN or a string is a shape the client cannot render.
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new BadRequest('Every shot reading must be a finite number.')
+      }
+    }
+  }
+  return raw.shots
 }
 
 function json(statusCode, body) {
@@ -208,6 +256,27 @@ export function makeHandler(client, tableName) {
             }),
           )
           return json(200, { ok: true })
+        }
+
+        case 'putShots': {
+          const shots = validateShots(body)
+          await client.send(
+            new PutItemCommand({
+              TableName: tableName,
+              Item: item(`SHOTS#${target.id}`, 'v1', shots, 'api'),
+            }),
+          )
+          return json(200, { ok: true, count: shots.length })
+        }
+
+        case 'getShots': {
+          const out = await client.send(
+            new GetItemCommand({
+              TableName: tableName,
+              Key: { pk: { S: `SHOTS#${target.id}` }, sk: { S: 'v1' } },
+            }),
+          )
+          return json(200, { shots: out.Item ? JSON.parse(out.Item.doc.S) : [] })
         }
 
         case 'getSettings': {

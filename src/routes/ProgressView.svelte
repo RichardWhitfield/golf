@@ -13,6 +13,9 @@
   import { feelByPhase } from '../lib/domain/feel'
   import PhaseFeelPanel from '../lib/components/PhaseFeel.svelte'
   import ArcPosition from '../lib/components/ArcPosition.svelte'
+  import { relate } from '../lib/domain/relate'
+  import SlicePanel from '../lib/components/SlicePanel.svelte'
+  import RelationPanel from '../lib/components/RelationPanel.svelte'
 
   const hasTrackman = $derived(sessions.trackman.length > 0)
   const blockStart = $derived(sessions.settings.blockStart)
@@ -40,6 +43,23 @@
   const bounds = $derived(dateBounds(series))
   const kpi = $derived(series.find((s) => s.club === KPI_CLUB))
   const rest = $derived(series.filter((s) => s.club !== KPI_CLUB))
+
+  /** Both relations are driver-only. `relate` takes one club and never looks at another, so
+   *  there is no blended figure to compute here — see OQ-7. */
+  const planeVsPath = $derived(relate(sessions.list, KPI_CLUB, 'swingPlane', 'clubPath'))
+  const faceVsPath = $derived(relate(sessions.list, KPI_CLUB, 'faceToPath', 'clubPath'))
+  const hasMetrics = $derived(planeVsPath.points.length > 0 || faceVsPath.points.length > 0)
+
+  const showWhy = $derived(sessions.ready && hasMetrics)
+
+  /** Section numbers are visible on the page, so they must not gap when `#why` is hidden.
+   *  Derived rather than hardcoded: `#why` only appears once a session carries the wider
+   *  metric set, and a missing `02` reads as a broken page rather than an absent section. */
+  const idx = $derived(
+    showWhy
+      ? { why: '02', coverage: '03', feel: '04', where: '05' }
+      : { why: '02', coverage: '02', feel: '03', where: '04' },
+  )
 </script>
 
 <section class="progress reveal" aria-labelledby="progress-title">
@@ -79,8 +99,29 @@
   {/if}
 </section>
 
+{#if showWhy}
+  <section id="why">
+    <SectionHead idx={idx.why} title="Why the ball curves" />
+    <p class="note">
+      Club path is the KPI, but it is only half of what bends the ball. The other half is where
+      the face points <em>relative to that path</em> — and a square face is still open when the
+      path is far enough left.
+    </p>
+    <SlicePanel sessions={sessions.list} />
+    <div class="pair-grid">
+      <RelationPanel relation={faceVsPath} />
+      <RelationPanel relation={planeVsPath} />
+    </div>
+    <p class="note">
+      Both panels read one session as one dot, never one shot. Swing plane is here because it was
+      the obvious suspect for the out-to-in path — read what the panel actually says rather than
+      what it was expected to say.
+    </p>
+  </section>
+{/if}
+
 <section id="coverage">
-  <SectionHead idx="02" title="Drill coverage" />
+  <SectionHead idx={idx.coverage} title="Drill coverage" />
   <p class="note">
     What the plan asked for against what you logged. A drill sitting at zero against a real
     schedule is the finding.
@@ -89,7 +130,7 @@
 </section>
 
 <section id="feel">
-  <SectionHead idx="03" title="Feel by phase" />
+  <SectionHead idx={idx.feel} title="Feel by phase" />
   {#if sessions.ready && !blockStart}
     <p class="empty">
       No block start date is set, so there are no phases yet. Set one on the
@@ -105,7 +146,7 @@
 </section>
 
 <section id="where">
-  <SectionHead idx="04" title="Where you are" />
+  <SectionHead idx={idx.where} title="Where you are" />
   {#if sessions.ready && !blockStart}
     <p class="empty">
       No block start date is set. Set one on the
@@ -127,4 +168,5 @@
   .empty a{color:var(--ball)}
   .note{color:var(--dim);font-size:.88rem;max-width:70ch;margin:14px 0 18px}
   .note .mono{font-family:'Space Mono',monospace;color:var(--chalk)}
+  .pair-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:18px}
 </style>

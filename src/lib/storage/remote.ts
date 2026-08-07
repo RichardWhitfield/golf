@@ -1,4 +1,4 @@
-import type { Session, TrackmanSession } from '../domain/types'
+import type { Session, Shot, TrackmanSession } from '../domain/types'
 import { mergeTrackmanSessions, type TrackmanMergeResult } from '../ingest/merge'
 import { SCHEMA_VERSION, migrate } from './migrations'
 import type { ImportSummary, Repository, Settings, StoreDocument } from './repository'
@@ -77,6 +77,26 @@ export class RemoteRepo implements Repository {
   async deleteSession(id: string): Promise<void> {
     this.#guard()
     await this.#request('DELETE', `/sessions/${encodeURIComponent(id)}`)
+  }
+
+  /**
+   * Per-shot metrics for one session, in their own item (D24).
+   *
+   * **Deliberately not on the `Repository` interface.** Components reach storage through that
+   * interface; putting shots on it would invite a component to download thousands of rows to
+   * draw charts that do not use them, which is the whole reason the key space is separate. The
+   * ingest is the only writer, and `CachedRepo` never sees these.
+   */
+  async saveShots(sessionId: string, shots: Shot[]): Promise<void> {
+    await this.#write(`/shots/${encodeURIComponent(sessionId)}`, { shots })
+  }
+
+  async getShots(sessionId: string): Promise<Shot[]> {
+    const body = await this.#request<{ shots: Shot[] }>(
+      'GET',
+      `/shots/${encodeURIComponent(sessionId)}`,
+    )
+    return body.shots ?? []
   }
 
   async getSettings(): Promise<Settings> {

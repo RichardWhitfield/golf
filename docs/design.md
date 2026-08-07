@@ -152,6 +152,11 @@ and one collapse point is a large part of why this stays maintainable.
 `.sec-head` — a mono index (`01`, `02`…) in `--ball` sitting on the baseline beside the `h2`.
 Every numbered section uses this. New sections continue the numbering.
 
+**A conditional section renumbers the ones after it; it never leaves a gap.** `/progress`'s
+"Why the ball curves" only appears once a session carries the wider metric set, so the indices
+on that view are derived rather than written into the markup — with the section hidden, coverage
+is `02` and not `03`. A visible `01, 03, 04` reads as a broken page, not as an absent section.
+
 ### Group label
 `.group-label` — mono, uppercase, `--dim`, followed by a rule that fills remaining width
 (`::after { flex: 1; height: 1px }`). Used to sub-divide drills into categories.
@@ -299,6 +304,48 @@ apart by their ordinal, because 21 dates in the backfill carry two sessions.
 The driver panel takes `--panel` and a taller SVG as the KPI headline; the rest sit on `--card`
 in the shared `.grid`. Each chart is a `<figure>` with `role="img"`, a worded `aria-label`, and
 a visually-hidden data table.
+
+### Slice panel
+`SlicePanel.svelte` — the driver's latest reading, decomposed. A `--card` block with a `3px`
+`--ball` left border, the same "this is the actionable thing" marker the Today panel carries.
+Inside, an `auto-fit` row of up to four figures — path, face angle, face to path, curve — each a
+mono uppercase label, a large Space Mono value with its unit in `--dim`, and **its own shot
+count** beneath. A reading with no count says `typed by hand`; it never shows a `0`.
+
+**Every value renders in `--chalk`, deliberately** — including club path, which the chart above
+colours by band. Four judged numbers in a row would be noise. The verdict is carried instead by
+one line of prose below them, and **that line takes `--flag` only when the face is open to the
+path** — the state that actually produces the slice. When it is closed, the same sentence renders
+in `--chalk`. Red means the problem, and nothing else on this panel claims to be one.
+
+### Relation panel
+`RelationPanel.svelte` — two metrics scattered against each other for one club, as inline SVG on
+**two authored domains** (`domain/metrics.ts`), one per axis. Never fitted to the data, for the
+same reason the club-path chart's is not.
+
+Draw order matches the club-path chart: **fault region above the band, fault region below it**,
+then the `--ball-wash` band, the zero rule, the y-axis, the ticks, then the dots. Both fault
+regions are `--flag-wash`. The panel is only drawn with bands at all when the y metric has one —
+a metric where `better` is `'none'` has no target, so it gets no band and no fault regions
+rather than an invented pair.
+
+Axes are labelled: each domain's bounds at the ends, a signed `+` where the axis carries
+negatives, and the x metric's mono short name centred beneath. Dots in an unlabelled box say
+nothing about whether a reading sits at 48° of plane or 60°.
+
+Dot radius is the **thinner** of the pair's two counts, on the same `sqrt` scale as the club-path
+chart, and a pair missing either count is a hollow dashed ring. Dots inside the band take
+`--ball`; the rest take `--chalk`.
+
+The caption's `r` chip is `--dim`, **not `--ball`** — a correlation is neither a goal nor a
+problem, and colouring it would borrow a verdict the number does not carry. Below the chart, the
+relationship is **stated in words**, computed from `r` every render: strength of a relationship
+is exactly what a scatter of dots does not communicate, and a screen reader gets nothing from the
+shapes at all. Sessions holding only one of the two metrics are counted and named beneath, so a
+thin finding cannot present itself as a strong one.
+
+**No new colour token was added for either panel.** Both are built from `--card`, `--line`,
+`--ball`, `--ball-wash`, `--flag`, `--flag-wash`, `--chalk` and `--dim`.
 
 ### Coverage row
 `CoverageBars.svelte` — done against scheduled, one row per drill. Fill is `--ball`, sized to

@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-07
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -13,9 +13,11 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 - Three views behind the router: `/` (the plan), `/log` (the practice log) and `/progress`
   (the charts). Deep links depend on a generated `dist/404.html`.
 - Practice **and Trackman** sessions live in **DynamoDB** behind the async repository seam at
-  `schemaVersion` 2, with JSON export/import. `localStorage` is a read cache, so the same history
+  `schemaVersion` 3, with JSON export/import. `localStorage` is a read cache, so the same history
   is on the phone and the laptop.
 - Club path is stored **per club** and never blended. The KPI is **driver** club path.
+- Each club row carries **twelve metrics**, each with its own shot count, and the shot-by-shot
+  record sits in a separate `SHOTS#` item that nothing on the site downloads.
 - A daily Actions workflow pulls Trackman sessions straight into the store, holding no
   permissions and no AWS credentials, and never overwriting anything typed by hand.
 - `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
@@ -219,6 +221,60 @@ guessed, the same discipline `domain/clubs.ts` applies to club spellings.
 
 ---
 
+## Phase 7 · Per-shot Trackman metrics — **done (2026-08-07)**
+
+[#25](https://github.com/RichardWhitfield/golf/issues/25) · design in
+`docs/superpowers/specs/2026-08-06-phase-7-per-shot-metrics-design.md`
+
+The GraphQL query named one field and discarded everything else Trackman measures. It now names
+twelve, chosen on whether each answers a question being asked rather than on availability.
+
+Shipped: `domain/metrics.ts`, the registry that refuses to guess an axis the way `clubs.ts`
+refuses to guess a club spelling; `MetricReading` on every club row, **each with its own shot
+count**; the shot-by-shot record under `SHOTS#<sessionId>` with `PUT`/`GET` endpoints and no
+`DELETE`; `schemaVersion` 3 with an identity migration; `domain/relate.ts`; and a driver section
+on `/progress` — `SlicePanel` and two `RelationPanel`s — that states what the data says.
+
+**The KPI did not move.** It stays driver club path (OQ-7). This phase explains the path rather
+than replacing it.
+
+**Findings from the live schema and 5,877 real strokes changed the design:**
+
+- **Four fields the schema advertises hold no data at all** — `strokeLength`, `backswingTime`,
+  `forwardswingTime`, `tempo`, plus `detectedClubCategory`, null on every stroke. A design
+  written from introspection alone would have shipped a tempo chart with nothing in it. This is
+  why there are two scripts: `npm run introspect` says what exists, `npm run probe` says what is
+  populated.
+- **Null rates differ per metric** — by up to 45 points across the whole 75-field surface, and by
+  about 23 among the twelve metrics that ship: on the driver, 723 carry readings against 556 for
+  face to path, with swing plane at 666 and club path at 618. One `n` per club row would have
+  sized a sparse reading like a dense one, silently. Hence a count per metric (D27).
+- **Per-shot and session-mean ranges are different**, and mixing them misdraws a chart. Per-shot
+  club path spans `−18…10.9` where session means span `−13.76…0.89`. Every authored domain comes
+  from session means, because that is the level a panel plots (D30).
+- **`attackAngle` has no shared target** — a driver wants positive, an iron negative — which is
+  what forced `better: 'none'` as a real answer rather than an invented band (D29).
+
+**The headline finding is not the one the phase set out to confirm.** Swing plane does not explain
+the out-to-in path, and the face is not the fault — see the two answers below and `content.md`.
+
+**Done when** — met in code: the wider metric set is written by every import, the shot record
+exists where nothing has to download it, and `/progress` answers the plane question from the
+player's own data rather than from a figure typed into a component. **Still pending: the
+backfill.** Sessions imported before this phase carry club path alone, so the wider set is not
+on them until a re-ingest runs — deliberately sequenced after the merge.
+
+**Two things shipped differently from the plan:** `/progress`'s section numbers are derived rather
+than hardcoded, so hiding the conditional section renumbers the rest instead of leaving a gap; and
+`RelationPanel` draws fault regions on **both** sides plus axis ticks, which the plan's draft
+omitted — without them the panel would have inverted the coaching message.
+
+**The probe workflow was deleted with this phase.** Both scripts stay: introspection needs no
+credential, and the probe is run by whoever holds the token. What went was the branch-triggered
+CI job, which had done its work.
+
+---
+
 ## Open questions
 
 ### OQ-1 · Is TrackMan data programmatically accessible? — **resolved 2026-07-31**
@@ -325,6 +381,39 @@ same 13 months the driver worsened (`-4.01` → `-7.50`) while the 4-iron improv
 
 Per-club small multiples are the remaining piece and belong to Phase 4 — the stored shape now
 supports them.
+
+### The swing-plane question — **answered 2026-08-07**
+
+Never a numbered open question, but the reason Phase 7 was raised:
+
+> *Swing plane is probably too steep, and that may be causing the out-to-in path.*
+
+**The data does not support it, and the sign runs the other way.** On the driver, at the
+session-mean level `/progress` plots, `r = +0.503` across 44 sessions — a *positive* r, meaning a
+steeper plane has gone with a **less** out-to-in path. The relationship is moderate (R² ≈ 0.25)
+and club-dependent: at the 4-iron, **measured shot by shot**, it vanishes (`−0.053`). No 4-iron
+session-mean figure was computed, so the two are not the same measurement — but neither reading
+puts steepness behind the path.
+
+**And the face is not the fault either.** Driver face angle has a median of `−0.86°` — square to
+target — while face to path has a median of `+4.8°` and has **never once been negative** across 44
+sessions, minimum `+0.97°`, with curve never below `+3.61 m`. The face is only open *relative to
+the path*, because the path is so far left. That independently vindicates the KPI: fix the path
+and the curve goes with it.
+
+**What follows is a coaching question, not a software one.** The app now says what the cause is
+not; what it *is* is not something the repo can answer. `swingPlane` stays stored and charted so
+the answer stays checkable as the swing changes.
+
+### OQ-8 · Does `swingDirection` deserve a place after all?
+
+Raised by Phase 7. It correlates at `r = 0.819` with club path on the driver and was excluded as
+near-collinear — a second panel saying the same thing. But if the path neutralises and the two
+diverge, **that divergence is itself the interesting signal**.
+
+**Revisit when driver club path first sits inside the band for three consecutive sessions.** Not
+before: while the two move together there is nothing to see, and adding it now would cost a panel
+and buy nothing.
 
 ---
 

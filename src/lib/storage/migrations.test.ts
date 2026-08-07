@@ -74,15 +74,16 @@ describe('migrate', () => {
 
   it('runs the migration loop for real, now that a registered step exists', () => {
     // The predecessor of this test noted that while SCHEMA_VERSION was 1 the loop body was
-    // unreachable. It is reachable now: a v1 document takes the 1 → 2 step.
+    // unreachable. It is reachable now: a v1 document takes the 1 → 2 → 3 steps.
     const v1 = {
       schemaVersion: 1,
       sessions: [session],
       settings: { blockStart: '2026-07-20' },
     }
     const doc = migrate(v1)
-    expect(doc.schemaVersion).toBe(2)
-    // v1 → v2 is identity: v1 held only practice sessions, and those are unchanged.
+    expect(doc.schemaVersion).toBe(3)
+    // 1 → 2 → 3 is identity all the way: v1 held only practice sessions, and those are
+    // unchanged; 2 → 3 only adds an optional field.
     expect(doc.sessions).toEqual([session])
     expect(doc.settings).toEqual({ blockStart: '2026-07-20' })
   })
@@ -97,12 +98,31 @@ describe('migrate', () => {
   })
 
   it('refuses a document from one version ahead, which is the whole point of the bump', () => {
-    // The v1 build deployed today does exactly this when it meets a v2 document: refuses,
+    // The v2 build deployed today does exactly this when it meets a v3 document: refuses,
     // does not quarantine, and tells the user to update the site. Without the bump it would
-    // instead read the document and reject every Trackman session in it as corrupt.
-    expect(() => migrate({ schemaVersion: 3, sessions: [], settings: {} })).toThrow(
+    // instead read the document and silently drop `metrics` from every club row.
+    expect(() => migrate({ schemaVersion: 4, sessions: [], settings: {} })).toThrow(
       FutureSchemaError,
     )
+  })
+
+  it('migrates a version 2 document to 3 without altering it', () => {
+    // Identity, deliberately. Every v2 document is already a valid v3 one: `metrics` is optional
+    // and nothing existing changes shape.
+    const doc = {
+      schemaVersion: 2,
+      sessions: [
+        { id: 'a', type: 'trackman', date: '2026-07-27', source: 'api',
+          clubs: [{ club: 'DRIVER', typical: -5.4, best: -0.19, n: 618 }] },
+      ],
+      settings: {},
+    }
+    // Snapshotted before the call: the migration is identity, so `out.sessions` IS
+    // `doc.sessions` — comparing them to each other would pass even if it mutated in place.
+    const before = JSON.parse(JSON.stringify(doc.sessions))
+    const out = migrate(doc)
+    expect(out.schemaVersion).toBe(3)
+    expect(out.sessions).toEqual(before)
   })
 })
 

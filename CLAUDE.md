@@ -49,13 +49,28 @@ The site has three views behind a History-API router: `/` (the plan page), `/log
 `CNAME`.
 
 Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/domain/` —
-`scale.ts` (the shared fixed axis), `series.ts` (per-club series), `coverage.ts` (done vs
-scheduled) and `feel.ts` (feel per arc phase). **Components render; they never calculate.**
+`scale.ts` (fixed chart axes, against any authored domain), `series.ts` (per-club series),
+`coverage.ts` (done vs scheduled) and `feel.ts` (feel per arc phase). **Components render; they
+never calculate.**
 
 Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
-read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 2.
+read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 3.
 **Reach either only through `lib/stores/sessions.svelte.ts`** — that file constructs the only
 `Repository` in the app, a `CachedRepo` wrapping a `RemoteRepo` and a `LocalStorageRepo`.
+
+The ingest carries **twelve metrics**, not one (Phase 7, issue #25). `lib/domain/metrics.ts` is
+the registry — ids, wire field names, fixed axes, bands, and what "best" means for each — and the
+GraphQL selection set is generated from it. Each club row gains `metrics`, a map of
+`MetricReading { typical, best?, n }` keyed by every metric **except** club path, which keeps its
+own dedicated fields. The shot-by-shot record lives in its own item under `SHOTS#<sessionId>`,
+written by the ingest and reachable only from `RemoteRepo`. `lib/domain/relate.ts` correlates two
+metrics for one club, `lib/domain/latest.ts` picks the newest reading for a club and reads the
+face-to-path verdict, and `/progress` gained a driver section — "Why the ball curves" — rendered
+by `SlicePanel` and `RelationPanel`.
+
+`readingFor` returns **`Reading`**, whose `n` is optional — distinct from the stored
+`MetricReading`, whose `n` is required. A hand-typed club-path row genuinely has no count, and
+the widened type is what makes the compiler enforce "absent, never zero" rather than a comment.
 
 Infrastructure lives in `infra/` and is deployed by hand, never from CI — see `infra/README.md`.
 **Writes are unauthenticated by explicit decision (D19):** the bounds are point-in-time recovery,
@@ -110,6 +125,8 @@ so a scoped base rule outranks a global override and the override silently loses
   is the **driver**.
 - **`domain/series.ts` is where the never-blend rule is enforced structurally.** It keys by
   `Club` and never reduces across keys, so no cross-club mean is expressible. Keep it that way.
+  `domain/relate.ts` gives the same guarantee a different way: it takes a single `Club` and never
+  looks at another, so no cross-club pairing is expressible either.
 - **The chart y-domain is a fixed constant, never derived from the data.** A fitted domain moves
   between visits and silently redefines "good" as "better than recent" rather than "in the band".
 - **"Never scheduled" and "avoided" are different findings.** Drill `03` appears in no day's
@@ -120,8 +137,30 @@ so a scoped base rule outranks a global override and the override silently loses
   string returns `null` and is reported, never guessed at.
 - **`n` (shot count) is absent, never zero, on hand-typed readings.** Don't fabricate a default —
   a chart would weight the guess as though it were measured.
+- **`domain/metrics.ts` is the single source of truth for metric field names, axes and bands.**
+  Every `field` was read from the live schema via `npm run introspect`, never from memory. The
+  GraphQL selection set is built from it, so a wire name exists in exactly one place.
+- **`n` is per metric, not per club row.** The stored metrics differ by about 23 points of null
+  rate on the driver alone — 723 `carry` readings down to 556 for `faceToPath`, with swing plane
+  at 666 and club path at 618. A shared count would size a sparse reading like a dense one.
+  `MetricReading.n` is therefore required, while `ClubPath.n` stays optional: hand entry produces
+  a club-path row and never a `MetricReading`.
+- **`better: 'none'` is a real answer.** `attackAngle` wants positive on a driver and negative on
+  an iron, so there is no shared band. Metrics with no target store no `best` and draw no band.
+  Never invent one.
+- **The authored domains in `metrics.ts` are scoped to the driver.** Several metrics are strongly
+  club-dependent — swing plane runs ~50° on a driver against ~69° on a 4-iron. Charting one of
+  them for a second club means authoring that club's domain first. It is not a derivation to be
+  automated.
+- **Per-shot data is not on the `Repository` interface.** `SHOTS#<sessionId>` is reachable only
+  from `RemoteRepo`, and the ingest is its only writer. Putting it on the interface components
+  use would invite a page to download thousands of rows to draw charts that do not use them.
+  There is no `DELETE` either: the ingest is the only writer and nothing reads shots back, so an
+  orphaned item costs a few KB and nothing else. **Deleting a session leaves its shots behind** —
+  the `SHOTS#<id>` item is orphaned, not retired.
 - Plan and drill content lives in `lib/domain/` as data, not in markup.
-- Bump `schemaVersion` and write a migration for any stored-shape change.
+- Bump `schemaVersion` and write a migration for any stored-shape change. The Lambda handler
+  carries its own `SCHEMA_VERSION` constant, and it is bumped in the same commit.
 
 ### Deployment
 - **`CNAME` must end up in `dist/`** (it lives in `public/`). Losing it drops the custom domain.
@@ -164,6 +203,16 @@ so a scoped base rule outranks a global override and the override silently loses
   secret — it ships in `dist/` because the browser has to call it.
 - **Never interpolate a workflow input into a `run:` command.** `trackman.yml`'s `since` input
   reaches the script through `env:`; the script re-validates its shape before it reaches a URL.
+- **A widened GraphQL query is all-or-nothing.** One field the token cannot read fails the whole
+  request, `clubPath` included — there is no partial-field response. Do not add retry logic that
+  narrows the selection: a retry that silently dropped the KPI would be worse than a loud
+  failure. Note also that a **bad credential** surfaces as a field-level "not authorized to
+  access this resource" inside a `200`, not as a `401`.
+- **The Trackman schema is public and needs no credential.** `npm run introspect` runs anywhere.
+  That is also why it cannot be read as a statement of permission — it describes the whole
+  facility and partner surface. **Four fields it advertises hold no data at all**
+  (`strokeLength`, `backswingTime`, `forwardswingTime`, `tempo`), so verify with
+  `npm run probe` before designing against a field.
 - **Ids from Trackman are 88-character base64 ending in `=`, and `rawPath` arrives
   percent-encoded.** The Lambda decodes before comparing or storing. Do not "validate" such an id
   against an allowlist of characters — that guessed wrong once and rejected all 86 real sessions.
@@ -190,14 +239,21 @@ so a scoped base rule outranks a global override and the override silently loses
 ## Commands
 
 ```
-npm install       # once
-npm run dev       # dev server with HMR
-npm run build     # production build into dist/
-npm run preview   # serve the built dist/ locally
-npm run check     # svelte-check (TypeScript + template type errors)
-npm test          # Vitest, domain logic only
-npm run ingest    # pull Trackman sessions — needs TRACKMAN_REFRESH_TOKEN and API_URL
+npm install        # once
+npm run dev        # dev server with HMR
+npm run build      # production build into dist/
+npm run preview    # serve the built dist/ locally
+npm run check      # svelte-check (TypeScript + template type errors)
+npm test           # Vitest, domain logic only
+npm run ingest     # pull Trackman sessions — needs TRACKMAN_REFRESH_TOKEN and API_URL
+npm run introspect # print the Measurement schema — no credential needed
+npm run probe      # print null rates, ranges and correlations — needs TRACKMAN_REFRESH_TOKEN
 ```
+
+`introspect` and `probe` are the two halves of "verify before designing": the schema says what
+exists, the probe says what is populated. Neither runs in CI — the branch-triggered probe
+workflow was deleted once it had done its work. `probe` prints aggregates only; no individual
+reading and no credential reaches its output.
 
 `npm run ingest` accepts `--since YYYY-MM-DD` (default: the last 14 days) and merges into the
 practice store, so a narrow window never truncates history and an unchanged pull writes nothing
