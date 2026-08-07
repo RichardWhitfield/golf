@@ -1,23 +1,13 @@
 <script lang="ts">
   import type { Session } from '../domain/types'
-  import { isTrackman } from '../domain/types'
   import { KPI_CLUB } from '../domain/clubs'
   import { metricInfo, readingFor } from '../domain/metrics'
+  import { faceOpenToPath, latestTrackman } from '../domain/latest'
 
   let { sessions }: { sessions: Session[] } = $props()
 
   /** The most recent session carrying a driver reading. The headline is "now", not "ever". */
-  const latest = $derived.by(() => {
-    const rows = sessions
-      .filter(isTrackman)
-      .slice()
-      .sort((a, b) => b.date.localeCompare(a.date))
-    for (const s of rows) {
-      const row = s.clubs.find((c) => c.club === KPI_CLUB)
-      if (row) return { date: s.date, row }
-    }
-    return null
-  })
+  const latest = $derived(latestTrackman(sessions, KPI_CLUB))
 
   const path = $derived(latest ? readingFor(latest.row, 'clubPath') : undefined)
   const face = $derived(latest ? readingFor(latest.row, 'faceAngle') : undefined)
@@ -39,10 +29,12 @@
   /**
    * The reading, in words. Face-to-path is what makes the ball curve: a face open to the path
    * sends it right for a right-hander, whatever the face is doing relative to the target.
+   *
+   * The verdict itself is `domain/latest.ts`'s — this only picks the sentence.
    */
   const story = $derived.by(() => {
-    if (!path || !faceToPath) return null
-    const open = faceToPath.typical > 0
+    const open = path ? faceOpenToPath(faceToPath) : null
+    if (open === null) return null
     return {
       open,
       text: open
@@ -61,11 +53,10 @@
           <span class="val">
             {c.reading.typical.toFixed(c.info.decimals)}<span class="unit">{c.info.unit}</span>
           </span>
-          <!-- `MetricReading.n` is typed as required, but `readingFor` casts `ClubPath.n`'s
-               absence straight through for club path — a hand-typed row genuinely has no count.
+          <!-- `Reading.n` is optional because a hand-typed club-path row genuinely has no count.
                Say so rather than printing `undefined`, and never stand a `0` in for it. -->
           <span class="n">
-            {#if Number.isFinite(c.reading.n)}{c.reading.n} shots{:else}typed by hand{/if}
+            {#if c.reading.n !== undefined}{c.reading.n} shots{:else}typed by hand{/if}
           </span>
         </div>
       {/each}

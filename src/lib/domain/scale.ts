@@ -47,6 +47,18 @@ export function yIn(value: number, domain: { min: number; max: number }): number
 }
 
 /**
+ * Value → SVG x against any authored domain. The horizontal twin of `yIn`, and clamped for the
+ * same reason: a wild reading draws at the edge rather than off-panel.
+ *
+ * Note the inversion difference — y grows downward in SVG, so `yIn` maps `domain.max` to the
+ * *smallest* y, while `xIn` maps `domain.min` to the smallest x.
+ */
+export function xIn(value: number, domain: { min: number; max: number }): number {
+  const clamped = Math.min(domain.max, Math.max(domain.min, value))
+  return CHART.padL + ((clamped - domain.min) / (domain.max - domain.min)) * PLOT_W
+}
+
+/**
  * Date → SVG x, spaced by **real elapsed time**. `null` if any date is malformed.
  *
  * Session index would be wrong: there are 21 sessions in July 2025 and none at all in January

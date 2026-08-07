@@ -258,9 +258,11 @@ than replacing it.
 **The headline finding is not the one the phase set out to confirm.** Swing plane does not explain
 the out-to-in path, and the face is not the fault — see the two answers below and `content.md`.
 
-**Done when** — met: the wider metric set is on every imported session, the shot record exists
-where nothing has to download it, and `/progress` answers the plane question from the player's
-own data rather than from a figure typed into a component.
+**Done when** — met in code: the wider metric set is written by every import, the shot record
+exists where nothing has to download it, and `/progress` answers the plane question from the
+player's own data rather than from a figure typed into a component. **Still pending: the
+backfill.** Sessions imported before this phase carry club path alone, so the wider set is not
+on them until a re-ingest runs — deliberately sequenced after the merge.
 
 **Two things shipped differently from the plan:** `/progress`'s section numbers are derived rather
 than hardcoded, so hiding the conditional section renumbers the rest instead of leaving a gap; and

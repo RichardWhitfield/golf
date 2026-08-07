@@ -54,6 +54,11 @@ const MIGRATIONS: Record<number, Migration> = {
    * document containing `metrics`, which its `checkTrackmanSession` would silently drop on any
    * export/import round trip. `FutureSchemaError` then does the right thing: refuse, don't
    * quarantine, and say "update the site". Exactly the v1 → v2 reasoning.
+   *
+   * **That protection is real for the cache and weak for the remote store.** `handler.mjs`
+   * reports `Math.min(...)` across stored items and only rewritten items carry 3, so `/sessions`
+   * keeps reporting `2` for as long as any untouched pre-Phase-7 session exists — potentially
+   * forever. The cache is where the guard bites, and a deploy replaces the build anyway.
    */
   2: (doc) => doc,
 }

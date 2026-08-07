@@ -11,9 +11,8 @@ export interface RelationPoint {
    * The smaller of the two metrics' counts — a pair is only as measured as its thinner half.
    *
    * **Absent, never zero**, when either side has no count: a hand-typed club-path row carries
-   * none, and `readingFor` casts that absence to `number` rather than admitting it. Guarding
-   * here keeps a `NaN` out of the dot-sizing maths, which would otherwise size a guess as
-   * though it were measured.
+   * none, and `Reading.n` says so. An absent count must stay absent — a `0` or a `NaN` here
+   * would reach the dot-sizing maths and draw a guess as though it were measured.
    */
   n?: number
 }
@@ -66,10 +65,9 @@ export function relate(sessions: Session[], club: Club, x: MetricId, y: MetricId
     const point: RelationPoint = { date: session.date, x: a.typical, y: b.typical }
     // The thinner half. A pair backed by 618 path readings and 12 plane readings is a
     // 12-reading pair, and sizing it by the larger count would overstate it. Assigned
-    // conditionally, exactly as `series.ts` does for `n`: an absent count — a hand-typed
-    // club-path row has none, whatever `readingFor`'s cast claims — must stay absent rather
-    // than becoming `NaN` or `0`.
-    if (Number.isFinite(a.n) && Number.isFinite(b.n)) point.n = Math.min(a.n, b.n)
+    // conditionally, exactly as `series.ts` does for `n`: a hand-typed club-path row has no
+    // count, and an absent one must stay absent rather than becoming `0`.
+    if (a.n !== undefined && b.n !== undefined) point.n = Math.min(a.n, b.n)
     points.push(point)
   }
 

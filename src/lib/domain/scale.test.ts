@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BAND, CHART, DOMAIN, inBand, inRange, radiusFor, xFor, yFor, yIn } from './scale'
+import { BAND, CHART, DOMAIN, inBand, inRange, radiusFor, xFor, xIn, yFor, yIn } from './scale'
 
 describe('DOMAIN', () => {
   it('is fixed, and wide enough to hold every real reading', () => {
@@ -134,6 +134,28 @@ describe('yIn', () => {
     for (const degrees of [-14, -5.4, 0, 2, 4]) {
       expect(yFor(degrees)).toBe(yIn(degrees, DOMAIN))
     }
+  })
+})
+
+describe('xIn', () => {
+  it('places a value against any authored domain', () => {
+    const domain = { min: 40, max: 66 }
+    expect(xIn(domain.min, domain)).toBe(CHART.padL)
+    expect(xIn(domain.max, domain)).toBeCloseTo(CHART.w - CHART.padR, 10)
+    expect(xIn(53, domain)).toBeCloseTo((CHART.padL + (CHART.w - CHART.padR)) / 2, 10)
+  })
+
+  it('clamps rather than drawing off-panel', () => {
+    const domain = { min: 40, max: 66 }
+    expect(xIn(200, domain)).toBe(xIn(66, domain))
+    expect(xIn(0, domain)).toBe(xIn(40, domain))
+  })
+
+  it('grows the opposite way to yIn, because SVG y grows downward', () => {
+    const domain = { min: -4, max: 12 }
+    // `domain.min` is the smallest x but the *largest* y.
+    expect(xIn(domain.min, domain)).toBeLessThan(xIn(domain.max, domain))
+    expect(yIn(domain.min, domain)).toBeGreaterThan(yIn(domain.max, domain))
   })
 })
 

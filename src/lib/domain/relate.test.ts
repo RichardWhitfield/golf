@@ -109,8 +109,8 @@ describe('relate', () => {
   })
 
   it('leaves the count absent when a hand-typed row has none, never NaN or zero', () => {
-    // `readingFor` casts a missing club-path count to `number`. A NaN reaching radiusFor would
-    // size a dot from a guess.
+    // A hand-typed club-path row carries no count, and `Reading.n` is optional so the compiler
+    // says so. A `0` reaching radiusFor would size a dot from a guess.
     const typed = tm('a', '2026-07-01', [
       { club: 'DRIVER', typical: -6, best: -4, metrics: { swingPlane: { typical: 50, n: 12 } } },
     ])

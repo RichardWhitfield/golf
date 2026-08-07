@@ -64,8 +64,13 @@ GraphQL selection set is generated from it. Each club row gains `metrics`, a map
 `MetricReading { typical, best?, n }` keyed by every metric **except** club path, which keeps its
 own dedicated fields. The shot-by-shot record lives in its own item under `SHOTS#<sessionId>`,
 written by the ingest and reachable only from `RemoteRepo`. `lib/domain/relate.ts` correlates two
-metrics for one club, and `/progress` gained a driver section — "Why the ball curves" — rendered
+metrics for one club, `lib/domain/latest.ts` picks the newest reading for a club and reads the
+face-to-path verdict, and `/progress` gained a driver section — "Why the ball curves" — rendered
 by `SlicePanel` and `RelationPanel`.
+
+`readingFor` returns **`Reading`**, whose `n` is optional — distinct from the stored
+`MetricReading`, whose `n` is required. A hand-typed club-path row genuinely has no count, and
+the widened type is what makes the compiler enforce "absent, never zero" rather than a comment.
 
 Infrastructure lives in `infra/` and is deployed by hand, never from CI — see `infra/README.md`.
 **Writes are unauthenticated by explicit decision (D19):** the bounds are point-in-time recovery,
@@ -150,8 +155,9 @@ so a scoped base rule outranks a global override and the override silently loses
 - **Per-shot data is not on the `Repository` interface.** `SHOTS#<sessionId>` is reachable only
   from `RemoteRepo`, and the ingest is its only writer. Putting it on the interface components
   use would invite a page to download thousands of rows to draw charts that do not use them.
-  There is no `DELETE` either: shots are derived from a session, so the session is what gets
-  deleted.
+  There is no `DELETE` either: the ingest is the only writer and nothing reads shots back, so an
+  orphaned item costs a few KB and nothing else. **Deleting a session leaves its shots behind** —
+  the `SHOTS#<id>` item is orphaned, not retired.
 - Plan and drill content lives in `lib/domain/` as data, not in markup.
 - Bump `schemaVersion` and write a migration for any stored-shape change. The Lambda handler
   carries its own `SCHEMA_VERSION` constant, and it is bumped in the same commit.

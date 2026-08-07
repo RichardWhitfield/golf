@@ -10,7 +10,7 @@
  * each one earns its place and why the rest do not.
  */
 import { BAND, DOMAIN } from './scale'
-import type { ClubPath, MetricReading } from './types'
+import type { ClubPath } from './types'
 
 export type MetricId =
   | 'clubPath'
@@ -130,15 +130,31 @@ export function bestOf(values: number[], better: Better): number | undefined {
 }
 
 /**
+ * A metric's reading as *read back*, where the count may genuinely be absent.
+ *
+ * Distinct from `MetricReading`, the **stored** shape, whose `n` is required because every
+ * stored reading was computed from strokes. Club path is the exception: it keeps its own
+ * optional `n` on `ClubPath`, and a hand-typed row has none at all. Widening here rather than
+ * casting is what lets the compiler enforce "absent, never zero" — this cast previously
+ * produced a `NaN` in a correlation and the literal text "undefined shots" on a panel.
+ */
+export interface Reading {
+  typical: number
+  best?: number
+  n?: number
+}
+
+/**
  * A uniform view of any metric on a club row.
  *
  * Club path lives in `ClubPath`'s own `typical`/`best`/`n` fields and everything else lives in
  * `metrics`. **This function is the one place that knows that**, so no caller has to special-case
  * it and no value has to be stored twice.
+ *
+ * Returns the widened `Reading`, not the stored `MetricReading`: club path's count is genuinely
+ * optional, and saying so in the type is what stops a caller reading it as a number.
  */
-export function readingFor(row: ClubPath, id: MetricId): MetricReading | undefined {
+export function readingFor(row: ClubPath, id: MetricId): Reading | undefined {
   if (id !== 'clubPath') return row.metrics?.[id]
-  // `n` is optional on `ClubPath` and required on `MetricReading`, because a hand-typed row has
-  // no count. Cast rather than fabricate: a `0` here would weight a guess as though measured.
-  return { typical: row.typical, best: row.best, n: row.n as number }
+  return { typical: row.typical, best: row.best, n: row.n }
 }

@@ -33,7 +33,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D25 | Infrastructure as code | **CloudFormation/SAM templates in `infra/`, deployed by hand** | Deploying from a public repo's CI needs AWS credentials — the one thing D22 otherwise avoids. The SAM CLI is not required; the transform expands server-side. |
 | D26 | Sort key | **The session id alone**, never `<date>#<id>` | `saveSession` is upsert-by-id and the date is editable. A mutable key makes an edited date insert a duplicate instead of updating in place. Ordering is done client-side; at ~250 items it is free. |
 | D27 | Shot counts | **`n` is per metric, not per club row** | Null rates differ by up to 45 points across the schema, and by 23 among the metrics stored. A shared count would size a 556-shot reading like a 723-shot one, and the error is silent. |
-| D28 | Per-shot reach | **Shots are not on the `Repository` interface** | That interface is what components use. Putting shots on it invites the multi-megabyte download D24 exists to prevent. `saveShots`/`getShots` live on `RemoteRepo` alone, and there is no `DELETE` — shots are derived from a session. |
+| D28 | Per-shot reach | **Shots are not on the `Repository` interface** | That interface is what components use. Putting shots on it invites the multi-megabyte download D24 exists to prevent. `saveShots`/`getShots` live on `RemoteRepo` alone, and there is no `DELETE` — the ingest is the only writer, nothing reads shots back, and deleting a session leaves its shots orphaned at a cost of a few KB. |
 | D29 | Targets | **`better: 'none'` is a first-class answer** | `attackAngle` wants opposite signs for a driver and an iron. Inventing a shared band would be worse than recording that there is not one. |
 | D30 | Axes | **Fixed domains authored per metric from driver session means** | Per-shot ranges are far wider and would huddle every point mid-panel. A second club needs its domain authored, never derived. |
 
@@ -90,6 +90,7 @@ src/
       scale.ts            # fixed chart axes: values/dates → SVG units, against any domain
       series.ts           # Trackman sessions → one club-path series per club
       relate.ts           # two metrics against each other, for one club. Pearson r
+      latest.ts           # the newest reading for a club, and the face-to-path verdict
       coverage.ts         # drills done vs what the plan scheduled
       feel.ts             # mean feel per drill per arc phase
     storage/
@@ -474,8 +475,10 @@ the undocumented API — which is why it was deleted last, after the new path wa
 | `GET` | `/shots/{id}` | `GetItem` |
 
 `GET` exists because **a write nobody can read back is unverifiable**, and this repo's standing
-rule is to verify a deploy before calling the work done. **There is no `DELETE`:** shots are
-derived from a session, so the session is what gets deleted.
+rule is to verify a deploy before calling the work done. **There is no `DELETE`:** the ingest is
+the only writer and nothing reads shots back, so an orphaned item costs a few KB and nothing else.
+**Deleting a session leaves its shots behind** — `deleteSession` removes the `SESSION` item alone,
+so the `SHOTS#<id>` item is orphaned rather than retired.
 
 **Shots are deliberately not on the `Repository` interface (D28).** Components reach storage
 through `Repository`; putting shots there would invite a component to download 5,877 rows to draw

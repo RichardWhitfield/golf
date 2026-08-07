@@ -71,8 +71,10 @@ export class BadRequest extends Error {
  * `/shots/{id}` holds the per-shot record, in its own item so no chart downloads it (D24).
  *
  * `GET` exists because a write nobody can read back is unverifiable, and this project's rule is
- * to verify a deploy before calling the work done. There is no `DELETE`: shots are derived from
- * a session, so removing the session is what retires them.
+ * to verify a deploy before calling the work done. There is no `DELETE`: the ingest is the only
+ * writer and nothing reads shots back, so an orphaned item costs a few KB and nothing else.
+ * Note that `deleteSession` removes only the `SESSION` item — **deleting a session leaves its
+ * shots behind.**
  */
 export function route(method, path) {
   if (path === '/sessions' && method === 'GET') return { kind: 'listSessions' }

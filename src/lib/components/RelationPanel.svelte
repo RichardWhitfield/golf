@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Relation } from '../domain/relate'
   import { metricInfo } from '../domain/metrics'
-  import { CHART, inRange, radiusFor, yIn } from '../domain/scale'
+  import { CHART, inRange, radiusFor, xIn, yIn } from '../domain/scale'
   import { clubInfo } from '../domain/clubs'
 
   let { relation }: { relation: Relation } = $props()
@@ -13,16 +13,12 @@
   const PLOT_W = CHART.w - CHART.padL - CHART.padR
   const PLOT_BOTTOM = CHART.h - CHART.padB
 
-  /** x maps across its own authored domain, exactly as y maps down its own. */
-  function xIn(value: number): number {
-    const clamped = Math.min(xInfo.domain.max, Math.max(xInfo.domain.min, value))
-    return CHART.padL + ((clamped - xInfo.domain.min) / (xInfo.domain.max - xInfo.domain.min)) * PLOT_W
-  }
-
   const plotted = $derived(
     relation.points.map((p) => ({
       ...p,
-      cx: xIn(p.x),
+      // x maps across its own authored domain, exactly as y maps down its own. Both live in
+      // `domain/scale.ts` — a component renders, it does not calculate.
+      cx: xIn(p.x, xInfo.domain),
       cy: yIn(p.y, yInfo.domain),
       good: yInfo.band ? inRange(p.y, yInfo.band) : false,
       // Sized by the thinner of the pair's two counts, and `null` when either side has none —

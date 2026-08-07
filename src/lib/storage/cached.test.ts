@@ -3,6 +3,7 @@ import type { Session } from '../domain/types'
 import { CachedRepo } from './cached'
 import { LocalStorageRepo } from './local'
 import type { Repository } from './repository'
+import { SCHEMA_VERSION } from './migrations'
 
 const CACHED: Session = {
   id: 'c1',
@@ -47,7 +48,7 @@ function fakeRemote(sessions: Session[], failing = false): Repository & { saved:
     deleteSession: async () => {},
     getSettings: async () => ({}),
     saveSettings: async () => {},
-    exportDocument: async () => ({ schemaVersion: 2, sessions, settings: {} }),
+    exportDocument: async () => ({ schemaVersion: SCHEMA_VERSION, sessions, settings: {} }),
     importDocument: async () => ({ added: 0, updated: 0 }),
     mergeTrackman: async () => ({ sessions, added: 0, updated: 0, skipped: 0, changed: false }),
     readQuarantine: async () => null,
