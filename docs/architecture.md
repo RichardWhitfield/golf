@@ -32,7 +32,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~125 KB total). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is **in use** from Phase 7; nothing on `/progress` reads it. |
 | D25 | Infrastructure as code | **CloudFormation/SAM templates in `infra/`, deployed by hand** | Deploying from a public repo's CI needs AWS credentials — the one thing D22 otherwise avoids. The SAM CLI is not required; the transform expands server-side. |
 | D26 | Sort key | **The session id alone**, never `<date>#<id>` | `saveSession` is upsert-by-id and the date is editable. A mutable key makes an edited date insert a duplicate instead of updating in place. Ordering is done client-side; at ~250 items it is free. |
-| D27 | Shot counts | **`n` is per metric, not per club row** | Null rates differ by up to 45 points. A shared count would size a 349-shot reading like a 618-shot one, and the error is silent. |
+| D27 | Shot counts | **`n` is per metric, not per club row** | Null rates differ by up to 45 points across the schema, and by 23 among the metrics stored. A shared count would size a 556-shot reading like a 723-shot one, and the error is silent. |
 | D28 | Per-shot reach | **Shots are not on the `Repository` interface** | That interface is what components use. Putting shots on it invites the multi-megabyte download D24 exists to prevent. `saveShots`/`getShots` live on `RemoteRepo` alone, and there is no `DELETE` — shots are derived from a session. |
 | D29 | Targets | **`better: 'none'` is a first-class answer** | `attackAngle` wants opposite signs for a driver and an iron. Inventing a shared band would be worse than recording that there is not one. |
 | D30 | Axes | **Fixed domains authored per metric from driver session means** | Per-shot ranges are far wider and would huddle every point mid-panel. A second club needs its domain authored, never derived. |
@@ -233,11 +233,12 @@ interface Shot {
   measured; a hand-typed one does not, because you read a typical figure off the bay screen.
   A missing `n` renders as a dash. **Never fabricate a default** — a chart would then weight a
   guess as though it were measured.
-- **`n` on a `MetricReading` is per metric, and required (D27).** Null rates differ by up to 45
-  points: on the driver, swing plane is present on 666 strokes where club path is present on 618,
-  and three metrics on only 349. One count per club row would let the chart draw the sparse
-  reading as confidently as the dense one. `ClubPath.n` stays *optional* because hand entry
-  produces a club-path row and never a `MetricReading`.
+- **`n` on a `MetricReading` is per metric, and required (D27).** The twelve metrics that ship
+  differ by about 23 points of null rate on the driver alone: 723 carry readings, 666 for swing
+  plane, 618 for club path, 556 for face to path. (The 45-point figure in §4 spans the whole
+  75-field surface, including metrics deliberately not stored.) One count per club row would let
+  the chart draw the sparse reading as confidently as the dense one. `ClubPath.n` stays *optional*
+  because hand entry produces a club-path row and never a `MetricReading`.
 - **Club path is not duplicated into `metrics`.** It keeps its own `typical`/`best`/`n`, so no
   existing reader changes and the migration touches no data. `readingFor()` in `domain/metrics.ts`
   is the one place that knows this, and returns a uniform `MetricReading` view for any id.
@@ -401,7 +402,10 @@ never a `401`.
   written from the schema alone would have shipped a tempo chart with nothing in it.
 - **Null rates differ per metric by up to 45 points.** On the driver, `swingPlane` is present on
   666 strokes, `clubPath` on 618, and `dynamicLie`/`impactOffset`/`impactHeight` on 349 (51.7%
-  null). This is what forced a per-metric `n` (D27).
+  null). That is a finding about the **whole measurement surface**, and it is what forced a
+  per-metric `n` (D27) — but the three sparsest are excluded from storage for exactly that
+  sparsity, so it is not the spread a reader meets on a card. Among the twelve metrics that ship
+  the spread is about 23 points: 723 driver `carry` readings down to 556 for `faceToPath`.
 - **`normalizedMeasurement` is a dead end** — identical to `measurement` on all 4,901 readings
   where both are present, 0 differing. Not stored.
 - **`reducedAccuracy` is real but narrow.** 1,251 strokes carry a flag, and only ever `SpinRate`

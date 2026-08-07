@@ -58,16 +58,16 @@ over-read every time unless the `n` is sitting next to it. A hand-typed session 
 and shows a dash rather than a number invented to fill the gap.
 
 **And read each metric's own count.** Every metric carries its own `n`, because the bay does not
-measure them equally: across the same driver strokes there are 666 plane readings against 618
-path readings, and only 349 of some others. Two numbers side by side on one card can be backed by
-very different amounts of evidence.
+measure them equally. Over the same driver strokes there are 723 carry readings, 666 for swing
+plane, 618 for club path and 556 for face to path. Two numbers side by side on one card can be
+backed by very different amounts of evidence.
 
 ### The face is not the fault
 
-Across thirteen months the driver's face has sat within a degree of square — a typical `−0.86°`.
-Face to path is the number that has been open: typically `+4.8°`, and **never once negative**.
-The closest it has come across 44 driver sessions is `+0.97°`, and the curve has never dropped
-below `+3.61 m`. There is no session on record where the driver did not slice on average.
+Across thirteen months the driver's face has sat within a degree of square — the middle reading is
+`−0.86°`. Face to path is the number that has been open: a median of `+4.8°`, and **never once
+negative**. The closest it has come across 44 driver sessions is `+0.97°`, and the curve has never
+dropped below `+3.61 m`. There is no session on record where the driver did not slice on average.
 
 That is not a face problem. The face is square; the path is so far left that square *is* open
 relative to it. **Fix the path and the curve goes with it.** The face needs nothing.
@@ -81,8 +81,8 @@ A steeper plane was the obvious explanation for an out-to-in path. It was worth 
 does not hold up.
 
 On the driver, across 44 sessions, a steeper plane has gone with a **less** out-to-in path —
-`r = +0.503`, moderate, and signed against the hypothesis. At the 4-iron the relationship
-disappears entirely (`−0.053`). Steepness is not what is sending the club left.
+`r = +0.503`, moderate, and signed against the hypothesis. At the 4-iron, measured shot by shot,
+the relationship disappears entirely (`−0.053`). Steepness is not what is sending the club left.
 
 Keep the number. Stop treating it as the cause. The site recomputes that correlation from your
 own sessions every time the page loads, so if the swing changes the answer changes with it.

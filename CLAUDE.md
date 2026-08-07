@@ -49,8 +49,9 @@ The site has three views behind a History-API router: `/` (the plan page), `/log
 `CNAME`.
 
 Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/domain/` —
-`scale.ts` (the shared fixed axis), `series.ts` (per-club series), `coverage.ts` (done vs
-scheduled) and `feel.ts` (feel per arc phase). **Components render; they never calculate.**
+`scale.ts` (fixed chart axes, against any authored domain), `series.ts` (per-club series),
+`coverage.ts` (done vs scheduled) and `feel.ts` (feel per arc phase). **Components render; they
+never calculate.**
 
 Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
 read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 3.
@@ -134,10 +135,11 @@ so a scoped base rule outranks a global override and the override silently loses
 - **`domain/metrics.ts` is the single source of truth for metric field names, axes and bands.**
   Every `field` was read from the live schema via `npm run introspect`, never from memory. The
   GraphQL selection set is built from it, so a wire name exists in exactly one place.
-- **`n` is per metric, not per club row.** Null rates differ by up to 45 points — the driver has
-  666 swing-plane readings against 618 club-path readings. A shared count would size a sparse
-  reading like a dense one. `MetricReading.n` is therefore required, while `ClubPath.n` stays
-  optional: hand entry produces a club-path row and never a `MetricReading`.
+- **`n` is per metric, not per club row.** The stored metrics differ by about 23 points of null
+  rate on the driver alone — 723 `carry` readings down to 556 for `faceToPath`, with swing plane
+  at 666 and club path at 618. A shared count would size a sparse reading like a dense one.
+  `MetricReading.n` is therefore required, while `ClubPath.n` stays optional: hand entry produces
+  a club-path row and never a `MetricReading`.
 - **`better: 'none'` is a real answer.** `attackAngle` wants positive on a driver and negative on
   an iron, so there is no shared band. Metrics with no target store no `best` and draw no band.
   Never invent one.

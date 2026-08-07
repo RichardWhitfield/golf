@@ -245,9 +245,10 @@ than replacing it.
   written from introspection alone would have shipped a tempo chart with nothing in it. This is
   why there are two scripts: `npm run introspect` says what exists, `npm run probe` says what is
   populated.
-- **Null rates differ per metric by up to 45 points** — 666 driver swing-plane readings against
-  618 club-path ones, and 349 for the sparsest. One `n` per club row would have sized a sparse
-  reading like a dense one, silently. Hence a count per metric (D27).
+- **Null rates differ per metric** — by up to 45 points across the whole 75-field surface, and by
+  about 23 among the twelve metrics that ship: on the driver, 723 carry readings against 556 for
+  face to path, with swing plane at 666 and club path at 618. One `n` per club row would have
+  sized a sparse reading like a dense one, silently. Hence a count per metric (D27).
 - **Per-shot and session-mean ranges are different**, and mixing them misdraws a chart. Per-shot
   club path spans `−18…10.9` where session means span `−13.76…0.89`. Every authored domain comes
   from session means, because that is the level a panel plots (D30).
@@ -388,11 +389,12 @@ Never a numbered open question, but the reason Phase 7 was raised:
 **The data does not support it, and the sign runs the other way.** On the driver, at the
 session-mean level `/progress` plots, `r = +0.503` across 44 sessions — a *positive* r, meaning a
 steeper plane has gone with a **less** out-to-in path. The relationship is moderate (R² ≈ 0.25)
-and club-dependent: at the 4-iron it vanishes (`−0.053`). Steepness is not what is sending the
-path left.
+and club-dependent: at the 4-iron, **measured shot by shot**, it vanishes (`−0.053`). No 4-iron
+session-mean figure was computed, so the two are not the same measurement — but neither reading
+puts steepness behind the path.
 
-**And the face is not the fault either.** Driver face angle sits at a typical `−0.86°` — square to
-target — while face to path sits at `+4.8°` and has **never once been negative** across 44
+**And the face is not the fault either.** Driver face angle has a median of `−0.86°` — square to
+target — while face to path has a median of `+4.8°` and has **never once been negative** across 44
 sessions, minimum `+0.97°`, with curve never below `+3.61 m`. The face is only open *relative to
 the path*, because the path is so far left. That independently vindicates the KPI: fix the path
 and the curve goes with it.
