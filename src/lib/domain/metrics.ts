@@ -5,26 +5,28 @@
  * and this one refuses to guess an axis. **Every `field` below was read from the live schema
  * via `npm run introspect`, never written from memory.**
  *
- * Twelve of the 75 fields on `Measurement` are here. The test applied was *does this answer a
- * question that is being asked*, not *is it available* — see §3 of the Phase 7 spec for why
- * each one earns its place and why the rest do not.
+ * Forty-three of the 75 fields on `Measurement` are here: the twelve the Phase 7 spec chose to
+ * answer a specific question, plus 31 more carried from Phase 8 once the probe showed they were
+ * populated. Carrying is now the default and charting the exception — see `CarriedMetric` and
+ * `ChartedMetric` below for the split, and §3 of the Phase 8 spec for why each of the remaining
+ * 32 fields still earns no place at all.
  */
 import { BAND, DOMAIN } from './scale'
 import type { ClubPath } from './types'
 
 export type MetricId =
-  | 'clubPath'
-  | 'faceAngle'
-  | 'faceToPath'
-  | 'swingPlane'
-  | 'attackAngle'
-  | 'curve'
-  | 'clubSpeed'
-  | 'carry'
-  | 'lowPointDistance'
-  | 'lowPointSide'
-  | 'dynamicLoft'
-  | 'spinLoft'
+  // Charted — club delivery
+  | 'clubPath' | 'faceAngle' | 'faceToPath' | 'swingPlane' | 'attackAngle' | 'curve'
+  | 'clubSpeed' | 'carry' | 'lowPointDistance' | 'lowPointSide' | 'dynamicLoft' | 'spinLoft'
+  // Charted — ball flight, added in Phase 8
+  | 'ballSpeed' | 'smashFactor' | 'spinRate' | 'launchAngle' | 'total' | 'spinAxis'
+  // Carried only
+  | 'swingDirection' | 'swingRadius' | 'dPlaneTilt' | 'dynamicLie' | 'impactOffset'
+  | 'impactHeight' | 'lowPointHeight' | 'ballSpeedDifference' | 'smashIndex' | 'launchDirection'
+  | 'spinRateDifference' | 'spinIndex' | 'carrySide' | 'totalSide' | 'landingAngle'
+  | 'hangTime' | 'maxHeight' | 'lastData'
+  | 'spinAxisActual' | 'curveActual' | 'carryActual' | 'totalActual'
+  | 'carrySideActual' | 'totalSideActual' | 'landingAngleActual'
 
 /**
  * What "best" means, per metric. **It cannot be one rule.**
@@ -108,6 +110,57 @@ export const METRICS: MetricInfo[] = [
     domain: { min: 8, max: 28 }, better: 'none', decimals: 1 },
   { id: 'spinLoft', field: 'spinLoft', short: 'SPIN LOFT', name: 'Spin loft', unit: '°',
     domain: { min: 12, max: 34 }, better: 'none', decimals: 1 },
+  // Ball flight. Added in Phase 8: these are 0% null on the driver, better populated than
+  // `clubPath` itself at 14.5%, and they are what answers a question about distance.
+  { id: 'ballSpeed', field: 'ballSpeed', short: 'BALL', name: 'Ball speed', unit: 'm/s',
+    domain: { min: 38, max: 64 }, better: 'higher', decimals: 1 },
+  // `higher`, not `neutral`, and the exception that proves the band rule: ~1.50 is a physical
+  // ceiling rather than the centre of a range, so "closest to the midpoint" would rank a 1.475
+  // strike above a 1.50 one. The band is drawn as a target region and never used to pick `best`.
+  { id: 'smashFactor', field: 'smashFactor', short: 'SMASH', name: 'Smash factor', unit: '',
+    domain: { min: 1.05, max: 1.55 }, band: { min: 1.45, max: 1.5 }, better: 'higher', decimals: 2 },
+  { id: 'spinRate', field: 'spinRate', short: 'SPIN', name: 'Spin rate', unit: 'rpm',
+    domain: { min: 2000, max: 8000 }, band: { min: 2200, max: 2700 }, better: 'neutral', decimals: 0 },
+  { id: 'launchAngle', field: 'launchAngle', short: 'LAUNCH', name: 'Launch angle', unit: '°',
+    domain: { min: 6, max: 22 }, band: { min: 13, max: 15 }, better: 'neutral', decimals: 1 },
+  { id: 'total', field: 'total', short: 'TOTAL', name: 'Total distance', unit: 'm',
+    domain: { min: 90, max: 210 }, better: 'higher', decimals: 0 },
+  { id: 'spinAxis', field: 'spinAxis', short: 'AXIS', name: 'Spin axis', unit: '°',
+    domain: { min: -10, max: 32 }, band: { min: -5, max: 5 }, better: 'neutral', decimals: 1 },
+  // Carried, never charted. Stored per shot and as a session reading; no authored axis.
+  //
+  // `swingDirection` is the clearest case for the split: Phase 7 excluded it as near-collinear
+  // with `clubPath` (r = 0.866 on the driver), which is a reason not to draw a second panel
+  // saying the same thing — and no reason at all to discard the reading.
+  { id: 'swingDirection', field: 'swingDirection', short: 'SWING DIR', name: 'Swing direction', unit: '°', decimals: 2 },
+  { id: 'swingRadius', field: 'swingRadius', short: 'RADIUS', name: 'Swing radius', unit: 'm', decimals: 2 },
+  { id: 'dPlaneTilt', field: 'dPlaneTilt', short: 'D-PLANE', name: 'D-plane tilt', unit: '°', decimals: 1 },
+  { id: 'dynamicLie', field: 'dynamicLie', short: 'LIE', name: 'Dynamic lie', unit: '°', decimals: 1 },
+  { id: 'impactOffset', field: 'impactOffset', short: 'OFFSET', name: 'Impact offset', unit: 'm', decimals: 2 },
+  { id: 'impactHeight', field: 'impactHeight', short: 'IMP HT', name: 'Impact height', unit: 'm', decimals: 2 },
+  { id: 'lowPointHeight', field: 'lowPointHeight', short: 'LOW HT', name: 'Low point height', unit: 'm', decimals: 2 },
+  { id: 'ballSpeedDifference', field: 'ballSpeedDifference', short: 'BALL Δ', name: 'Ball speed difference', unit: 'm/s', decimals: 2 },
+  { id: 'smashIndex', field: 'smashIndex', short: 'SMASH IX', name: 'Smash index', unit: '', decimals: 2 },
+  { id: 'launchDirection', field: 'launchDirection', short: 'LAUNCH DIR', name: 'Launch direction', unit: '°', decimals: 2 },
+  { id: 'spinRateDifference', field: 'spinRateDifference', short: 'SPIN Δ', name: 'Spin rate difference', unit: 'rpm', decimals: 0 },
+  { id: 'spinIndex', field: 'spinIndex', short: 'SPIN IX', name: 'Spin index', unit: '', decimals: 2 },
+  { id: 'carrySide', field: 'carrySide', short: 'CARRY SIDE', name: 'Carry side', unit: 'm', decimals: 1 },
+  { id: 'totalSide', field: 'totalSide', short: 'TOTAL SIDE', name: 'Total side', unit: 'm', decimals: 1 },
+  { id: 'landingAngle', field: 'landingAngle', short: 'LANDING', name: 'Landing angle', unit: '°', decimals: 1 },
+  { id: 'hangTime', field: 'hangTime', short: 'HANG', name: 'Hang time', unit: 's', decimals: 2 },
+  { id: 'maxHeight', field: 'maxHeight', short: 'APEX', name: 'Max height', unit: 'm', decimals: 1 },
+  { id: 'lastData', field: 'lastData', short: 'LAST', name: 'Last data', unit: '', decimals: 2 },
+  // The `*Actual` variants are the unnormalised readings. They earn their place on evidence:
+  // 2.1% null on the driver against 14.2% for `curve`, and they differ from the normalised
+  // values (`curveActual` p50 18.51 against `curve` 22.05), so they are a second, denser view
+  // of the same shot rather than a duplicate.
+  { id: 'spinAxisActual', field: 'spinAxisActual', short: 'AXIS ACT', name: 'Spin axis, actual', unit: '°', decimals: 1 },
+  { id: 'curveActual', field: 'curveActual', short: 'CURVE ACT', name: 'Curve, actual', unit: 'm', decimals: 1 },
+  { id: 'carryActual', field: 'carryActual', short: 'CARRY ACT', name: 'Carry, actual', unit: 'm', decimals: 0 },
+  { id: 'totalActual', field: 'totalActual', short: 'TOTAL ACT', name: 'Total, actual', unit: 'm', decimals: 0 },
+  { id: 'carrySideActual', field: 'carrySideActual', short: 'C SIDE ACT', name: 'Carry side, actual', unit: 'm', decimals: 1 },
+  { id: 'totalSideActual', field: 'totalSideActual', short: 'T SIDE ACT', name: 'Total side, actual', unit: 'm', decimals: 1 },
+  { id: 'landingAngleActual', field: 'landingAngleActual', short: 'LAND ACT', name: 'Landing angle, actual', unit: '°', decimals: 1 },
 ]
 
 /**
