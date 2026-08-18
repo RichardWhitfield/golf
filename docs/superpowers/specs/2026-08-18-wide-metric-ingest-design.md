@@ -18,8 +18,9 @@ This phase separates the two decisions:
   stored per shot, in the `SHOTS#<sessionId>` item nothing downloads on load.
 - **Charting** a metric stays deliberate. It needs a hand-authored, driver-scoped axis, and
   nothing about that changes.
-- **Aggregating** a metric follows charting, not carrying. The session document is downloaded on
-  every refresh, so it holds only what a panel plots — §4.5 has the measured reason.
+- **Aggregating** a metric follows carrying. Every carried metric gets a session reading with its
+  own `n`. The document grows ~18× and that is accepted on purpose — §4.5 records the measurement
+  and the decision.
 
 The cost of carrying a field is a wire name in a registry. The cost of *not* carrying it is a
 question that cannot be answered until the next session, and never retrospectively.
@@ -201,32 +202,30 @@ number under any key. `reducedAccuracy` joins `Shot` as an optional `string[]`, 
 existing per-shot validation must be extended to accept — it currently rejects a non-numeric value
 anywhere in `metrics`, and the flag deliberately does not live in `metrics`.
 
-**Session aggregates** — the `metrics` map on each club row gains a `MetricReading` for the
-**charted eighteen only**, each with its own required `n`. Per-metric counts already exist and
-already differ by up to 45 points; widening the set widens the spread rather than changing the
-rule.
+**Session aggregates** — the `metrics` map on each club row gains a `MetricReading` for **every
+carried metric**, each with its own required `n`. Per-metric counts already exist and already
+differ by up to 45 points; widening the set widens the spread rather than changing the rule.
 
-**Not all 43, and the reason is measured rather than felt.** A `MetricReading` serialises to 43.4
-bytes, and the store holds 379 club rows across 88 sessions. The document the browser downloads is
-currently **40 KB**:
+**One rule, not two.** There is no charted-versus-carried distinction in the storage layer: if a
+metric is carried, it is aggregated. The registry's split (§4.1) governs axes alone.
+
+**The payload cost, measured and accepted (D25).** A `MetricReading` serialises to 43.4 bytes, and
+the store holds 379 club rows across 88 sessions. The document the browser downloads on refresh
+goes from **40 KB to roughly 731 KB**:
 
 | Aggregated set | Added | Document |
 |---|---:|---:|
 | 12 (today) | — | 40 KB |
-| **18 (charted)** | +289 KB | **~330 KB** |
-| 43 (everything) | +691 KB | ~731 KB |
+| 43 (this phase) | +691 KB | **~731 KB** |
 
-Aggregating everything is an **18× growth in the payload of a page used outdoors on mobile data**,
-to carry readings that no panel plots. This is the one respect in which "the storage for this is
-minimal" does not hold, and it is the whole reason the per-shot record exists: the wide data lives
-in `SHOTS#<sessionId>`, fetched per session when a question is actually asked, and never on load.
-Today's distance analysis was done exactly that way and needed one request.
+Recorded because it is real, accepted because the site is used on a 5G connection where ~731 KB is
+not a constraint, and because the alternative — aggregating a subset — buys a second rule in
+`aggregate.ts` and a class of question that needs a per-shot fetch to answer. `CachedRepo` paints
+from `localStorage` first, so the cost falls on refresh rather than on every paint, and
+`better: 'none'` metrics store no `best`, so the real figure lands under the estimate.
 
-~330 KB is still eight times today's document, and is accepted rather than dismissed. Two things
-bound it: `CachedRepo` paints from `localStorage` first, so the cost falls on refresh rather than
-on every paint; and `better: 'none'` metrics store no `best`, so the real figure lands under the
-estimate. If it proves too heavy, the next lever is scoping aggregates to the KPI club — **not**
-dropping metrics back out, which would recreate this phase's problem.
+**If it ever does bite**, the lever is scoping aggregates to the KPI club — **not** dropping
+metrics back out, which would recreate this phase's problem.
 
 **`schemaVersion` 3 → 4**, in `migrations.ts` and `infra/function/handler.mjs` in the same commit.
 The migration is additive: a v3 document is a valid v4 document with a thinner `metrics` map, so
@@ -257,8 +256,7 @@ re-established, not an assumption to bake in.
 | `bestOf` | `higher` still returns the max — including `smashFactor`, which has a band |
 | `bestOf` | `none` still returns `undefined`, and stores no `best` |
 | Type split | A carried-only metric cannot reach `.domain` without `isCharted` — compile-time |
-| `aggregate.ts` | Aggregates cover exactly the charted 18 — not the carried 43 |
-| `aggregate.ts` | The per-shot record covers all 43; a charted-only aggregation never truncates it |
+| `aggregate.ts` | Aggregates cover all 43 carried metrics — the same set as the per-shot record |
 | `aggregate.ts` | Per-metric null filtering; `n` differs per metric within one club row |
 | `aggregate.ts` | A metric null on every stroke produces no reading, never `n: 0` |
 | Migration | v3 → v4 additive; v2 → v4 through the existing chain; v4 refused by a v3 build |
@@ -278,9 +276,9 @@ re-established, not an assumption to bake in.
 
 ## 7. Risks
 
-**The session document grows ~8×, to ~330 KB.** Measured, not estimated. Bounded by the cache
-painting first and by `none` metrics storing no `best`. The escape hatch is per-club scoping, and
-it is deliberately not "carry fewer metrics".
+**The session document grows ~18×, to ~731 KB.** Measured, not estimated, and accepted (D25) on
+a 5G connection. Bounded by the cache painting first and by `none` metrics storing no `best`. The
+escape hatch is per-club scoping, and it is deliberately not "carry fewer metrics".
 
 **The registry doubles in size.** 43 entries is a long file. Mitigated by the carried/charted
 split: a carried entry is six fields with no judgement in it, and the judgement is concentrated in
