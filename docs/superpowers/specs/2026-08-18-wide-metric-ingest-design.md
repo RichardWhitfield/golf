@@ -209,7 +209,7 @@ differ by up to 45 points; widening the set widens the spread rather than changi
 **One rule, not two.** There is no charted-versus-carried distinction in the storage layer: if a
 metric is carried, it is aggregated. The registry's split (§4.1) governs axes alone.
 
-**The payload cost, measured and accepted (D25).** A `MetricReading` serialises to 43.4 bytes, and
+**The payload cost, measured and accepted (D31).** A `MetricReading` serialises to 43.4 bytes, and
 the store holds 379 club rows across 88 sessions. The document the browser downloads on refresh
 goes from **40 KB to roughly 731 KB**:
 
@@ -276,7 +276,7 @@ re-established, not an assumption to bake in.
 
 ## 7. Risks
 
-**The session document grows ~18×, to ~731 KB.** Measured, not estimated, and accepted (D25) on
+**The session document grows ~18×, to ~731 KB.** Measured, not estimated, and accepted (D31) on
 a 5G connection. Bounded by the cache painting first and by `none` metrics storing no `best`. The
 escape hatch is per-club scoping, and it is deliberately not "carry fewer metrics".
 

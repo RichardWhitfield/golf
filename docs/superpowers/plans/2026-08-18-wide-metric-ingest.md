@@ -838,7 +838,7 @@ recent", which is the mistake fixed axes exist to prevent.
 
 - [ ] **Step 5: Update `docs/architecture.md` and `docs/roadmap.md`**
 
-In `architecture.md`, update the stored-shape section: `schemaVersion` is `4`, `ClubPath.metrics` holds up to 42 readings (all but club path), and `Shot` gains `reducedAccuracy?: string[]`. Note that the session document is ~731 KB with the full set and that this is accepted (D25).
+In `architecture.md`, update the stored-shape section: `schemaVersion` is `4`, `ClubPath.metrics` holds up to 42 readings (all but club path), and `Shot` gains `reducedAccuracy?: string[]`. Note that the session document is ~731 KB with the full set and that this is accepted (D31).
 
 In `roadmap.md`, add Phase 8 as delivered, with a link to the spec.
 
