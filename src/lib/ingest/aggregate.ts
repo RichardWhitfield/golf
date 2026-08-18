@@ -16,7 +16,6 @@ export interface RawStroke {
   club?: string | null
   time?: string | null
   measurement?: Record<string, unknown> | null
-  reducedAccuracy?: (string | null)[] | null
 }
 
 export interface RawActivity {
@@ -79,9 +78,15 @@ export function aggregateActivity(
 
     const shot: Shot = { club, metrics: measured }
     if (stroke.time) shot.time = stroke.time
+    // `reducedAccuracy` lives on `Measurement`, not `Stroke` — see api.ts. `measurement` is
+    // typed as an untrusted `Record<string, unknown> | null`, so read it as `unknown` and
+    // narrow by hand rather than casting the whole array with `as`.
     // Absent, never empty: an empty array would read as "checked and clean" on a stroke the
     // API said nothing about.
-    const flags = (stroke.reducedAccuracy ?? []).filter((f): f is string => typeof f === 'string')
+    const rawFlags: unknown = stroke.measurement?.reducedAccuracy
+    const flags = Array.isArray(rawFlags)
+      ? rawFlags.filter((f): f is string => typeof f === 'string')
+      : []
     if (flags.length > 0) shot.reducedAccuracy = flags
     shots.push(shot)
 

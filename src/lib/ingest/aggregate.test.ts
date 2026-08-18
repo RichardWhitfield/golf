@@ -264,14 +264,15 @@ describe('aggregateActivity · shots', () => {
   })
 
   it('carries the reduced-accuracy flag onto the shot', () => {
+    // `reducedAccuracy` lives on `Measurement`, not `Stroke` — fixture must match, or this
+    // test can pass against a query shape the real API rejects (see api.ts).
     const { shots } = aggregateActivities([{
       id: 'a1',
       time: '2026-08-17T08:00:00Z',
       strokes: [{
         club: 'Driver',
         time: '2026-08-17T08:00:01Z',
-        measurement: { clubPath: -6, spinRate: 5500 },
-        reducedAccuracy: ['SpinRate'],
+        measurement: { clubPath: -6, spinRate: 5500, reducedAccuracy: ['SpinRate'] },
       }],
     }])
     expect(shots.get('a1')![0].reducedAccuracy).toEqual(['SpinRate'])

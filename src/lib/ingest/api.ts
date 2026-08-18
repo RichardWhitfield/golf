@@ -26,6 +26,15 @@ const PAGE_SIZE = 50
 const STROKE_FIELDS = METRIC_FIELDS.join(' ')
 
 /**
+ * `reducedAccuracy` lives on `Measurement` itself, alongside the 43 metric fields — but it is
+ * not a metric (it is a `[String]` of flag names, not a number with an axis and a band), so it
+ * must never join `METRIC_FIELDS`: that constant is the registry's metric list and its length is
+ * asserted elsewhere. It still has to be selected *inside* `measurement { … }`, because `Stroke`
+ * itself has no such field — asking for it as a sibling of `measurement` requests an unknown
+ * field on `Stroke` and GraphQL fails the **whole** request, `clubPath` included.
+ */
+
+/**
  * Monday sessions arrive as `VirtualRangeSessionActivity`.
  *
  * `aggregatedMeasurement` is deliberately **not** requested, even though it would give per-club
@@ -43,7 +52,7 @@ query Sessions($from: DateTime!, $to: DateTime!, $take: Int!, $skip: Int!) {
         time
         ... on VirtualRangeSessionActivity {
           strokeCount
-          strokes { club time reducedAccuracy measurement { ${STROKE_FIELDS} } }
+          strokes { club time measurement { ${STROKE_FIELDS} reducedAccuracy } }
         }
       }
     }
