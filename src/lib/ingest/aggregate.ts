@@ -1,5 +1,5 @@
 import { compareClubs, normaliseClub, type Club } from '../domain/clubs'
-import { METRICS, bestOf, type MetricId } from '../domain/metrics'
+import { METRICS, bestOf, isCharted, type MetricId } from '../domain/metrics'
 import { BAND } from '../domain/scale'
 import { resolveISODate } from '../domain/today'
 import type { ClubPath, ExtraMetricId, MetricReading, Shot, TrackmanSession } from '../domain/types'
@@ -106,9 +106,13 @@ export function aggregateActivity(
           typical: round2(list.reduce((a, b) => a + b, 0) / list.length),
           n: list.length,
         }
-        const best = bestOf(list, metric.better, metric.band)
-        // Assigned conditionally: `better: 'none'` metrics carry no `best` at all.
-        if (best !== undefined) entry.best = round2(best)
+        // A carried-only metric has no `better` and so no verdict to compute — it still gets a
+        // `typical`, just never a `best`. `isCharted` is the guard, not an `as` on the union.
+        if (isCharted(metric)) {
+          const best = bestOf(list, metric.better, metric.band)
+          // Assigned conditionally: `better: 'none'` metrics carry no `best` at all.
+          if (best !== undefined) entry.best = round2(best)
+        }
         metrics[metric.id as ExtraMetricId] = entry
       }
 

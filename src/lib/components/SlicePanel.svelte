@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Session } from '../domain/types'
   import { KPI_CLUB } from '../domain/clubs'
-  import { metricInfo, readingFor } from '../domain/metrics'
+  import { chartedInfo, readingFor } from '../domain/metrics'
   import { faceOpenToPath, latestTrackman } from '../domain/latest'
 
   let { sessions }: { sessions: Session[] } = $props()
@@ -16,10 +16,10 @@
 
   const shown = $derived(
     [
-      { info: metricInfo('clubPath'), reading: path },
-      { info: metricInfo('faceAngle'), reading: face },
-      { info: metricInfo('faceToPath'), reading: faceToPath },
-      { info: metricInfo('curve'), reading: curve },
+      { info: chartedInfo('clubPath'), reading: path },
+      { info: chartedInfo('faceAngle'), reading: face },
+      { info: chartedInfo('faceToPath'), reading: faceToPath },
+      { info: chartedInfo('curve'), reading: curve },
     ]
       // A type predicate, not a bare `!== undefined` — without it TypeScript keeps `undefined`
       // in the element type and every use below needs an assertion.

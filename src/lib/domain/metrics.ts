@@ -29,13 +29,24 @@ export type MetricId =
 /**
  * What "best" means, per metric. **It cannot be one rule.**
  *
- * `neutral` — closest to zero wins, because the target is a band and `+5°` is worse than `+1°`.
+ * `neutral` — closest to the midpoint of the band wins, because the target is a band and `+5°`
+ * is worse than `+1°`. The midpoint is not always zero — `spinRate`'s band is 2,200–2,700 rpm —
+ * so the rule is expressed as "closest to the midpoint", never as "closest to zero".
  * `higher`  — the largest reading genuinely is the best one.
  * `none`    — there is no shared target, so no `best` is stored and no band is drawn.
  */
 export type Better = 'neutral' | 'higher' | 'none'
 
-export interface MetricInfo {
+export type Unit = '°' | 'm' | 'm/s' | 'rpm' | 's' | ''
+
+/**
+ * A metric that is **stored** — per shot and as a session reading — but not plotted.
+ *
+ * Carrying is the default. It costs a wire name in this registry and nothing else, and the cost
+ * of *not* carrying a field is a question that cannot be answered until the next session and
+ * never retrospectively. That is the mistake Phase 7 made with `ballSpeed` and `spinRate`.
+ */
+export interface CarriedMetric {
   id: MetricId
   /** The `Measurement` field name on the wire. Verified by introspection, never guessed. */
   field: string
@@ -43,25 +54,28 @@ export interface MetricInfo {
   short: string
   /** Prose label. */
   name: string
-  unit: '°' | 'm' | 'm/s'
-  /**
-   * The fixed y-domain. **Authored from real driver session means with headroom, then frozen.**
-   *
-   * A domain fitted to the data at render time would move between visits and quietly redefine
-   * "good" as "better than recent" rather than "inside the band".
-   *
-   * **These are scoped to the driver**, the only club these are charted for in this phase.
-   * Several are strongly club-dependent — swing plane runs ~50° on a driver against ~69° on a
-   * 4-iron, and dynamic loft reaches 55° across the bag against 25° on the driver. Charting any
-   * of these for a second club means **authoring that club's domain first**. It is not a
-   * derivation to be automated.
-   */
+  unit: Unit
+  decimals: 0 | 1 | 2
+}
+
+/**
+ * A metric that is stored **and plotted**, so it needs a fixed axis.
+ *
+ * **The axis is authored, driver-scoped, and frozen** — never fitted to the data at render
+ * time, which would move between visits and quietly redefine "good" as "better than recent"
+ * rather than "inside the band". Several metrics are strongly club-dependent — swing plane runs
+ * ~50° on a driver against ~69° on a 4-iron, and dynamic loft reaches 55° across the bag against
+ * 25° on the driver. Charting any of these for a second club means **authoring that club's
+ * domain first**. It is not a derivation to be automated.
+ */
+export interface ChartedMetric extends CarriedMetric {
   domain: { min: number; max: number }
   /** The coaching target, where one genuinely exists. Absent whenever `better` is `none`. */
   band?: { min: number; max: number }
   better: Better
-  decimals: 0 | 1 | 2
 }
+
+export type MetricInfo = CarriedMetric | ChartedMetric
 
 /**
  * Ordered as the panels read: the KPI, then what explains it, then what it cost.
@@ -114,6 +128,28 @@ export function metricInfo(id: MetricId): MetricInfo {
 
 export function isMetricId(value: unknown): value is MetricId {
   return typeof value === 'string' && BY_ID.has(value as MetricId)
+}
+
+/** The only route to an axis. A carried-only metric has none, and the compiler enforces it. */
+export function isCharted(metric: MetricInfo): metric is ChartedMetric {
+  return 'domain' in metric
+}
+
+/** Registry order, charted only. What `/progress` iterates. */
+export const CHARTED: ChartedMetric[] = METRICS.filter(isCharted)
+
+/**
+ * A charted metric by id, or a throw.
+ *
+ * Panels reach axes through this rather than through `metricInfo`, so asking to plot a
+ * carried-only metric fails loudly at the call rather than rendering an undefined domain.
+ */
+export function chartedInfo(id: MetricId): ChartedMetric {
+  const info = metricInfo(id)
+  if (!isCharted(info)) {
+    throw new Error(`Metric ${id} is not charted: it has no authored domain.`)
+  }
+  return info
 }
 
 /**

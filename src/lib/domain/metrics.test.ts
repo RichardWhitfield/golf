@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { METRICS, METRIC_FIELDS, bestOf, isMetricId, metricInfo, readingFor } from './metrics'
+import {
+  CHARTED,
+  METRICS,
+  METRIC_FIELDS,
+  bestOf,
+  chartedInfo,
+  isCharted,
+  isMetricId,
+  metricInfo,
+  readingFor,
+} from './metrics'
 import { BAND, DOMAIN } from './scale'
 import type { ClubPath } from './types'
 
@@ -25,7 +35,7 @@ describe('the registry', () => {
   })
 
   it('gives every metric a fixed domain wide enough to hold its band', () => {
-    for (const m of METRICS) {
+    for (const m of CHARTED) {
       expect(m.domain.max).toBeGreaterThan(m.domain.min)
       if (m.band) {
         expect(m.band.min).toBeGreaterThanOrEqual(m.domain.min)
@@ -36,18 +46,18 @@ describe('the registry', () => {
 
   it('reuses the club-path domain rather than restating it', () => {
     // One value, one home. A second copy would drift from scale.ts silently.
-    expect(metricInfo('clubPath').domain).toEqual(DOMAIN)
-    expect(metricInfo('clubPath').band).toEqual(BAND)
+    expect(chartedInfo('clubPath').domain).toEqual(DOMAIN)
+    expect(chartedInfo('clubPath').band).toEqual(BAND)
   })
 
   it('gives a band only to metrics that have a real target', () => {
     // attackAngle wants positive on a driver and negative on an iron. There is no shared
     // target, and inventing one would be worse than admitting it.
-    for (const m of METRICS) {
+    for (const m of CHARTED) {
       if (m.better === 'none') expect(m.band).toBeUndefined()
     }
-    expect(metricInfo('attackAngle').better).toBe('none')
-    expect(metricInfo('swingPlane').better).toBe('none')
+    expect(chartedInfo('attackAngle').better).toBe('none')
+    expect(chartedInfo('swingPlane').better).toBe('none')
   })
 })
 
@@ -111,6 +121,39 @@ describe('bestOf with a band midpoint', () => {
 
   it('throws for `neutral` with no band, because the midpoint is undefined', () => {
     expect(() => bestOf([1, 2], 'neutral')).toThrow(/band/i)
+  })
+})
+
+describe('the carried / charted split', () => {
+  it('treats every metric with a domain as charted', () => {
+    for (const m of METRICS) {
+      expect(isCharted(m)).toBe('domain' in m)
+    }
+  })
+
+  it('exposes the charted subset in registry order', () => {
+    expect(CHARTED).toEqual(METRICS.filter(isCharted))
+    expect(CHARTED.length).toBeGreaterThan(0)
+  })
+
+  it('returns a charted metric from chartedInfo', () => {
+    expect(chartedInfo('clubPath').domain).toEqual({ min: -14, max: 4 })
+  })
+
+  it('still resolves every metric through metricInfo', () => {
+    expect(metricInfo('clubPath').field).toBe('clubPath')
+  })
+
+  it('requires a band on every neutral metric, since best is the midpoint', () => {
+    for (const m of CHARTED) {
+      if (m.better === 'neutral') expect(m.band).toBeDefined()
+    }
+  })
+
+  it('stores no band on a metric with no target', () => {
+    for (const m of CHARTED) {
+      if (m.better === 'none') expect(m.band).toBeUndefined()
+    }
   })
 })
 
