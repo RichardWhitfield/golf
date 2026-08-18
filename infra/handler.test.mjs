@@ -129,6 +129,26 @@ describe('validateShots', () => {
     const shots = Array.from({ length: 2001 }, () => ({ club: 'DRIVER', metrics: {} }))
     expect(() => validateShots({ shots })).toThrow(BadRequest)
   })
+
+  it('accepts a shot carrying a reduced-accuracy flag', () => {
+    const shots = [{ club: 'DRIVER', metrics: { spinRate: 5500 }, reducedAccuracy: ['SpinRate'] }]
+    expect(validateShots({ shots })).toEqual(shots)
+  })
+
+  it('rejects a reduced-accuracy value that is not an array of strings', () => {
+    expect(() =>
+      validateShots({ shots: [{ club: 'DRIVER', metrics: {}, reducedAccuracy: 'SpinRate' }] }),
+    ).toThrow(BadRequest)
+    expect(() =>
+      validateShots({ shots: [{ club: 'DRIVER', metrics: {}, reducedAccuracy: [7] }] }),
+    ).toThrow(BadRequest)
+  })
+
+  it('still rejects a non-numeric reading inside metrics', () => {
+    expect(() =>
+      validateShots({ shots: [{ club: 'DRIVER', metrics: { spinRate: 'lots' } }] }),
+    ).toThrow(BadRequest)
+  })
 })
 
 describe('handler', () => {

@@ -43,7 +43,7 @@ query Sessions($from: DateTime!, $to: DateTime!, $take: Int!, $skip: Int!) {
         time
         ... on VirtualRangeSessionActivity {
           strokeCount
-          strokes { club time measurement { ${STROKE_FIELDS} } }
+          strokes { club time reducedAccuracy measurement { ${STROKE_FIELDS} } }
         }
       }
     }

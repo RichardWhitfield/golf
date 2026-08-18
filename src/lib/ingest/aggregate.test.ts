@@ -262,4 +262,27 @@ describe('aggregateActivity · shots', () => {
     )!
     expect(shots).toHaveLength(1)
   })
+
+  it('carries the reduced-accuracy flag onto the shot', () => {
+    const { shots } = aggregateActivities([{
+      id: 'a1',
+      time: '2026-08-17T08:00:00Z',
+      strokes: [{
+        club: 'Driver',
+        time: '2026-08-17T08:00:01Z',
+        measurement: { clubPath: -6, spinRate: 5500 },
+        reducedAccuracy: ['SpinRate'],
+      }],
+    }])
+    expect(shots.get('a1')![0].reducedAccuracy).toEqual(['SpinRate'])
+  })
+
+  it('leaves the flag absent rather than empty when nothing is flagged', () => {
+    const { shots } = aggregateActivities([{
+      id: 'a2',
+      time: '2026-08-17T08:00:00Z',
+      strokes: [{ club: 'Driver', measurement: { clubPath: -6 } }],
+    }])
+    expect(shots.get('a2')![0]).not.toHaveProperty('reducedAccuracy')
+  })
 })

@@ -162,6 +162,16 @@ export function validateShots(raw) {
         throw new BadRequest('Every shot reading must be a finite number.')
       }
     }
+    // Trackman's own quality flag, stored verbatim beside the readings it qualifies. Not inside
+    // `metrics`, which is numbers only — hence its own check rather than the loop above.
+    if (shot.reducedAccuracy !== undefined) {
+      if (
+        !Array.isArray(shot.reducedAccuracy) ||
+        shot.reducedAccuracy.some((f) => typeof f !== 'string')
+      ) {
+        throw new BadRequest('A reduced-accuracy flag must be an array of strings.')
+      }
+    }
   }
   return raw.shots
 }
