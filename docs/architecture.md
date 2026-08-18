@@ -32,10 +32,11 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~125 KB total). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is **in use** from Phase 7; nothing on `/progress` reads it. |
 | D25 | Infrastructure as code | **CloudFormation/SAM templates in `infra/`, deployed by hand** | Deploying from a public repo's CI needs AWS credentials — the one thing D22 otherwise avoids. The SAM CLI is not required; the transform expands server-side. |
 | D26 | Sort key | **The session id alone**, never `<date>#<id>` | `saveSession` is upsert-by-id and the date is editable. A mutable key makes an edited date insert a duplicate instead of updating in place. Ordering is done client-side; at ~250 items it is free. |
-| D27 | Shot counts | **`n` is per metric, not per club row** | Null rates differ by up to 45 points across the schema, and by 23 among the metrics stored. A shared count would size a 556-shot reading like a 723-shot one, and the error is silent. |
+| D27 | Shot counts | **`n` is per metric, not per club row** | Null rates span 52 points among the metrics stored — 0% for the ball-flight fields down to 52.2% for `dynamicLie`/`impactOffset`/`impactHeight`, with `clubPath` itself at 14.5%. A shared count would size a 349-shot reading like a 730-shot one, and the error is silent. |
 | D28 | Per-shot reach | **Shots are not on the `Repository` interface** | That interface is what components use. Putting shots on it invites the multi-megabyte download D24 exists to prevent. `saveShots`/`getShots` live on `RemoteRepo` alone, and there is no `DELETE` — the ingest is the only writer, nothing reads shots back, and deleting a session leaves its shots orphaned at a cost of a few KB. |
 | D29 | Targets | **`better: 'none'` is a first-class answer** | `attackAngle` wants opposite signs for a driver and an iron. Inventing a shared band would be worse than recording that there is not one. |
 | D30 | Axes | **Fixed domains authored per metric from driver session means** | Per-shot ranges are far wider and would huddle every point mid-panel. A second club needs its domain authored, never derived. |
+| D31 | Session payload | **Widen the aggregate, not scope it** (Phase 8) | A `MetricReading` serialises to 43.4 bytes; 379 club rows across 88 sessions take the document from 40 KB to ~731 KB. Accepted: the connection this site is used on makes the size a non-issue, and scoping aggregates to a subset would buy a second rule in `aggregate.ts` plus a class of question that needs a per-shot fetch to answer. |
 
 ### Deliberately excluded (YAGNI)
 
@@ -178,7 +179,7 @@ interface ClubPath {
   typical: number       // degrees, signed; negative = out-to-in
   best: number          // the stroke closest to neutral — smallest |path|
   n?: number            // measured strokes; absent on hand-typed entries
-  // Phase 7. The wider set, keyed by every metric except club path.
+  // Phase 7, widened in Phase 8. Every metric except club path — up to 42 readings.
   metrics?: Partial<Record<ExtraMetricId, MetricReading>>
 }
 
@@ -206,6 +207,9 @@ interface Shot {
   club: Club
   time?: string         // UTC instant, kept for ordering within a session
   metrics: Partial<Record<MetricId, number>>   // every metric optional; absent, never zero
+  // Phase 8. Trackman's own quality flag for the stroke — only ever 'SpinRate' and/or
+  // 'SpinAxis' in practice. Absent, never an empty array, on a clean reading.
+  reducedAccuracy?: string[]
 }
 ```
 
@@ -234,12 +238,15 @@ interface Shot {
   measured; a hand-typed one does not, because you read a typical figure off the bay screen.
   A missing `n` renders as a dash. **Never fabricate a default** — a chart would then weight a
   guess as though it were measured.
-- **`n` on a `MetricReading` is per metric, and required (D27).** The twelve metrics that ship
-  differ by about 23 points of null rate on the driver alone: 723 carry readings, 666 for swing
-  plane, 618 for club path, 556 for face to path. (The 45-point figure in §4 spans the whole
-  75-field surface, including metrics deliberately not stored.) One count per club row would let
-  the chart draw the sparse reading as confidently as the dense one. `ClubPath.n` stays *optional*
-  because hand entry produces a club-path row and never a `MetricReading`.
+- **`n` on a `MetricReading` is per metric, and required (D27).** The forty-three metrics that
+  ship differ by 52 points of null rate on the driver alone (730 strokes): the ball-flight fields
+  — `carry`, `total`, `ballSpeed`, `launchAngle`, `launchDirection`, `spinRate`, `carrySide`,
+  `totalSide`, `landingAngle`, `hangTime`, `maxHeight` — are 0% null; `smashFactor` is 6.4% null,
+  `swingPlane` 7.9%, `spinAxis` 14.2%, `clubPath` itself 14.5%, `faceToPath` 23.0%, and
+  `dynamicLie`/`impactOffset`/`impactHeight` 52.2% — the sparsest of the stored set. One count per
+  club row would let the chart draw the sparse reading as confidently as the dense one.
+  `ClubPath.n` stays *optional* because hand entry produces a club-path row and never a
+  `MetricReading`.
 - **Club path is not duplicated into `metrics`.** It keeps its own `typical`/`best`/`n`, so no
   existing reader changes and the migration touches no data. `readingFor()` in `domain/metrics.ts`
   is the one place that knows this, and returns a uniform `MetricReading` view for any id.
@@ -255,7 +262,7 @@ interface Shot {
 
 ### Persistence
 
-One `localStorage` key, `golf:store`, holding one JSON document with `schemaVersion: 3`. At a few
+One `localStorage` key, `golf:store`, holding one JSON document with `schemaVersion: 4`. At a few
 sessions a week that is simpler and safer than key-per-record, and it makes export trivial.
 Migrations live in `storage/migrations.ts`, keyed by the version being migrated *from*.
 
@@ -270,6 +277,15 @@ for the data: it is so the currently deployed build refuses to *touch* a documen
 `metrics`, because its `checkTrackmanSession` builds club rows from known keys and would silently
 **drop** them on an export/import round trip. `FutureSchemaError` then says "update the site"
 rather than quarantining data that is perfectly good.
+
+**`3 → 4` is an identity function for the same reason again.** The metric set widens from twelve
+to forty-three, but `metrics` was already a partial map, so a v3 row is a valid v4 row with fewer
+keys, and club path keeps the fields it has always had. The bump exists so the currently deployed
+build — whose `MetricId` union does not contain `spinRate` and the other Phase 8 additions —
+refuses to touch a document carrying them, rather than silently dropping the new readings on an
+export/import round trip. As at v2 → v3, this protection is real for the cache and weak for the
+remote store: `handler.mjs` reports `Math.min(...)` across stored items, so `/sessions` keeps
+reporting `2` for as long as any untouched pre-Phase-7 session exists.
 
 `infra/function/handler.mjs` carries its own `SCHEMA_VERSION` constant, stamped on every item it
 writes. **It is bumped in the same commit as `migrations.ts`** — the two are kept in step by
@@ -302,9 +318,10 @@ Manual JSON export/import is a required feature, not a nice-to-have.
 
 ## 4. Trackman ingest
 
-**Built** (Phase 3, issue #4) and **widened to twelve metrics plus a per-shot record** (Phase 7,
-issue #25). TrackMan's *documented* API is a facility/partner product and is not usable by an
-individual golfer. The path that works is an **undocumented GraphQL API at
+**Built** (Phase 3, issue #4), **widened to a twelve-metric set plus a per-shot record** (Phase 7,
+issue #25), and **widened again to forty-three** (Phase 8) — every `Measurement` field the probe
+showed Trackman actually populates. TrackMan's *documented* API is a facility/partner product and
+is not usable by an individual golfer. The path that works is an **undocumented GraphQL API at
 `https://api.trackmangolf.com/graphql`**, reachable with the player's own credentials. Schema
 introspection is enabled — and needs no credential at all — so the surface is verifiable rather
 than guessed.
@@ -401,63 +418,80 @@ never a `401`.
   `forwardswingTime` and `tempo` are null on all 5,877 strokes, as is `detectedClubCategory`;
   `kind` is the constant `"Measurement"`. This is what justifies the probe step at all — a design
   written from the schema alone would have shipped a tempo chart with nothing in it.
-- **Null rates differ per metric by up to 45 points.** On the driver, `swingPlane` is present on
-  666 strokes, `clubPath` on 618, and `dynamicLie`/`impactOffset`/`impactHeight` on 349 (51.7%
-  null). That is a finding about the **whole measurement surface**, and it is what forced a
-  per-metric `n` (D27) — but the three sparsest are excluded from storage for exactly that
-  sparsity, so it is not the spread a reader meets on a card. Among the twelve metrics that ship
-  the spread is about 23 points: 723 driver `carry` readings down to 556 for `faceToPath`.
+- **Null rates differ per metric.** On the driver, `swingPlane` and `clubPath` were both present
+  on the majority of the 5,877 strokes but not the same majority, with `dynamicLie`/
+  `impactOffset`/`impactHeight` the sparsest at 349 (51.7% null). That is what forced a
+  per-metric `n` (D27) rather than one count per club row — but at the time, the three sparsest
+  fields were excluded from storage for exactly that sparsity. Phase 8 carried them anyway; see
+  below for the current picture.
 - **`normalizedMeasurement` is a dead end** — identical to `measurement` on all 4,901 readings
   where both are present, 0 differing. Not stored.
-- **`reducedAccuracy` is real but narrow.** 1,251 strokes carry a flag, and only ever `SpinRate`
-  or `SpinAxis`. It never flags club delivery, and no spin metric is stored, so it has nothing to
-  act on and is not stored either.
 - **Per-shot and session-mean statistics are different, and mixing them misdraws charts.**
   Per-shot club path spans `−18…10.9`; session means span `−13.76…0.89`. `scale.ts`'s existing
   `−14…4` domain was authored from the latter, and every domain in `metrics.ts` is authored the
   same way, because a session mean is the level a panel plots. The probe reproducing that
   `−13.76` minimum exactly is the evidence its aggregation matches the shipped `aggregate.ts`.
 
+**What Phase 8's wider probe added, on 93 sessions and 5,954 strokes (2025-06-01 onward):**
+
+- **`Measurement` has 64 `Float` fields, and 21 of them are null on every one of the 5,954
+  strokes.** That leaves 43 fields worth carrying. Phase 7's probe found four of the 21 (the
+  advertised-but-empty fields above); this probe found seventeen more.
+- **68 of 68 fields the query can name are readable** — none denied by the token. The blast
+  radius of a future denial is real (the query is all-or-nothing), but nothing is being denied
+  today.
+- **Null rates differ per metric by 52 points among what's now carried**, on 730 driver strokes:
+  the ball-flight fields (`carry`, `total`, `ballSpeed`, `launchAngle`, `launchDirection`,
+  `spinRate`, `carrySide`, `totalSide`, `landingAngle`, `hangTime`, `maxHeight`) are 0% null;
+  `smashFactor` is 6.4% null, `swingPlane` 7.9%, `spinAxis` 14.2%, `clubPath` itself 14.5%,
+  `faceToPath` 23.0%, and `dynamicLie`/`impactOffset`/`impactHeight` 52.2% — still the sparsest,
+  but no longer excluded. The spread is wider than the twelve-metric set's 23 points, and the
+  ball-flight fields turn out better populated than `clubPath`, the metric that started the rule.
+- **`reducedAccuracy` is real, narrow, and now stored.** 1,273 of 5,954 strokes carry a flag —
+  `SpinRate` on 824, `SpinAxis` on 495, nothing else, ever. Phase 7 declined to store it because
+  neither flagged metric was carried; Phase 8 carries both, so the flag now has something to act
+  on. It lives on `Shot.reducedAccuracy`, absent rather than an empty array on a clean reading.
+
 ### What gets stored
 
 Two items per session, in two key spaces, for two different readers.
 
-**`SESSION#<id>` — per-club aggregates, twelve metrics.** Date, club, and for each metric a
-session mean, a `best` where the metric has a target, and **its own shot count**. Club path keeps
-its dedicated `typical`/`best`/`n`; the other eleven live in `metrics`. This is what every view on
-the site reads, and it stays small: thirteen months is 369 club rows.
+**`SESSION#<id>` — per-club aggregates, forty-three metrics (Phase 8).** Date, club, and for each
+metric a session mean, a `best` where the metric has a target, and **its own shot count**. Club
+path keeps its dedicated `typical`/`best`/`n`; the other forty-two live in `metrics`. Eighteen of
+the forty-three are **charted** — stored and plotted, with a driver-scoped axis authored in
+`metrics.ts` — and the remaining twenty-five are **carried**: stored per shot and as a session
+reading, but not plotted. `lib/domain/metrics.ts` is the one place either list is authored; this
+document does not restate it.
 
-**`SHOTS#<id>` — the shot-by-shot record.** One item per session, `sk = v1`, holding a `Shot[]`.
-The largest real session is 225 strokes, roughly 27 KB against DynamoDB's 400 KB item limit;
-thirteen months is 5,877 shots across 91 items. **Nothing on the site downloads it.** It is
-captured so that a future question has data to answer it, not because a chart needs it today.
+**Carrying is the default now; charting is the deliberate decision (Phase 8).** Phase 7 applied
+one test — *does this answer a question being asked* — to a single list. Phase 8 splits that test
+in two: carrying costs a wire name and nothing else, so it defaults to yes for anything the schema
+actually populates; charting still costs a hand-authored, driver-scoped axis, so it stays scoped
+to metrics with a question a panel can answer. `swingDirection` is why the split exists —
+near-collinear with `clubPath` on the driver (r = 0.819, OQ-8), which is a reason not to draw a
+second panel saying the same thing, and no reason at all to stop storing the reading.
 
-**Twelve metrics, and the test applied was *does this answer a question being asked*, not *is it
-available*:**
+**Still excluded from storage entirely:** `strokeLength`, `backswingTime`, `forwardswingTime`,
+`tempo`, `detectedClubCategory` and sixteen more fields, all null on every one of 5,954 probed
+strokes; `ballTrajectory` and `clubTrajectory` (per-shot arrays that would dwarf every other
+stored value); the putting-green metrics; `normalizedMeasurement` (identical to `measurement`
+wherever both are present); and `aggregatedMeasurement`, unchanged from Phase 3 — it cannot
+report `n`.
 
-| Metric | Why it earns its place |
-|---|---|
-| `clubPath` | The KPI. Unchanged in every respect. |
-| `faceAngle` | Half of the start-direction and curve equation. Establishes that the face is square. |
-| `faceToPath` | **What makes the ball curve.** Strongest non-collinear correlate of path (r = −0.612). |
-| `swingPlane` | The question Phase 7 was raised to answer. Kept so the answer stays checkable as the swing changes. |
-| `attackAngle` | Driver delivery context; hitting down with a driver is a fault in its own right. |
-| `curve` | The cost, in metres. `+21 m` is legible in a way `−5.4°` is not. |
-| `clubSpeed` | Guards against "improved by swinging easier" — a path that neutralises while speed drops is not progress. |
-| `carry` | The other half of that guard, and the number actually felt on a course. |
-| `lowPointDistance` | Where the arc bottoms out, fore and aft. The strike side of a path change. |
-| `lowPointSide` | Lateral low point; r = 0.386 with driver path per shot. |
-| `dynamicLoft` | Loft delivery. Interacts with `attackAngle` to explain distance loss. |
-| `spinLoft` | With `dynamicLoft`, separates a strike problem from a delivery problem. |
+**The payload cost is measured, not estimated, and accepted (D31).** A `MetricReading` serialises
+to 43.4 bytes; at 379 club rows across 88 sessions, widening the set from twelve to forty-three
+takes the document the browser downloads on refresh from roughly 40 KB to roughly **731 KB**. The
+connection this site is used on makes that non-issue-sized, and scoping aggregates to a subset
+would buy a second rule in `aggregate.ts` plus a class of question that needs a per-shot fetch to
+answer — the alternative D24 already ruled out. `CachedRepo` paints from `localStorage` first, so
+the cost falls on refresh rather than on every paint.
 
-**Deliberately excluded:** `swingDirection` (r = 0.819 with `clubPath` on the driver —
-near-collinear, a second panel saying the same thing; see OQ-8); `strokeLength`, `backswingTime`,
-`forwardswingTime`, `tempo`, `detectedClubCategory` (100% null); `spinRate` and `spinAxis` (the
-only metrics `reducedAccuracy` ever flags — excluded rather than stored with a caveat nothing
-enforces); `dynamicLie`, `impactOffset`, `impactHeight` (51.7% null on the driver, too sparse to
-chart honestly); `ballTrajectory` and `clubTrajectory` (per-shot arrays that would dwarf every
-other stored value); the putting-green metrics; `normalizedMeasurement`; and
-`aggregatedMeasurement`, unchanged from Phase 3.
+**`SHOTS#<id>` — the shot-by-shot record.** One item per session, `sk = v1`, holding a `Shot[]`,
+now with an optional `reducedAccuracy` per shot. The largest real session is 225 strokes, roughly
+27 KB against DynamoDB's 400 KB item limit; thirteen months is 5,877 shots across 91 items.
+**Nothing on the site downloads it.** It is captured so that a future question has data to answer
+it, not because a chart needs it today.
 
 Per-club aggregates were originally the *only* thing stored, forced by the publication channel —
 a file committed to a public repo. Phase 6 removed that constraint, which is **why storage moved

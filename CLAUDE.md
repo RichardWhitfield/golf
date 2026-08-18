@@ -54,19 +54,26 @@ Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/d
 never calculate.**
 
 Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
-read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 3.
+read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 4.
 **Reach either only through `lib/stores/sessions.svelte.ts`** — that file constructs the only
 `Repository` in the app, a `CachedRepo` wrapping a `RemoteRepo` and a `LocalStorageRepo`.
 
-The ingest carries **twelve metrics**, not one (Phase 7, issue #25). `lib/domain/metrics.ts` is
-the registry — ids, wire field names, fixed axes, bands, and what "best" means for each — and the
-GraphQL selection set is generated from it. Each club row gains `metrics`, a map of
+The ingest carries **forty-three metrics** — every `Measurement` field Trackman actually
+populates (Phase 8). `lib/domain/metrics.ts` is the registry, and its entries come in two kinds:
+**carried** metrics are stored per shot and as a session reading, and **charted** metrics add a
+hand-authored, driver-scoped axis. Eighteen are charted. `isCharted()` and `chartedInfo()` are
+the only routes to a domain, so asking to plot a metric that has no authored axis fails at the
+call rather than rendering an undefined one. Each club row gains `metrics`, a map of
 `MetricReading { typical, best?, n }` keyed by every metric **except** club path, which keeps its
 own dedicated fields. The shot-by-shot record lives in its own item under `SHOTS#<sessionId>`,
 written by the ingest and reachable only from `RemoteRepo`. `lib/domain/relate.ts` correlates two
 metrics for one club, `lib/domain/latest.ts` picks the newest reading for a club and reads the
 face-to-path verdict, and `/progress` gained a driver section — "Why the ball curves" — rendered
 by `SlicePanel` and `RelationPanel`.
+
+**Carrying is the default; charting is the deliberate decision.** Phase 7 applied one test to
+both and dropped `ballSpeed`, `smashFactor`, `spinRate`, `launchAngle` and `total` — the
+best-populated fields in the dataset, `0%` null on the driver where `clubPath` is 14.5% null.
 
 `readingFor` returns **`Reading`**, whose `n` is optional — distinct from the stored
 `MetricReading`, whose `n` is required. A hand-typed club-path row genuinely has no count, and
@@ -140,11 +147,20 @@ so a scoped base rule outranks a global override and the override silently loses
 - **`domain/metrics.ts` is the single source of truth for metric field names, axes and bands.**
   Every `field` was read from the live schema via `npm run introspect`, never from memory. The
   GraphQL selection set is built from it, so a wire name exists in exactly one place.
-- **`n` is per metric, not per club row.** The stored metrics differ by about 23 points of null
-  rate on the driver alone — 723 `carry` readings down to 556 for `faceToPath`, with swing plane
-  at 666 and club path at 618. A shared count would size a sparse reading like a dense one.
+- **`n` is per metric, not per club row.** The stored metrics differ by **52** points of null
+  rate on the driver alone — every ball-flight field (`carry`, `total`, `ballSpeed`,
+  `launchAngle`, `launchDirection`, `spinRate`, `carrySide`, `totalSide`, `landingAngle`,
+  `hangTime`, `maxHeight`) is `0%` null across 730 strokes, down to `dynamicLie`/`impactOffset`/
+  `impactHeight` at 52.2% null, with `clubPath` itself at 14.5% (624 of 730) and `faceToPath` at
+  23.0% (562 of 730). A shared count would size a sparse reading like a dense one.
   `MetricReading.n` is therefore required, while `ClubPath.n` stays optional: hand entry produces
   a club-path row and never a `MetricReading`.
+- **`best` means closest to the band's midpoint, not closest to zero.** For club path the band
+  is `−2…+2` and the midpoint is `0`, so nothing about the KPI changes. `spinRate` (2,200–2,700
+  rpm) and `launchAngle` (13–15°) are why it is expressed as a midpoint. A `neutral` metric with
+  no band throws — the midpoint would be undefined. `smashFactor` is `higher` despite having a
+  band, because ~1.50 is a physical ceiling and "closest to the midpoint" would rank 1.475 above
+  1.50.
 - **`better: 'none'` is a real answer.** `attackAngle` wants positive on a driver and negative on
   an iron, so there is no shared band. Metrics with no target store no `best` and draw no band.
   Never invent one.
