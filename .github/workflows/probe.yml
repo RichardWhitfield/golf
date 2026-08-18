@@ -1,0 +1,52 @@
+name: Probe the Trackman schema
+
+# workflow_dispatch ONLY, and temporary. This job exists to answer a question — which of the 64
+# `Measurement` floats are readable and populated — and should be deleted once it has, exactly as
+# the Phase 7 probe workflow was. It is never scheduled: it holds the Trackman credential, writes
+# nothing, and has no reason to run unattended.
+#
+# Never pull_request_target or workflow_run: this repo is public, and those triggers run with
+# secret access under attacker-influenced conditions.
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Probe strokes from this date (YYYY-MM-DD). Blank means 2025-06-01, the full history.'
+        required: false
+        type: string
+
+# Nothing by default. The probe reads an external API and prints; it touches no repo contents.
+permissions: {}
+
+concurrency:
+  group: trackman-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to full commit SHAs, not tags: this job holds the Trackman credential and a tag is
+      # a movable pointer. Same SHAs as trackman.yml — update both together.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Probe
+        # The token reaches the script through the environment, never through interpolation into
+        # the command line, and `inputs.since` is user-controlled even on a dispatch-only trigger.
+        # The script re-validates SINCE against `^\d{4}-\d{2}-\d{2}$` before it reaches a URL.
+        #
+        # This log is PUBLIC. The probe prints aggregates only — counts, null rates, percentiles
+        # and correlations — and never an individual reading. The token is never echoed, and a
+        # failed grant reports its HTTP status alone, because the body of a failed exchange can
+        # echo the grant back.
+        env:
+          TRACKMAN_REFRESH_TOKEN: ${{ secrets.TRACKMAN_REFRESH_TOKEN }}
+          SINCE: ${{ inputs.since }}
+        run: npm run probe

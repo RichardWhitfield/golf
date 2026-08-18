@@ -23,45 +23,96 @@ const CLIENT_ID = 'old-golf-app.c686e909-5102-45ac-9860-8d0b789073ae'
 const PAGE_SIZE = 50
 
 /**
- * The shortlist, read from the introspection output and narrowed to what could bear on an
- * out-to-in path. The putting-green fields (`break`, `effectiveStimp`, `bounces`, `rollSpeed`)
- * and the per-shot trajectory arrays are deliberately absent — a range session has no use for
- * the first, and the second would dwarf everything else stored.
+ * **Every `Measurement` field of type `Float` — all 64, authored from `introspection.json`.**
+ *
+ * Phase 7 probed a 31-field shortlist narrowed to what could bear on an out-to-in path. That
+ * narrowing is what left `ballSpeed`, `smashFactor`, `launchAngle` and `total` measured but
+ * never carried, so a later question about distance had nothing to read. The shortlist is gone:
+ * the sweep is now the whole scalar surface, and *carrying* stays the deliberate decision.
+ *
+ * Kept deliberately, against the instinct to prune:
+ *
+ * - **The four proven-null fields** (`strokeLength`, `backswingTime`, `forwardswingTime`,
+ *   `tempo`). F2 established they are null on all 5,877 strokes. Re-listing them costs one
+ *   request each and re-proves it against a year more data, rather than inheriting a finding.
+ * - **The putting-green fields** (`break`, `effectiveStimp`, `bounces`, `rollSpeed`, …). Null on
+ *   a range session costs nothing, and excluding them would be a guess about what is never hit.
+ *
+ * Still absent, and not a Float: `ballTrajectory` and `clubTrajectory` are per-shot arrays that
+ * would dwarf every scalar combined, and `data` is an untyped key-value bag.
  */
 const METRICS = [
-  // Club delivery. `swingPlane` is the motivating question of the whole phase.
+  // Club delivery. What the club was doing through impact.
+  'clubSpeed',
+  'attackAngle',
   'clubPath',
+  'dynamicLoft',
+  'faceAngle',
+  'spinLoft',
+  'faceToPath',
   'swingPlane',
   'swingDirection',
-  'attackAngle',
-  'faceAngle',
-  'faceToPath',
-  'dynamicLoft',
-  'spinLoft',
+  'swingRadius',
+  'dPlaneTilt',
   'dynamicLie',
-  'clubSpeed',
   // Strike. Where on the face, and where the arc bottoms out.
   'impactOffset',
   'impactHeight',
   'lowPointDistance',
+  'lowPointHeight',
   'lowPointSide',
-  // Tempo, in case a steep plane tracks a rushed transition.
+  // Tempo. Proven 100% null in Phase 7 (F2) — re-probed rather than assumed.
   'strokeLength',
   'backswingTime',
   'forwardswingTime',
   'tempo',
-  // Outcome. What the miss actually cost.
+  // Launch. Ball speed and spin — the half of the distance equation Phase 7 dropped.
   'ballSpeed',
+  'ballSpeedDifference',
   'smashFactor',
+  'smashIndex',
   'launchAngle',
   'launchDirection',
   'spinRate',
+  'spinRateDifference',
+  'spinIndex',
   'spinAxis',
+  'gyroSpinAngle',
+  // Flight and outcome. What the shot actually did.
   'curve',
+  'maxHeight',
   'carry',
   'total',
   'carrySide',
   'totalSide',
+  'landingAngle',
+  'landingHeight',
+  'hangTime',
+  'skidDistance',
+  'side',
+  'speedDrop',
+  'lastData',
+  // Roll and green. Expected null on a range session; probed rather than presumed.
+  'rollSpeed',
+  'rollPercentage',
+  'rollDeceleration',
+  'entrySpeedDistance',
+  'bounces',
+  'break',
+  'totalBreak',
+  'effectiveStimp',
+  'flatStimp',
+  'elevation',
+  'slopePercentageSide',
+  'slopePercentageRise',
+  // `*Actual` variants. Whether they differ from the normalised reading is itself the finding.
+  'spinAxisActual',
+  'curveActual',
+  'carryActual',
+  'totalActual',
+  'carrySideActual',
+  'totalSideActual',
+  'landingAngleActual',
 ] as const
 
 /**
