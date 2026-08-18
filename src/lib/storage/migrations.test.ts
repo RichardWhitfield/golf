@@ -19,6 +19,12 @@ const trackman: TrackmanSession = {
   clubs: [{ club: 'DRIVER', typical: -7.5, best: -1.2, n: 26 }],
 }
 
+describe('SCHEMA_VERSION', () => {
+  it('is at version 4', () => {
+    expect(SCHEMA_VERSION).toBe(4)
+  })
+})
+
 describe('migrate', () => {
   it('passes a current-version document through', () => {
     const doc = { schemaVersion: SCHEMA_VERSION, sessions: [session], settings: { blockStart: '2026-08-03' } }
@@ -74,16 +80,16 @@ describe('migrate', () => {
 
   it('runs the migration loop for real, now that a registered step exists', () => {
     // The predecessor of this test noted that while SCHEMA_VERSION was 1 the loop body was
-    // unreachable. It is reachable now: a v1 document takes the 1 → 2 → 3 steps.
+    // unreachable. It is reachable now: a v1 document takes the 1 → 2 → 3 → 4 steps.
     const v1 = {
       schemaVersion: 1,
       sessions: [session],
       settings: { blockStart: '2026-07-20' },
     }
     const doc = migrate(v1)
-    expect(doc.schemaVersion).toBe(3)
-    // 1 → 2 → 3 is identity all the way: v1 held only practice sessions, and those are
-    // unchanged; 2 → 3 only adds an optional field.
+    expect(doc.schemaVersion).toBe(4)
+    // 1 → 2 → 3 → 4 is identity all the way: v1 held only practice sessions, and those are
+    // unchanged; 2 → 3 and 3 → 4 only ever widen an optional field.
     expect(doc.sessions).toEqual([session])
     expect(doc.settings).toEqual({ blockStart: '2026-07-20' })
   })
@@ -98,17 +104,18 @@ describe('migrate', () => {
   })
 
   it('refuses a document from one version ahead, which is the whole point of the bump', () => {
-    // The v2 build deployed today does exactly this when it meets a v3 document: refuses,
+    // The v4 build deployed today does exactly this when it meets a v5 document: refuses,
     // does not quarantine, and tells the user to update the site. Without the bump it would
-    // instead read the document and silently drop `metrics` from every club row.
-    expect(() => migrate({ schemaVersion: 4, sessions: [], settings: {} })).toThrow(
+    // instead read the document and silently drop the wider metric set from every club row.
+    expect(() => migrate({ schemaVersion: 5, sessions: [], settings: {} })).toThrow(
       FutureSchemaError,
     )
   })
 
-  it('migrates a version 2 document to 3 without altering it', () => {
-    // Identity, deliberately. Every v2 document is already a valid v3 one: `metrics` is optional
-    // and nothing existing changes shape.
+  it('migrates a version 2 document to 4 without altering it', () => {
+    // Identity, deliberately, all the way: every v2 document is already a valid v4 one —
+    // `metrics` widens from twelve fields to forty-three but stays optional throughout, and
+    // nothing existing changes shape.
     const doc = {
       schemaVersion: 2,
       sessions: [
@@ -121,8 +128,27 @@ describe('migrate', () => {
     // `doc.sessions` — comparing them to each other would pass even if it mutated in place.
     const before = JSON.parse(JSON.stringify(doc.sessions))
     const out = migrate(doc)
-    expect(out.schemaVersion).toBe(3)
+    expect(out.schemaVersion).toBe(4)
     expect(out.sessions).toEqual(before)
+  })
+
+  it('migrates v3 to v4 without touching the data', () => {
+    const doc = {
+      schemaVersion: 3,
+      sessions: [{
+        id: 's1', type: 'trackman', date: '2026-08-17', source: 'api',
+        clubs: [{ club: 'DRIVER', typical: -6, best: -1, n: 5, metrics: { carry: { typical: 180, n: 5 } } }],
+      }],
+      settings: {},
+    }
+    const out = migrate(structuredClone(doc))
+    expect(out.schemaVersion).toBe(4)
+    expect(out.sessions).toEqual(doc.sessions)
+  })
+
+  it('still carries a v2 document all the way to v4', () => {
+    const out = migrate({ schemaVersion: 2, sessions: [], settings: {} })
+    expect(out.schemaVersion).toBe(4)
   })
 })
 

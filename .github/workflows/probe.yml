@@ -1,9 +1,12 @@
 name: Probe the Trackman schema
 
-# workflow_dispatch ONLY, and temporary. This job exists to answer a question — which of the 64
-# `Measurement` floats are readable and populated — and should be deleted once it has, exactly as
-# the Phase 7 probe workflow was. It is never scheduled: it holds the Trackman credential, writes
-# nothing, and has no reason to run unattended.
+# workflow_dispatch ONLY. This job answers a standing question — which `Measurement` fields are
+# readable, and which are populated — and is kept rather than deleted after use, unlike the
+# Phase 7 probe workflow. The API is assumed to break without notice, so "re-run the probe" is
+# the first step of diagnosing an ingest that has started returning less than it did.
+#
+# It is never scheduled: it holds the Trackman credential, writes nothing, and has no reason to
+# run unattended. Dispatch-only is what keeps a credentialed job off every push.
 #
 # Never pull_request_target or workflow_run: this repo is public, and those triggers run with
 # secret access under attacker-influenced conditions.

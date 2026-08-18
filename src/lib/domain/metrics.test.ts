@@ -1,14 +1,29 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { METRICS, METRIC_FIELDS, bestOf, isMetricId, metricInfo, readingFor } from './metrics'
+import {
+  CHARTED,
+  METRICS,
+  METRIC_FIELDS,
+  bestOf,
+  chartedInfo,
+  isCharted,
+  isMetricId,
+  metricInfo,
+  readingFor,
+} from './metrics'
 import { BAND, DOMAIN } from './scale'
 import type { ClubPath } from './types'
 
 describe('the registry', () => {
-  it('covers exactly the twelve metrics the spec chose', () => {
-    expect(METRICS).toHaveLength(12)
-    expect(METRICS.map((m) => m.id)).toEqual([
+  it('charts exactly the eighteen metrics with an authored axis', () => {
+    // Carrying is the default now and needs no gate — see `it('carries 43 metrics', ...)`
+    // below. Charting is the deliberate decision: it commits to a driver-scoped domain and,
+    // for most, a band. Spelling out the id list (not just the count) means swapping which
+    // metric is charted, not just how many are, fails this test and has to be done on purpose.
+    expect(CHARTED.map((m) => m.id)).toEqual([
       'clubPath', 'faceAngle', 'faceToPath', 'swingPlane', 'attackAngle', 'curve',
       'clubSpeed', 'carry', 'lowPointDistance', 'lowPointSide', 'dynamicLoft', 'spinLoft',
+      'ballSpeed', 'smashFactor', 'spinRate', 'launchAngle', 'total', 'spinAxis',
     ])
   })
 
@@ -19,13 +34,17 @@ describe('the registry', () => {
     }
   })
 
-  it('excludes swingDirection as near-collinear with the KPI', () => {
-    // r = 0.819 with clubPath on the driver — a second panel saying the same thing (OQ-8).
-    expect(METRIC_FIELDS).not.toContain('swingDirection')
+  it('carries swingDirection but never charts it', () => {
+    // r = 0.866 with clubPath on the driver (this phase's probe, 5,954 strokes — supersedes
+    // the r = 0.819 an earlier probe found). That collinearity is a reason not to draw a
+    // second panel saying the same thing as the KPI (OQ-8) — it is no reason at all to
+    // discard the reading, so Phase 8 carries it and simply never charts it.
+    expect(METRIC_FIELDS).toContain('swingDirection')
+    expect(CHARTED.map((m) => m.id)).not.toContain('swingDirection')
   })
 
   it('gives every metric a fixed domain wide enough to hold its band', () => {
-    for (const m of METRICS) {
+    for (const m of CHARTED) {
       expect(m.domain.max).toBeGreaterThan(m.domain.min)
       if (m.band) {
         expect(m.band.min).toBeGreaterThanOrEqual(m.domain.min)
@@ -36,31 +55,31 @@ describe('the registry', () => {
 
   it('reuses the club-path domain rather than restating it', () => {
     // One value, one home. A second copy would drift from scale.ts silently.
-    expect(metricInfo('clubPath').domain).toEqual(DOMAIN)
-    expect(metricInfo('clubPath').band).toEqual(BAND)
+    expect(chartedInfo('clubPath').domain).toEqual(DOMAIN)
+    expect(chartedInfo('clubPath').band).toEqual(BAND)
   })
 
   it('gives a band only to metrics that have a real target', () => {
     // attackAngle wants positive on a driver and negative on an iron. There is no shared
     // target, and inventing one would be worse than admitting it.
-    for (const m of METRICS) {
+    for (const m of CHARTED) {
       if (m.better === 'none') expect(m.band).toBeUndefined()
     }
-    expect(metricInfo('attackAngle').better).toBe('none')
-    expect(metricInfo('swingPlane').better).toBe('none')
+    expect(chartedInfo('attackAngle').better).toBe('none')
+    expect(chartedInfo('swingPlane').better).toBe('none')
   })
 })
 
 describe('bestOf', () => {
   it('prefers the reading closest to neutral, never the largest', () => {
     // +5 is a worse fault than +1: overshooting the band counts against you.
-    expect(bestOf([-5, 1, 5], 'neutral')).toBe(1)
-    expect(bestOf([-8, -6], 'neutral')).toBe(-6)
+    expect(bestOf([-5, 1, 5], 'neutral', BAND)).toBe(1)
+    expect(bestOf([-8, -6], 'neutral', BAND)).toBe(-6)
   })
 
   it('keeps the sign when picking the closest to neutral', () => {
     // Never Math.abs on a signed value — that would accept a sign flip.
-    expect(bestOf([-1, 3], 'neutral')).toBe(-1)
+    expect(bestOf([-1, 3], 'neutral', BAND)).toBe(-1)
   })
 
   it('takes the largest where larger genuinely is better', () => {
@@ -76,11 +95,133 @@ describe('bestOf', () => {
   })
 })
 
+describe('bestOf with a band midpoint', () => {
+  // The no-op guarantee: every existing `neutral` metric has a band centred on zero,
+  // so generalising the rule must not move a single existing reading.
+  it('is unchanged for a band centred on zero', () => {
+    expect(bestOf([-5, 1, 3], 'neutral', BAND)).toBe(1)
+    expect(bestOf([5, -1, 3], 'neutral', BAND)).toBe(-1)
+  })
+
+  it('keeps the sign of the winning reading', () => {
+    expect(bestOf([-0.5, 2], 'neutral', BAND)).toBe(-0.5)
+  })
+
+  it('picks the reading closest to a midpoint that is not zero', () => {
+    // spinRate: band 2200-2700, midpoint 2450. 2600 is closer than 4000 or 1000.
+    const band = { min: 2200, max: 2700 }
+    expect(bestOf([4000, 2600, 1000], 'neutral', band)).toBe(2600)
+  })
+
+  it('prefers an overshoot that is nearer the midpoint than an undershoot', () => {
+    const band = { min: 2200, max: 2700 }
+    expect(bestOf([2800, 1500], 'neutral', band)).toBe(2800)
+  })
+
+  it('still returns the maximum for `higher`, band or no band', () => {
+    expect(bestOf([1.2, 1.44, 1.31], 'higher', { min: 1.45, max: 1.5 })).toBe(1.44)
+    expect(bestOf([40, 45, 43], 'higher')).toBe(45)
+  })
+
+  it('still returns undefined for `none` and for an empty list', () => {
+    expect(bestOf([1, 2], 'none')).toBeUndefined()
+    expect(bestOf([], 'neutral', BAND)).toBeUndefined()
+  })
+
+  it('throws for `neutral` with no band, because the midpoint is undefined', () => {
+    expect(() => bestOf([1, 2], 'neutral')).toThrow(/band/i)
+  })
+})
+
+describe('the carried / charted split', () => {
+  it('treats every metric with a domain as charted', () => {
+    for (const m of METRICS) {
+      expect(isCharted(m)).toBe('domain' in m)
+    }
+  })
+
+  it('exposes the charted subset in registry order', () => {
+    expect(CHARTED).toEqual(METRICS.filter(isCharted))
+    expect(CHARTED.length).toBeGreaterThan(0)
+  })
+
+  it('returns a charted metric from chartedInfo', () => {
+    expect(chartedInfo('clubPath').domain).toEqual({ min: -14, max: 4 })
+  })
+
+  it('still resolves every metric through metricInfo', () => {
+    expect(metricInfo('clubPath').field).toBe('clubPath')
+  })
+
+  it('requires a band on every neutral metric, since best is the midpoint', () => {
+    for (const m of CHARTED) {
+      if (m.better === 'neutral') expect(m.band).toBeDefined()
+    }
+  })
+
+  it('stores no band on a metric with no target', () => {
+    for (const m of CHARTED) {
+      if (m.better === 'none') expect(m.band).toBeUndefined()
+    }
+  })
+})
+
+describe('the registry against the live schema', () => {
+  // `introspection.json` is gitignored and regenerated by `npm run introspect`, which needs no
+  // credential. Skip rather than fail when it is absent, so a fresh clone can still run tests.
+  const raw = (() => {
+    try {
+      return JSON.parse(readFileSync('introspection.json', 'utf8')) as {
+        name: string
+        fields: { name: string; type: unknown }[] | null
+      }[]
+    } catch {
+      return null
+    }
+  })()
+
+  it.runIf(raw)('names only fields that exist on Measurement', () => {
+    const measurement = raw!.find((t) => t.name === 'Measurement')!
+    const known = new Set(measurement.fields!.map((f) => f.name))
+    const unknown = METRIC_FIELDS.filter((f) => !known.has(f))
+    expect(unknown).toEqual([])
+  })
+
+  it('carries 43 metrics', () => {
+    expect(METRICS).toHaveLength(43)
+  })
+
+  it('has no duplicate id and no duplicate wire field', () => {
+    expect(new Set(METRICS.map((m) => m.id)).size).toBe(METRICS.length)
+    expect(new Set(METRIC_FIELDS).size).toBe(METRIC_FIELDS.length)
+  })
+
+  it('charts eighteen of them', () => {
+    expect(METRICS.filter((m) => 'domain' in m)).toHaveLength(18)
+  })
+
+  it('throws rather than guess an axis for a carried-only metric', () => {
+    expect(() => chartedInfo('swingDirection')).toThrow(/not charted/i)
+  })
+
+  it('gives every carried-only metric a unit and a decimals, and no axis', () => {
+    for (const m of METRICS.filter((x) => !('domain' in x))) {
+      expect(m).not.toHaveProperty('band')
+      expect(m).not.toHaveProperty('better')
+      expect(typeof m.decimals).toBe('number')
+    }
+  })
+})
+
 describe('isMetricId', () => {
   it('rejects a value that is not a metric, including inherited object keys', () => {
     expect(isMetricId('clubPath')).toBe(true)
     expect(isMetricId('toString')).toBe(false)
-    expect(isMetricId('swingDirection')).toBe(false)
+    // gyroSpinAngle is a real field the schema advertises — but it was null on all 5,954
+    // strokes in this phase's probe (F2's finding, extended from four dead fields to
+    // twenty-one), so it was deliberately never added to the registry. A field the schema
+    // offers is not automatically a MetricId; only a field this registry chose to carry is.
+    expect(isMetricId('gyroSpinAngle')).toBe(false)
   })
 })
 

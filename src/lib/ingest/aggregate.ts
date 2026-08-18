@@ -1,5 +1,6 @@
 import { compareClubs, normaliseClub, type Club } from '../domain/clubs'
-import { METRICS, bestOf, type MetricId } from '../domain/metrics'
+import { METRICS, bestOf, isCharted, type MetricId } from '../domain/metrics'
+import { BAND } from '../domain/scale'
 import { resolveISODate } from '../domain/today'
 import type { ClubPath, ExtraMetricId, MetricReading, Shot, TrackmanSession } from '../domain/types'
 
@@ -77,6 +78,16 @@ export function aggregateActivity(
 
     const shot: Shot = { club, metrics: measured }
     if (stroke.time) shot.time = stroke.time
+    // `reducedAccuracy` lives on `Measurement`, not `Stroke` — see api.ts. `measurement` is
+    // typed as an untrusted `Record<string, unknown> | null`, so read it as `unknown` and
+    // narrow by hand rather than casting the whole array with `as`.
+    // Absent, never empty: an empty array would read as "checked and clean" on a stroke the
+    // API said nothing about.
+    const rawFlags: unknown = stroke.measurement?.reducedAccuracy
+    const flags = Array.isArray(rawFlags)
+      ? rawFlags.filter((f): f is string => typeof f === 'string')
+      : []
+    if (flags.length > 0) shot.reducedAccuracy = flags
     shots.push(shot)
 
     let values = byClub.get(club)
@@ -105,9 +116,13 @@ export function aggregateActivity(
           typical: round2(list.reduce((a, b) => a + b, 0) / list.length),
           n: list.length,
         }
-        const best = bestOf(list, metric.better)
-        // Assigned conditionally: `better: 'none'` metrics carry no `best` at all.
-        if (best !== undefined) entry.best = round2(best)
+        // A carried-only metric has no `better` and so no verdict to compute — it still gets a
+        // `typical`, just never a `best`. `isCharted` is the guard, not an `as` on the union.
+        if (isCharted(metric)) {
+          const best = bestOf(list, metric.better, metric.band)
+          // Assigned conditionally: `better: 'none'` metrics carry no `best` at all.
+          if (best !== undefined) entry.best = round2(best)
+        }
         metrics[metric.id as ExtraMetricId] = entry
       }
 
@@ -116,7 +131,7 @@ export function aggregateActivity(
         typical: round2(paths.reduce((a, b) => a + b, 0) / paths.length),
         // Closest to neutral. The target is a band centred on zero, so overshooting counts
         // against you — `+5` must lose to `+1`. A `Math.max` "best" would reward the fault.
-        best: round2(bestOf(paths, 'neutral') as number),
+        best: round2(bestOf(paths, 'neutral', BAND) as number),
         n: paths.length,
         metrics,
       }]

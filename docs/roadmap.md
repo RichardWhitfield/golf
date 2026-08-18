@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-08-07
+**Last updated:** 2026-08-18
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -13,11 +13,12 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 - Three views behind the router: `/` (the plan), `/log` (the practice log) and `/progress`
   (the charts). Deep links depend on a generated `dist/404.html`.
 - Practice **and Trackman** sessions live in **DynamoDB** behind the async repository seam at
-  `schemaVersion` 3, with JSON export/import. `localStorage` is a read cache, so the same history
+  `schemaVersion` 4, with JSON export/import. `localStorage` is a read cache, so the same history
   is on the phone and the laptop.
 - Club path is stored **per club** and never blended. The KPI is **driver** club path.
-- Each club row carries **twelve metrics**, each with its own shot count, and the shot-by-shot
-  record sits in a separate `SHOTS#` item that nothing on the site downloads.
+- Each club row carries **forty-three metrics**, eighteen of them charted with an authored axis,
+  each with its own shot count, and the shot-by-shot record sits in a separate `SHOTS#` item that
+  nothing on the site downloads.
 - A daily Actions workflow pulls Trackman sessions straight into the store, holding no
   permissions and no AWS credentials, and never overwriting anything typed by hand.
 - `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
@@ -245,10 +246,10 @@ than replacing it.
   written from introspection alone would have shipped a tempo chart with nothing in it. This is
   why there are two scripts: `npm run introspect` says what exists, `npm run probe` says what is
   populated.
-- **Null rates differ per metric** — by up to 45 points across the whole 75-field surface, and by
-  about 23 among the twelve metrics that ship: on the driver, 723 carry readings against 556 for
-  face to path, with swing plane at 666 and club path at 618. One `n` per club row would have
-  sized a sparse reading like a dense one, silently. Hence a count per metric (D27).
+- **Null rates differ per metric**, on the driver alone, by tens of points between the sparsest
+  and densest fields. One `n` per club row would have sized a sparse reading like a dense one,
+  silently. Hence a count per metric (D27) — see Phase 8 for the figures once the metric set
+  widened further and the spread widened with it.
 - **Per-shot and session-mean ranges are different**, and mixing them misdraws a chart. Per-shot
   club path spans `−18…10.9` where session means span `−13.76…0.89`. Every authored domain comes
   from session means, because that is the level a panel plots (D30).
@@ -272,6 +273,65 @@ omitted — without them the panel would have inverted the coaching message.
 **The probe workflow was deleted with this phase.** Both scripts stay: introspection needs no
 credential, and the probe is run by whoever holds the token. What went was the branch-triggered
 CI job, which had done its work.
+
+---
+
+## Phase 8 · Carry every metric Trackman actually populates — **done (2026-08-18)**
+
+Design in `docs/superpowers/specs/2026-08-18-wide-metric-ingest-design.md`.
+
+Phase 7 chose a set of twelve because each metric answered a specific question. A wider probe — 93
+sessions, 5,954 strokes, 2025-06-01 onward — showed that test was excluding fields worth storing
+even when they had no panel of their own: `Measurement` has 64 `Float` fields, and only 21 of
+them are null on every stroke. Phase 7's probe had found four of those 21; this one found the
+other seventeen. That leaves 43 fields worth carrying, against twelve before.
+
+**The registry split in two.** `CarriedMetric` (stored per shot and as a session reading) and
+`ChartedMetric` (stored *and* plotted, with a hand-authored driver-scoped axis) are now distinct
+types. `isCharted()` and `chartedInfo()` are the only routes to a domain, so asking to plot a
+metric with no authored axis fails at the call rather than rendering an undefined one. Carrying
+stayed the default — it costs a wire name and nothing else — and charting stayed the deliberate
+decision. Eighteen of the 43 are charted; the other 25, including `swingDirection` (OQ-8), are
+carried only.
+
+**`best` for a `neutral` metric changed meaning: closest to the band's midpoint, not closest to
+zero.** For club path the band is `−2…+2` and the midpoint is `0`, so the KPI did not move.
+`spinRate` (2,200–2,700 rpm) and `launchAngle` (13–15°) are why the change was needed — neither
+band centres on zero. `smashFactor` stayed `better: 'higher'` despite having a band, because
+~1.50 is a physical ceiling rather than a range centre: "closest to the midpoint" would have
+ranked a 1.475 strike above a 1.50 one.
+
+**Four new driver bands joined `content.md`** — spin rate, launch angle, smash factor and spin
+axis — authored from coaching reference, not fitted to the player's own data. Measured against
+them, the player's driver runs hot on spin (5,715 rpm p50 against a 2,200–2,700 target), shallow
+on launch (13.75° against 13–15°, close), short of the smash-factor target (1.30 against
+1.45–1.50), and well off-axis (+15.29° against −5°…+5°).
+
+**`reducedAccuracy` joined `Shot`, absent rather than empty on a clean reading.** 1,273 of 5,954
+strokes carry a flag — `SpinRate` on 824, `SpinAxis` on 495, nothing else, ever. Phase 7 declined
+to store the flag because neither field it can name was carried; Phase 8 carries both, so the
+flag now has something to act on.
+
+**Null rates span 52 points among what's carried, not 23.** On 730 driver strokes: every
+ball-flight field (`carry`, `total`, `ballSpeed`, `launchAngle`, `launchDirection`, `spinRate`,
+`carrySide`, `totalSide`, `landingAngle`, `hangTime`, `maxHeight`) is 0% null; `clubPath` itself
+is 14.5% null (624 of 730); `faceToPath` is 23.0% null (562 of 730); `dynamicLie`/`impactOffset`/
+`impactHeight` are the sparsest at 52.2% (349 of 730). The rule the spread justifies (D27, a
+per-metric `n`) is better supported by this data than by Phase 7's — the ball-flight fields turn
+out better populated than club path, the metric that started the rule.
+
+**`schemaVersion` moved 3 → 4, an identity migration.** `ClubPath.metrics` now holds up to 42
+readings (every carried metric except club path itself), and `Shot` gained `reducedAccuracy`. The
+session document the browser downloads on refresh grows from roughly 40 KB to roughly **731 KB**
+— measured at 43.4 bytes per `MetricReading` across 379 club rows in 88 sessions — and that is
+accepted (D31): the connection this site is used on makes the size a non-issue, and scoping
+aggregates to a subset would buy a second rule in `aggregate.ts` plus a class of question that
+needs a per-shot fetch to answer. The live store still reports `schemaVersion: 2` — correct, since
+`handler.mjs` reports the minimum across items and 85 pre-Phase-7 sessions still carry `2`.
+
+**Done when** — met in code: the wider set is written by every import, and every document that
+named the old twelve-metric count or the Phase 7 null-rate figures now reflects the current
+registry.
 
 ---
 
@@ -414,6 +474,10 @@ diverge, **that divergence is itself the interesting signal**.
 **Revisit when driver club path first sits inside the band for three consecutive sessions.** Not
 before: while the two move together there is nothing to see, and adding it now would cost a panel
 and buy nothing.
+
+**Phase 8 carries `swingDirection` without charting it** — the carried/charted split means storing
+the reading no longer requires deciding it deserves a panel. When this question is revisited, the
+data will already be there rather than starting from the point of revisit forward.
 
 ---
 

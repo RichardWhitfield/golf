@@ -57,7 +57,7 @@ function decodeId(raw) {
 }
 
 /** Kept in step with `SCHEMA_VERSION` in `src/lib/storage/migrations.ts`. */
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 /** Rejected before anything reaches DynamoDB. The message is shown to the user as-is. */
 export class BadRequest extends Error {
@@ -135,6 +135,12 @@ export function validateSession(raw, id) {
 /**
  * Longer than any real session. The largest in thirteen months is 225 strokes; this bounds what
  * an open endpoint (D19) can be made to store, and is not a claim about the data.
+ *
+ * This is a request-size sanity bound, not the binding limit any more: now that a shot carries
+ * forty-three metrics instead of twelve, a shot is roughly 890 bytes, so DynamoDB's 400 KB
+ * per-item limit binds first, at around 450 shots — well under this constant. A session larger
+ * than that fails on `PutItem`, not on this check. Whether to lower `MAX_SHOTS` to sit closer to
+ * that real ceiling is a design call for the repo owner, not made here.
  */
 const MAX_SHOTS = 2000
 
@@ -160,6 +166,16 @@ export function validateShots(raw) {
       // Absent is fine and expected; a NaN or a string is a shape the client cannot render.
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         throw new BadRequest('Every shot reading must be a finite number.')
+      }
+    }
+    // Trackman's own quality flag, stored verbatim beside the readings it qualifies. Not inside
+    // `metrics`, which is numbers only — hence its own check rather than the loop above.
+    if (shot.reducedAccuracy !== undefined) {
+      if (
+        !Array.isArray(shot.reducedAccuracy) ||
+        shot.reducedAccuracy.some((f) => typeof f !== 'string')
+      ) {
+        throw new BadRequest('A reduced-accuracy flag must be an array of strings.')
       }
     }
   }

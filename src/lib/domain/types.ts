@@ -161,6 +161,16 @@ export interface Shot {
   /** UTC instant from the stroke, kept for ordering within a session. */
   time?: string
   metrics: Partial<Record<MetricId, number>>
+  /**
+   * Trackman's own quality flag, verbatim. Only ever `SpinRate` or `SpinAxis` across 5,954
+   * strokes, and present on 1,273 of them.
+   *
+   * **Deliberately not inside `metrics`**, which holds numbers only. Stored rather than used to
+   * filter: Phase 7 excluded both flagged metrics instead, and `spinRate` turned out to be the
+   * metric that answers a question about distance. A caveat that travels with the reading is
+   * better than a reading that was never taken.
+   */
+  reducedAccuracy?: string[]
 }
 
 export type Session = PracticeSession | TrackmanSession

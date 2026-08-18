@@ -58,9 +58,10 @@ over-read every time unless the `n` is sitting next to it. A hand-typed session 
 and shows a dash rather than a number invented to fill the gap.
 
 **And read each metric's own count.** Every metric carries its own `n`, because the bay does not
-measure them equally. Over the same driver strokes there are 723 carry readings, 666 for swing
-plane, 618 for club path and 556 for face to path. Two numbers side by side on one card can be
-backed by very different amounts of evidence.
+measure them equally. Over the same 730 driver strokes, carry, ball speed, spin rate and the rest
+of ball flight sit at `0%` null; club path is 14.5% null (624 readings); face to path is 23.0%
+null (562 readings). Two numbers side by side on one card can be backed by very different amounts
+of evidence.
 
 ### The face is not the fault
 
@@ -86,6 +87,19 @@ the relationship disappears entirely (`−0.053`). Steepness is not what is send
 
 Keep the number. Stop treating it as the cause. The site recomputes that correlation from your
 own sessions every time the page loads, so if the swing changes the answer changes with it.
+
+### Driver targets beyond club path
+
+Scoped to the driver, like every domain in `metrics.ts`. Authored from coaching reference, not
+fitted to the player's own readings — a band fitted to these would define "good" as "better than
+recent", which is the mistake fixed axes exist to prevent.
+
+| Metric | Target | Measured p50 (45 driver sessions) |
+|---|---|---|
+| Spin rate | 2,200–2,700 rpm | 5,715 rpm |
+| Launch angle | 13–15° | 13.75° |
+| Smash factor | 1.45–1.50 | 1.30 |
+| Spin axis | −5° to +5° | +15.29° |
 
 ---
 

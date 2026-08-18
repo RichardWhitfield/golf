@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { Relation } from '../domain/relate'
-  import { metricInfo } from '../domain/metrics'
+  import { chartedInfo } from '../domain/metrics'
   import { CHART, inRange, radiusFor, xIn, yIn } from '../domain/scale'
   import { clubInfo } from '../domain/clubs'
 
   let { relation }: { relation: Relation } = $props()
 
-  const xInfo = $derived(metricInfo(relation.x))
-  const yInfo = $derived(metricInfo(relation.y))
+  const xInfo = $derived(chartedInfo(relation.x))
+  const yInfo = $derived(chartedInfo(relation.y))
   const club = $derived(clubInfo(relation.club))
 
   const PLOT_W = CHART.w - CHART.padL - CHART.padR
