@@ -194,7 +194,7 @@ describe('handler', () => {
 
   it('reports the current version for an empty table, which is a first run, not v0', async () => {
     const res = await makeHandler(fakeClient({ Items: [] }), 'golf')(event('GET', '/sessions'))
-    expect(JSON.parse(res.body)).toEqual({ sessions: [], schemaVersion: 3 })
+    expect(JSON.parse(res.body)).toEqual({ sessions: [], schemaVersion: 4 })
   })
 
   it('rejects an invalid body with 400 and writes nothing', async () => {

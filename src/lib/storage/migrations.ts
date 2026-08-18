@@ -2,7 +2,7 @@ import type { Session } from '../domain/types'
 import type { Settings, StoreDocument } from './repository'
 
 /** Bump this and add a migration below for **any** change to the stored shape. */
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 /** Stable across schema versions — the version lives inside the document, not in the key. */
 export const STORAGE_KEY = 'golf:store'
@@ -61,6 +61,21 @@ const MIGRATIONS: Record<number, Migration> = {
    * forever. The cache is where the guard bites, and a deploy replaces the build anyway.
    */
   2: (doc) => doc,
+
+  /**
+   * v3 → v4: the metric set widens from twelve to forty-three. **Identity, deliberately.**
+   * Every v3 document is already a valid v4 one — `metrics` is a partial map, so a v3 row is a
+   * v4 row with fewer keys, and club path keeps the fields it has always had.
+   *
+   * The bump is for the **build currently deployed**, whose `MetricId` union does not contain
+   * `spinRate` and which would drop every new reading on an export/import round trip.
+   * `FutureSchemaError` then refuses rather than quarantines, and says "update the site".
+   *
+   * As at v2 → v3, this protection is real for the cache and weak for the remote store, which
+   * reports `Math.min(...)` across items and will keep reporting `2` while any untouched
+   * pre-Phase-7 session exists.
+   */
+  3: (doc) => doc,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

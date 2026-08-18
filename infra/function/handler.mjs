@@ -57,7 +57,7 @@ function decodeId(raw) {
 }
 
 /** Kept in step with `SCHEMA_VERSION` in `src/lib/storage/migrations.ts`. */
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 /** Rejected before anything reaches DynamoDB. The message is shown to the user as-is. */
 export class BadRequest extends Error {
