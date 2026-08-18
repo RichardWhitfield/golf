@@ -54,13 +54,13 @@ describe('the registry', () => {
 describe('bestOf', () => {
   it('prefers the reading closest to neutral, never the largest', () => {
     // +5 is a worse fault than +1: overshooting the band counts against you.
-    expect(bestOf([-5, 1, 5], 'neutral')).toBe(1)
-    expect(bestOf([-8, -6], 'neutral')).toBe(-6)
+    expect(bestOf([-5, 1, 5], 'neutral', BAND)).toBe(1)
+    expect(bestOf([-8, -6], 'neutral', BAND)).toBe(-6)
   })
 
   it('keeps the sign when picking the closest to neutral', () => {
     // Never Math.abs on a signed value — that would accept a sign flip.
-    expect(bestOf([-1, 3], 'neutral')).toBe(-1)
+    expect(bestOf([-1, 3], 'neutral', BAND)).toBe(-1)
   })
 
   it('takes the largest where larger genuinely is better', () => {
@@ -73,6 +73,44 @@ describe('bestOf', () => {
 
   it('has no answer with nothing to reduce', () => {
     expect(bestOf([], 'neutral')).toBeUndefined()
+  })
+})
+
+describe('bestOf with a band midpoint', () => {
+  // The no-op guarantee: every existing `neutral` metric has a band centred on zero,
+  // so generalising the rule must not move a single existing reading.
+  it('is unchanged for a band centred on zero', () => {
+    expect(bestOf([-5, 1, 3], 'neutral', BAND)).toBe(1)
+    expect(bestOf([5, -1, 3], 'neutral', BAND)).toBe(-1)
+  })
+
+  it('keeps the sign of the winning reading', () => {
+    expect(bestOf([-0.5, 2], 'neutral', BAND)).toBe(-0.5)
+  })
+
+  it('picks the reading closest to a midpoint that is not zero', () => {
+    // spinRate: band 2200-2700, midpoint 2450. 2600 is closer than 4000 or 1000.
+    const band = { min: 2200, max: 2700 }
+    expect(bestOf([4000, 2600, 1000], 'neutral', band)).toBe(2600)
+  })
+
+  it('prefers an overshoot that is nearer the midpoint than an undershoot', () => {
+    const band = { min: 2200, max: 2700 }
+    expect(bestOf([2800, 1500], 'neutral', band)).toBe(2800)
+  })
+
+  it('still returns the maximum for `higher`, band or no band', () => {
+    expect(bestOf([1.2, 1.44, 1.31], 'higher', { min: 1.45, max: 1.5 })).toBe(1.44)
+    expect(bestOf([40, 45, 43], 'higher')).toBe(45)
+  })
+
+  it('still returns undefined for `none` and for an empty list', () => {
+    expect(bestOf([1, 2], 'none')).toBeUndefined()
+    expect(bestOf([], 'neutral', BAND)).toBeUndefined()
+  })
+
+  it('throws for `neutral` with no band, because the midpoint is undefined', () => {
+    expect(() => bestOf([1, 2], 'neutral')).toThrow(/band/i)
   })
 })
 

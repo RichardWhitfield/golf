@@ -119,14 +119,29 @@ export function isMetricId(value: unknown): value is MetricId {
 /**
  * The single best reading among `values`, or `undefined` where the metric has no target.
  *
+ * `neutral` — closest to the **midpoint of the band**. For `clubPath`, `faceAngle`,
+ * `faceToPath`, `curve` and `lowPointSide` that midpoint is `0`, so this is exactly the
+ * "closest to neutral" rule those metrics have always had. `spinRate` and `launchAngle` are
+ * why it is expressed as a midpoint rather than as zero: their targets are 2,200–2,700 rpm and
+ * 13–15°, and neither centres on zero.
+ *
  * **Never `Math.max` for a `neutral` metric** — that reports the worst overshoot as the best
- * strike. **Never `Math.abs` on the stored value** either: the comparison uses magnitude, but
+ * strike. **Never `Math.abs` on the stored value** either: the comparison uses distance, but
  * the value returned keeps its sign, because a sign flip is the one error that matters most.
+ *
+ * A `neutral` metric with no band is a programming error, not a defaulted-to-zero case: the
+ * registry test asserts every `neutral` entry carries one.
  */
-export function bestOf(values: number[], better: Better): number | undefined {
+export function bestOf(
+  values: number[],
+  better: Better,
+  band?: { min: number; max: number },
+): number | undefined {
   if (values.length === 0 || better === 'none') return undefined
   if (better === 'higher') return values.reduce((a, b) => (b > a ? b : a))
-  return values.reduce((a, b) => (Math.abs(b) < Math.abs(a) ? b : a))
+  if (!band) throw new Error('A `neutral` metric needs a band: its midpoint is the target.')
+  const target = (band.min + band.max) / 2
+  return values.reduce((a, b) => (Math.abs(b - target) < Math.abs(a - target) ? b : a))
 }
 
 /**
