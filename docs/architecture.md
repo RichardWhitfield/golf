@@ -29,7 +29,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D21 | Validation | **The Lambda validates bodies but does not authenticate them** | Anyone may write; nobody may write a shape the client cannot parse. Bounds D19 to "a valid session replaced by a different valid session" — recoverable — rather than a store that no longer loads. |
 | D22 | Ingest credentials | **None. The workflow `PUT`s to the same public endpoint the browser uses** | A dividend of D19: no OIDC role, no IAM user, no new secret. `TRACKMAN_REFRESH_TOKEN` remains the only secret in the repo. |
 | D23 | Local storage role | **Read cache, written through on save** | The page paints instantly on cold start and still renders with the store unreachable. Only the *remote's* fault state gates writes. |
-| D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~125 KB total). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is **in use** from Phase 7; nothing on `/progress` reads it. |
+| D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~731 KB total, up from ~125 KB before the metric set widened from twelve to forty-three — see §"What gets stored" below). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is **in use** from Phase 7; nothing on `/progress` reads it. |
 | D25 | Infrastructure as code | **CloudFormation/SAM templates in `infra/`, deployed by hand** | Deploying from a public repo's CI needs AWS credentials — the one thing D22 otherwise avoids. The SAM CLI is not required; the transform expands server-side. |
 | D26 | Sort key | **The session id alone**, never `<date>#<id>` | `saveSession` is upsert-by-id and the date is editable. A mutable key makes an edited date insert a duplicate instead of updating in place. Ordering is done client-side; at ~250 items it is free. |
 | D27 | Shot counts | **`n` is per metric, not per club row** | Null rates span 52 points among the metrics stored — 0% for the ball-flight fields down to 52.2% for `dynamicLie`/`impactOffset`/`impactHeight`, with `clubPath` itself at 14.5%. A shared count would size a 349-shot reading like a 730-shot one, and the error is silent. |
@@ -489,7 +489,8 @@ the cost falls on refresh rather than on every paint.
 
 **`SHOTS#<id>` — the shot-by-shot record.** One item per session, `sk = v1`, holding a `Shot[]`,
 now with an optional `reducedAccuracy` per shot. The largest real session is 225 strokes, roughly
-27 KB against DynamoDB's 400 KB item limit; thirteen months is 5,877 shots across 91 items.
+**200 KB** against DynamoDB's 400 KB item limit — up from ~27 KB before the metric set widened
+from twelve fields per shot to forty-three; thirteen months is 5,877 shots across 91 items.
 **Nothing on the site downloads it.** It is captured so that a future question has data to answer
 it, not because a chart needs it today.
 

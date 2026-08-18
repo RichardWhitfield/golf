@@ -135,6 +135,12 @@ export function validateSession(raw, id) {
 /**
  * Longer than any real session. The largest in thirteen months is 225 strokes; this bounds what
  * an open endpoint (D19) can be made to store, and is not a claim about the data.
+ *
+ * This is a request-size sanity bound, not the binding limit any more: now that a shot carries
+ * forty-three metrics instead of twelve, a shot is roughly 890 bytes, so DynamoDB's 400 KB
+ * per-item limit binds first, at around 450 shots — well under this constant. A session larger
+ * than that fails on `PutItem`, not on this check. Whether to lower `MAX_SHOTS` to sit closer to
+ * that real ceiling is a design call for the repo owner, not made here.
  */
 const MAX_SHOTS = 2000
 
