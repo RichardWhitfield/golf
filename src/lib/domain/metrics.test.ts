@@ -217,12 +217,11 @@ describe('isMetricId', () => {
   it('rejects a value that is not a metric, including inherited object keys', () => {
     expect(isMetricId('clubPath')).toBe(true)
     expect(isMetricId('toString')).toBe(false)
-  })
-
-  it('accepts a carried-only metric, not just a charted one', () => {
-    // swingDirection is carried but never charted (see the registry describe block below) —
-    // isMetricId answers "is this a known id", not "does this have an axis".
-    expect(isMetricId('swingDirection')).toBe(true)
+    // gyroSpinAngle is a real field the schema advertises — but it was null on all 5,954
+    // strokes in this phase's probe (F2's finding, extended from four dead fields to
+    // twenty-one), so it was deliberately never added to the registry. A field the schema
+    // offers is not automatically a MetricId; only a field this registry chose to carry is.
+    expect(isMetricId('gyroSpinAngle')).toBe(false)
   })
 })
 
