@@ -38,6 +38,10 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D30 | Axes | **Fixed domains authored per metric from driver session means** | Per-shot ranges are far wider and would huddle every point mid-panel. A second club needs its domain authored, never derived. |
 | D31 | Session payload | **Widen the aggregate, not scope it** (Phase 8) | A `MetricReading` serialises to 43.4 bytes; 379 club rows across 88 sessions take the document from 40 KB to ~731 KB. Accepted: the connection this site is used on makes the size a non-issue, and scoping aggregates to a subset would buy a second rule in `aggregate.ts` plus a class of question that needs a per-shot fetch to answer. |
 | D32 | URL scheme | **Nested paths**, `/practice/*`, with `/`, `/log` and `/progress` redirected by `replaceState` | Log and Progress only make sense inside Practice, and `/destinations` is a peer of the section rather than a fourth tab beside them. Redirects rather than breakage because the daily entry point is a bookmark; `replaceState` rather than `pushState` because a push makes Back bounce off the old URL. |
+| D33 | Course data | **A static typed registry in `lib/domain/courses.ts`**, in a **lazy route chunk** | The same class of content as `drills.ts` and `plan.ts`: it changes rarely, it belongs in version control, and it must render with the store unreachable. It is 95.0 kB raw / 27.2 kB gzip — too much to put on `/practice`, which is opened daily, outdoors, on a phone and never reads a course. D1 chose this stack for a small bundle at the range, so `App.svelte` imports both destinations views dynamically and the data travels with them. |
+| D34 | Map | **Leaflet + CARTO dark raster tiles, dynamically imported**, degrading to the ranked list | Real pan/zoom for ~43 kB gzipped against a bespoke SVG map that would need hand-built drill-down to separate the Sandbelt. The first external runtime dependency in the bundle. The import is dynamic and that is **not** a size optimisation: a static import puts Leaflet in the chunk that renders the list, so a Leaflet that failed to parse would take the list down with it. |
+| D35 | Markers | **A club logo in a fixed 44px chip**, falling back to the rank number | Recognition without a hundred mismatched crests, and the chip is the hit target. The rank is drawn *underneath* the logo always and uncovered when the image errors, so the missing-logo case and the failed-decode case are one code path rather than two. Two courses have no logo; a broken-image icon on a map is worse than a number. |
+| D39 | Clustering | **Written here, in `domain/destinations.ts`, on already-projected pixels** | `leaflet.markercluster` would be a second runtime dependency to do arithmetic this repo's rules already place in `lib/domain/`. Taking pixels rather than a map makes it testable without a browser or a tile server. **D36–D38 are allocated by the destinations spec §7** (unknowns, fee freshness, wishlist storage) and are not yet transcribed into this ledger; this takes the next free number rather than colliding with them. |
 
 ### Deliberately excluded (YAGNI)
 
@@ -96,7 +100,7 @@ src/
       coverage.ts         # drills done vs what the plan scheduled
       feel.ts             # mean feel per drill per arc phase
       courses.ts          # the Top 100 registry: rank, location, access, fee, logo
-      destinations.ts     # per-state bounding boxes and the slug lookup
+      destinations.ts     # bounding boxes, slug lookup, marker spreading, clustering, fee wording
     storage/
       repository.ts       # the interface — the seam
       local.ts            # LocalStorageRepo implementation
@@ -115,7 +119,11 @@ src/
     components/
       PlanView.svelte     # the poster page
       LogView.svelte      # the practice log
+      CourseMap.svelte    # the only file that touches Leaflet. Hides itself on any failure
       …
+  routes/
+      DestinationsView.svelte  # the ranked hundred, with the map drawn over it
+      CourseView.svelte        # one course, or an honest "not in the Top 100"
   app.css                 # tokens + resets (from design.md)
   env.d.ts                # types VITE_API_URL
 

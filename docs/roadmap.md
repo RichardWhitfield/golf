@@ -378,9 +378,9 @@ a better dataset than a hundred plausible ones.
 The ranking page's judge commentary is **not reproduced** — `dist/` is publicly readable on a real
 domain. Facts are stored; the summary is written here and links back to the source.
 
-### Phase 11 · The destinations map and course detail
+### Phase 11 · The destinations map and course detail — **built**
 
-[#32](https://github.com/RichardWhitfield/golf/issues/32) · blocked on #30 and #31
+[#32](https://github.com/RichardWhitfield/golf/issues/32)
 
 Leaflet with CARTO dark tiles, 44px marker chips carrying each club's favicon and falling back to
 the rank number, clustered because fifteen of the hundred sit in greater Melbourne. Course detail
@@ -391,6 +391,28 @@ second entry to point at. The sub-nav must not push the Today panel down by more
 **This is the first external runtime dependency in the bundle and the first third-party request on
 load**, so the ranked list is the primary content and the map is drawn over it. Blocking the tile
 host must still leave the page usable — verified by blocking it.
+
+**Built as specified**, with three decisions worth recording (ledger D33–D35, D39):
+
+- **Leaflet is dynamically imported.** Not for size: a static import puts it in the chunk that
+  renders the list, so a Leaflet that failed to parse would take the list down with it. Split, the
+  list is already on screen when the map resolves, and the plan page pays nothing at all.
+- **Clustering is written here**, in `domain/destinations.ts`, on already-projected pixels —
+  `leaflet.markercluster` would be a second dependency doing arithmetic this repo already places in
+  `lib/domain/`. `spreadCoincident` handles the seven courses on three coordinates as a *derived*
+  display position; `courses.ts` is not edited.
+- **The tile-failure path was tested by breaking it**, not reasoned about: with the tile URL
+  pointed at a dead host the map removes itself and the fully styled ranked list remains.
+
+Cost, and **none of it lands on the practice routes**. `App.svelte` imports both destinations
+views dynamically, so `courses.ts` travels in a route chunk (95.0 kB raw / 27.2 kB gzip) fetched
+only when someone opens `/destinations` or a course. Leaflet is a further lazy import inside that
+chunk — 148.8 kB / 43.4 kB gzip of JS plus 15.1 kB / 6.4 kB gzip of CSS — so a course detail does
+not pay for a map it never draws. The main chunk went 130.84 → 135.68 kB raw and 44.37 → 46.19 kB
+gzip: the router, the second nav row and the two `{#await}` blocks, and nothing else.
+
+Static imports here were a real regression caught in review — they put every byte of the course
+data in the chunk `/practice` loads, making the daily page 70% larger to carry a trip planner.
 
 ### Phase 12 · Wishlist — want to play, played
 
