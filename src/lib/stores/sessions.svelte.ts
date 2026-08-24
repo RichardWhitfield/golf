@@ -1,12 +1,17 @@
 import {
   isPractice,
   isTrackman,
+  type DestinationNotes,
+  type DestinationStatus,
   type ISODate,
   type PracticeSession,
   type Session,
   type TrackmanSession,
 } from '../domain/types'
 import { resolveISODate } from '../domain/today'
+// Type-only, and it must stay that way — `courses.ts` is 95 kB that travels in a lazy route
+// chunk (D33), and this module is loaded on every page including `/practice`.
+import type { CourseSlug } from '../domain/courses'
 import type { ImportSummary, Repository, Settings } from '../storage/repository'
 import { CachedRepo } from '../storage/cached'
 import { LocalStorageRepo } from '../storage/local'
@@ -24,6 +29,15 @@ class SessionStore {
   /** Newest first, mirroring the repository's ordering. */
   list = $state<Session[]>([])
   settings = $state<Settings>({})
+  /**
+   * Which courses are marked. Lives here, on the store named for sessions, because this class
+   * holds the app's only `Repository` and a second store would need a second one.
+   *
+   * **Empty is also the answer when the store could not be asked.** `CachedRepo` degrades a
+   * failed read to `{}` rather than throwing, so a course list always draws — it simply has no
+   * ticks on it until `GET /destinations` exists.
+   */
+  destinations = $state<DestinationNotes>({})
   /** False until the first load resolves, so the UI can avoid flashing "no sessions yet". */
   ready = $state(false)
   /** Surfaced by the Data panel. Non-null means writes are being refused. */
@@ -61,8 +75,35 @@ class SessionStore {
   async load(): Promise<void> {
     this.list = await this.#repo.listSessions()
     this.settings = await this.#repo.getSettings()
+    this.destinations = await this.#repo.getDestinations()
     this.warning = this.#repo.faultMessage
     this.ready = true
+  }
+
+  /** The mark on one course, or `undefined` for no opinion — never a third status. */
+  destinationStatus(slug: CourseSlug): DestinationStatus | undefined {
+    return this.destinations[slug]?.status
+  }
+
+  /**
+   * Mark a course, or un-mark it with `null`. Un-marking **deletes the key**: an absent key is
+   * how "no opinion" is stored, so there is no third status to keep in step with it.
+   *
+   * **Throws when the store refuses the write**, deliberately — a mark that silently did not
+   * save is the failure mode `localStorage` never had, and the caller shows the message rather
+   * than the store swallowing it.
+   *
+   * No `load()` afterwards, unlike `save()`. The map written is the map now held, and reloading
+   * would refetch every session on every tap of a button that changes none of them.
+   */
+  async setDestination(slug: CourseSlug, status: DestinationStatus | null): Promise<void> {
+    const next: DestinationNotes = { ...this.destinations }
+    if (status === null) delete next[slug]
+    // Spread first, so a `playedOn` or a `note` that arrived in an import survives a change of
+    // status. Only the status is this control's to set.
+    else next[slug] = { ...next[slug], status }
+    await this.#repo.saveDestinations(next)
+    this.destinations = next
   }
 
   async save(session: Session): Promise<void> {

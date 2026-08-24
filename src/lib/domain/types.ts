@@ -1,4 +1,8 @@
 import type { Club } from './clubs'
+// Type-only, and it must stay that way. `courses.ts` is 95 kB of trip-planning data travelling
+// in a lazy route chunk (D33); a value import here would put every byte of it in the bundle
+// `/practice` loads.
+import type { CourseSlug } from './courses'
 import type { MetricId } from './metrics'
 
 /** Stable identifiers. The weekly schedule references drills by digit — never renumber. */
@@ -182,3 +186,27 @@ export function isTrackman(session: Session): session is TrackmanSession {
 export function isPractice(session: Session): session is PracticeSession {
   return session.type === 'practice'
 }
+
+/**
+ * A course is wanted or it has been played. **There is no third `'none'` value**: an absent key
+ * in `DestinationNotes` is "no opinion", so un-marking deletes the key rather than storing a
+ * status that then has to be kept in step with deletion everywhere a mark is read.
+ */
+export type DestinationStatus = 'want' | 'played'
+
+export interface DestinationNote {
+  status: DestinationStatus
+  /** Absent unless it is known. Never today's date standing in for a round nobody recorded. */
+  playedOn?: ISODate
+  note?: string
+}
+
+/**
+ * One mark per course, keyed by slug. **Absent means no opinion**, which is why this is a
+ * partial record and not a status per course.
+ *
+ * Slugs are never checked against `COURSES` — not here, not in `transfer.ts`, not in the Lambda.
+ * A ranking that renamed or dropped a course would otherwise strand every mark made against the
+ * old one.
+ */
+export type DestinationNotes = Record<CourseSlug, DestinationNote>

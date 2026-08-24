@@ -1,4 +1,4 @@
-import type { Session, TrackmanSession } from '../domain/types'
+import type { DestinationNotes, Session, TrackmanSession } from '../domain/types'
 import type { TrackmanMergeResult } from '../ingest/merge'
 import type { ImportSummary, Repository, Settings, StoreDocument } from './repository'
 
@@ -53,11 +53,50 @@ export class CachedRepo implements Repository {
   }
 
   /**
+   * **The one read on this interface that cannot fail.** Cache first, then the store, then an
+   * empty map — a course list that cannot say which courses are marked still draws a hundred
+   * courses, so there is nothing here worth throwing into a render for.
+   *
+   * The last fallback is not defensive padding. `GET /destinations` returns 404 against a
+   * function that has not been redeployed by hand, so between merging this and running the
+   * deploy in `infra/README.md` it is the path every load takes.
+   */
+  async getDestinations(): Promise<DestinationNotes> {
+    try {
+      return await this.#cache.getDestinations()
+    } catch {
+      // An unreadable cache, which is a fault the store may well not share.
+    }
+    try {
+      return await this.#remote.getDestinations()
+    } catch {
+      return {}
+    }
+  }
+
+  /**
+   * Remote first, then mirrored — and it **throws** when the store refuses. The asymmetry with
+   * `getDestinations` above is the whole design: a mark that was never stored must not look
+   * stored, while a mark that cannot be read back is merely a list without ticks on it.
+   */
+  async saveDestinations(notes: DestinationNotes): Promise<void> {
+    await this.#remote.saveDestinations(notes)
+    await this.#mirror(() => this.#cache.saveDestinations(notes))
+  }
+
+  /**
    * Pull the remote into the cache. Call after mount; never block first paint on it.
    *
    * Seeds the remote from the cache when — and only when — a **successful** read comes back
    * empty. A failed read and an empty store are the same value and very different meanings;
    * treating a network error as "nothing there yet" would re-upload on every load.
+   *
+   * **Destinations are read separately, and their failure is not staleness.** Two reasons, both
+   * of them about the window between merging this phase and redeploying `infra/` by hand, when
+   * `GET /destinations` returns 404 on every load. Folding it into the block above would abort
+   * the whole refresh, so the practice history — which the store answers perfectly well —
+   * would stop syncing; and `stale` drives a notice that says nothing you log will save, which
+   * would be untrue and is the wrong thing to tell someone at the range.
    */
   async refresh(): Promise<void> {
     let sessions: Session[]
@@ -71,6 +110,15 @@ export class CachedRepo implements Repository {
       return
     }
 
+    // `undefined` means the store was not able to answer, which is **not** the same as an empty
+    // map and must not overwrite the cache with one. See `#replaceCache`.
+    let destinations: DestinationNotes | undefined
+    try {
+      destinations = await this.#remote.getDestinations()
+    } catch {
+      destinations = undefined
+    }
+
     if (sessions.length === 0) {
       const local = await this.#cacheSessions()
       if (local.length > 0) {
@@ -79,7 +127,7 @@ export class CachedRepo implements Repository {
       }
     }
 
-    await this.#replaceCache({ sessions, settings })
+    await this.#replaceCache({ sessions, settings, destinations })
   }
 
   async saveSession(session: Session): Promise<void> {
@@ -136,7 +184,17 @@ export class CachedRepo implements Repository {
    * directly. Reaching past the injected cache to `globalThis.localStorage` would break the seam
    * this whole design rests on — and would be untestable without jsdom.
    */
-  async #replaceCache(doc: { sessions: Session[]; settings: Settings }): Promise<void> {
+  async #replaceCache(doc: {
+    sessions: Session[]
+    settings: Settings
+    /**
+     * **Absent means the store could not be asked**, and the cache is then left exactly as it
+     * is. Writing `{}` over it on the strength of a failed read would delete every mark on the
+     * device each time the route was unreachable. Deletions still propagate: a *successful* read
+     * that no longer names a slug replaces the map without it.
+     */
+    destinations?: DestinationNotes
+  }): Promise<void> {
     await this.#mirror(async () => {
       const keep = new Set(doc.sessions.map((s) => s.id))
       for (const session of await this.#cacheSessions()) {
@@ -144,6 +202,7 @@ export class CachedRepo implements Repository {
       }
       for (const session of doc.sessions) await this.#cache.saveSession(session)
       await this.#cache.saveSettings(doc.settings)
+      if (doc.destinations !== undefined) await this.#cache.saveDestinations(doc.destinations)
     })
   }
 

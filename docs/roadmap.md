@@ -14,7 +14,7 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
   `/practice/progress` (the charts), with the paths they used to hold redirected. Deep links
   depend on a generated `dist/404.html`.
 - Practice **and Trackman** sessions live in **DynamoDB** behind the async repository seam at
-  `schemaVersion` 4, with JSON export/import. `localStorage` is a read cache, so the same history
+  `schemaVersion` 5, with JSON export/import. `localStorage` is a read cache, so the same history
   is on the phone and the laptop.
 - Club path is stored **per club** and never blended. The KPI is **driver** club path.
 - Each club row carries **forty-three metrics**, eighteen of them charted with an authored axis,
@@ -22,6 +22,8 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
   nothing on the site downloads.
 - A daily Actions workflow pulls Trackman sessions straight into the store, holding no
   permissions and no AWS credentials, and never overwriting anything typed by hand.
+- Courses can be marked **want to play** or **played**, stored in a singleton item beside
+  settings. An absent key means no opinion.
 - `CNAME` — `golf.whitfield.life`, copied from `public/` into `dist/`.
 - `npm run check` and `npm test` both gate the deploy.
 
@@ -414,17 +416,38 @@ gzip: the router, the second nav row and the two `{#await}` blocks, and nothing 
 Static imports here were a real regression caught in review — they put every byte of the course
 data in the chunk `/practice` loads, making the daily page 70% larger to carry a trip planner.
 
-### Phase 12 · Wishlist — want to play, played
+### Phase 12 · Wishlist — want to play, played — **built**
 
-[#34](https://github.com/RichardWhitfield/golf/issues/34) · blocked on #32
+[#34](https://github.com/RichardWhitfield/golf/issues/34)
 
 A singleton item beside settings, reusing the `GET`/`PUT /settings` pattern rather than inventing
-an item type. `schemaVersion` 4 → 5 with the handler's constant bumped in the same commit, and
-`infra/` redeployed by hand.
+an item type (D38). `schemaVersion` 4 → 5 with the handler's constant bumped in the same commit,
+and `infra/` redeployed by hand.
 
 **Deliberately not merged with OQ-6** ([#11](https://github.com/RichardWhitfield/golf/issues/11)).
 A wishlist tick records an intention; a round is a third session type with a score and a
 relationship to the KPI. Widening the session model to satisfy a bookmark is the wrong trade.
+`playedOn` exists on the type and survives an import, but no control writes it — a date this
+phase invented would be a round it did not record.
+
+**Built as specified**, with three things worth recording:
+
+- **The 4 → 5 migration is the first here that is not the identity function.** The three before it
+  bump the version to stop an older build touching a newer document; this one does that *and*
+  transforms, adding the empty `destinations` map a v5 document must have.
+- **A failed read degrades; a failed write throws, and the two are not symmetrical.** The read
+  case is not hypothetical: `GET /destinations` 404s until `infra/` is redeployed, so between
+  merge and deploy it is the normal state. It is read separately from sessions in `refresh()` and
+  does **not** set `stale` — aborting the refresh would stop the practice history syncing, and
+  `StaleNotice` says nothing you log will save, which would be untrue.
+- **Import merges per slug and the store wins**, the rule settings already follow. Restoring a
+  backup taken before a course was played cannot quietly put it back to "want to play".
+
+**Deploy order matters and is manual.** `infra/` must be redeployed *before* the site, or the
+browser PUTs to a route that does not exist. See `infra/README.md`.
+
+The cost to the bundle is the storage layer only: the main chunk went 135.68 → 137.79 kB raw and
+46.19 → 46.67 kB gzip, and `courses.ts` stayed in its lazy route chunk.
 
 ---
 

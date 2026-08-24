@@ -147,3 +147,70 @@ describe('shots', () => {
     )
   })
 })
+
+describe('destinations', () => {
+  it('reads the singleton item, not a route per course', async () => {
+    const { calls, fetcher } = fakeFetch([
+      { body: { destinations: { 'kingston-heath': { status: 'want' } } } },
+    ])
+    const repo = new RemoteRepo('https://api.example', fetcher)
+    expect(await repo.getDestinations()).toEqual({ 'kingston-heath': { status: 'want' } })
+    expect(calls[0].url).toBe('https://api.example/destinations')
+    expect(calls[0].init?.method).toBe('GET')
+  })
+
+  it('PUTs the whole map', async () => {
+    const notes = { 'kingston-heath': { status: 'played' as const, playedOn: '2026-03-11' } }
+    const { calls, fetcher } = fakeFetch([{ body: { ok: true } }])
+    await new RemoteRepo('https://api.example', fetcher).saveDestinations(notes)
+    expect(calls[0].url).toBe('https://api.example/destinations')
+    expect(calls[0].init?.method).toBe('PUT')
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual(notes)
+  })
+
+  it('throws on a read failure rather than reporting an empty map', async () => {
+    // The distinction `CachedRepo` needs: "the store holds no marks" and "the store could not be
+    // asked" are the same value and opposite meanings. Degrading here would let a 404 on a route
+    // that has not been deployed yet overwrite the cache with nothing.
+    const { fetcher } = fakeFetch([{ status: 404, body: { message: 'No such route.' } }])
+    await expect(
+      new RemoteRepo('https://api.example', fetcher).getDestinations(),
+    ).rejects.toThrow(RemoteStoreError)
+  })
+
+  it('throws when the store refuses the write, never swallowing it', async () => {
+    const { fetcher } = fakeFetch([{ status: 400, body: { message: 'no' } }])
+    await expect(
+      new RemoteRepo('https://api.example', fetcher).saveDestinations({}),
+    ).rejects.toThrow(/no/)
+  })
+
+  it('carries marks into the exported document', async () => {
+    const { fetcher } = fakeFetch([
+      { body: { sessions: [PRACTICE] } },
+      { body: { settings: { blockStart: '2026-08-03' } } },
+      { body: { destinations: { 'barnbougle-dunes': { status: 'want' } } } },
+    ])
+    const doc = await new RemoteRepo('https://api.example', fetcher).exportDocument()
+    expect(doc.destinations).toEqual({ 'barnbougle-dunes': { status: 'want' } })
+  })
+
+  it('writes marks back on an import, and only when they changed', async () => {
+    const { calls, fetcher } = fakeFetch([
+      // exportDocument: sessions, settings, destinations
+      { body: { sessions: [] } },
+      { body: { settings: {} } },
+      { body: { destinations: {} } },
+      { body: { ok: true } },
+    ])
+    await new RemoteRepo('https://api.example', fetcher).importDocument({
+      schemaVersion: 5,
+      sessions: [],
+      settings: {},
+      destinations: { 'kingston-heath': { status: 'want' } },
+    })
+    const writes = calls.filter((c) => c.init?.method === 'PUT')
+    expect(writes).toHaveLength(1)
+    expect(writes[0].url).toBe('https://api.example/destinations')
+  })
+})

@@ -1,5 +1,5 @@
 import { COURSES, type Access, type AusState, type Course, type CourseSlug } from './courses'
-import type { ISODate } from './types'
+import type { DestinationStatus, ISODate } from './types'
 
 /**
  * Course lookups, the coordinate sanity check, and the maths the map is drawn from.
@@ -190,6 +190,27 @@ export const ACCESS_LABELS: Record<Access, string> = {
   limited: 'Limited visitor access',
   members: 'Members only',
   unknown: 'Access unknown',
+}
+
+/**
+ * How a mark is worded, in the two lengths the UI needs and nowhere else.
+ *
+ * `ACTIONS` is what the buttons on a course say; `TAGS` is what the indicator says beside a name
+ * in a hundred-row list, where "Want to play" would crowd out the course it belongs to. Both live
+ * here rather than in markup, the same rule that keeps drill copy and `ACCESS_LABELS` out of
+ * components.
+ *
+ * There is no wording for "no opinion" because there is no such status — an absent key is the
+ * absence of a mark, and it renders as nothing at all.
+ */
+export const DESTINATION_ACTIONS: Record<DestinationStatus, string> = {
+  want: 'Want to play',
+  played: 'Played',
+}
+
+export const DESTINATION_TAGS: Record<DestinationStatus, string> = {
+  want: 'Want',
+  played: 'Played',
 }
 
 /** `2026-08-24` as `Aug 2026`. Parsed as UTC so a local timezone cannot roll it back a day. */

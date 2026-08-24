@@ -1,4 +1,4 @@
-import type { Session, Shot, TrackmanSession } from '../domain/types'
+import type { DestinationNotes, Session, Shot, TrackmanSession } from '../domain/types'
 import { mergeTrackmanSessions, type TrackmanMergeResult } from '../ingest/merge'
 import { SCHEMA_VERSION, migrate } from './migrations'
 import type { ImportSummary, Repository, Settings, StoreDocument } from './repository'
@@ -109,18 +109,43 @@ export class RemoteRepo implements Repository {
   }
 
   /**
+   * `DESTINATIONS` / `v1` — a sibling of the settings item, not a new item type (D38). One small
+   * document, read whole and written whole.
+   *
+   * **Throws when the store cannot be reached, and that is on purpose.** `GET /destinations`
+   * 404s against a function that has not been redeployed by hand yet, and an empty map returned
+   * from here would be indistinguishable from a store that really holds no marks — which is what
+   * `CachedRepo` uses to decide whether to replace the cache. The degradation belongs one layer
+   * up, where the distinction is still available.
+   */
+  async getDestinations(): Promise<DestinationNotes> {
+    const body = await this.#request<{ destinations: DestinationNotes }>('GET', '/destinations')
+    return { ...body.destinations }
+  }
+
+  async saveDestinations(notes: DestinationNotes): Promise<void> {
+    await this.#write('/destinations', notes)
+  }
+
+  /**
    * Assembled into the same `StoreDocument` the local store exports, so **existing exports stay
    * importable and existing imports keep working**.
+   *
+   * **The destinations read is allowed to throw here**, unlike everywhere else it is used. This
+   * is the one method whose entire job is getting the data out safely, and a backup that quietly
+   * omitted every mark would be worse than one that failed and said so. The same reasoning
+   * already governs the ordering below.
    */
   async exportDocument(): Promise<StoreDocument> {
-    // Both reads happen FIRST — they are what *detect* a fault. Checking beforehand only sees one
+    // The reads happen FIRST — they are what *detect* a fault. Checking beforehand only sees one
     // left by an earlier call, so a fresh instance over a broken store would hand back an empty
     // document as though it were a successful backup. `LocalStorageRepo.exportDocument` carries
     // the same ordering, and for the same reason.
     const sessions = await this.listSessions()
     const settings = await this.getSettings()
+    const destinations = await this.getDestinations()
     if (this.#fault) throw new RemoteStoreError(this.#fault)
-    return { schemaVersion: SCHEMA_VERSION, sessions, settings }
+    return { schemaVersion: SCHEMA_VERSION, sessions, settings, destinations }
   }
 
   async importDocument(raw: unknown): Promise<ImportSummary> {
@@ -135,6 +160,9 @@ export class RemoteRepo implements Repository {
     }
     if (JSON.stringify(current.settings) !== JSON.stringify(doc.settings)) {
       await this.saveSettings(doc.settings)
+    }
+    if (JSON.stringify(current.destinations) !== JSON.stringify(doc.destinations)) {
+      await this.saveDestinations(doc.destinations)
     }
     return summary
   }

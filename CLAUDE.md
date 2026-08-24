@@ -65,7 +65,7 @@ because nothing consumes one yet. Logos are committed under `public/logos/<slug>
 normalised them once by hand and is **not** a build or test dependency.
 
 Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
-read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 4.
+read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 5.
 **Reach either only through `lib/stores/sessions.svelte.ts`** — that file constructs the only
 `Repository` in the app, a `CachedRepo` wrapping a `RemoteRepo` and a `LocalStorageRepo`.
 
@@ -81,6 +81,14 @@ written by the ingest and reachable only from `RemoteRepo`. `lib/domain/relate.t
 metrics for one club, `lib/domain/latest.ts` picks the newest reading for a club and reads the
 face-to-path verdict, and `/practice/progress` gained a driver section — "Why the ball curves" —
 rendered by `SlicePanel` and `RelationPanel`.
+
+The store also holds **destination notes** (Phase 12): `Record<CourseSlug, DestinationNote>` in
+its own singleton item at `pk: 'DESTINATIONS', sk: 'v1'`, a sibling of `SETTINGS` reached through
+`GET`/`PUT /destinations` and two `Repository` methods. **An absent key means no opinion** —
+un-marking a course deletes its key, and there is no third `'none'` status. A failed *read*
+degrades to an empty map inside `CachedRepo`; a failed *write* throws. Slugs are never checked
+against `COURSES` — not in `transfer.ts`, not in the Lambda — so a future ranking cannot strand a
+mark.
 
 **Carrying is the default; charting is the deliberate decision.** Phase 7 applied one test to
 both and dropped `ballSpeed`, `smashFactor`, `spinRate`, `launchAngle` and `total` — the

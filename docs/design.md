@@ -59,7 +59,7 @@ core token used for exactly one job. **They are not a fourth surface level** —
 | `--panel-2` | `#193a2b` | Gradient end for the KPI band and the Today panel. |
 | `--line-hover` | `#3c6650` | Border on hover — drill cards, day buttons. |
 | `--ball-dim` | `#5a4d1f` | Muted `--ball` for borders that shouldn't shout: `.tag.sim`, today's day button, the "all drills" underline. |
-| `--home` | `#8fd0a6` | `.tag.home` text. The only green that carries meaning rather than depth. |
+| `--home` | `#8fd0a6` | `.tag.home` text, and the *played* mark on a destination — see below. The only green that carries meaning rather than depth. |
 | `--home-dim` | `#2f5a3f` | `.tag.home` border. |
 | `--flag-wash` | `rgba(224,83,59,.06)` | Watch-outs panel background, and both fault regions on the progress charts. `--flag` at 6%. |
 | `--ball-wash` | `rgba(239,198,75,.10)` | Target-band fill on the progress charts, and the block shading. `--ball` at 10%. |
@@ -87,6 +87,25 @@ All three pass AA on `--bg` (9.9 / 10.0 / 7.0) and on `--card` (7.4 / 7.5 / 5.2)
 "not established" rather than as a fourth grade on the ramp — the visual equivalent of the rule
 that keeps it from rounding to members-only. Colour is never the only signal either way: the pill
 always spells the state out in words.
+
+### Destination marks
+
+**No new tokens.** A course marked *want to play* takes `--ball` and one marked *played* takes
+`--home`, in three places: the buttons on a course, the tag beside a name in the list, and a ring
+on the map chip.
+
+The reasoning is the vocabulary already in use, not convenience. `--ball` means the goal, and a
+course you intend to play is exactly that. `--home` is the one green that carries meaning rather
+than depth, which is what a round already behind you is.
+
+**`--flag` appears nowhere in this feature.** Nothing in a wishlist is a fault. The single
+exception is the message shown when a mark fails to save — that genuinely is one.
+
+Colour is never the only signal here either. The buttons carry `aria-pressed` and a filled
+background, the list tag spells the mark out in words, and the map marker's accessible name ends
+in the same word the tag uses. The ring on a chip is `box-shadow`, so the 44px hit target and the
+logo's padding are untouched. A **cluster** carries no ring: which of the courses under it is
+marked is a question only opening it can answer.
 
 **The hero SVG carries no colour of its own.** It used to hardcode `#294A3A`, `#E0533B`,
 `#EFC64B`, `#F4F2E9` and `#A9BEB0` as presentation attributes — literal copies of `--line`,
