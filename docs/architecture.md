@@ -95,6 +95,8 @@ src/
       latest.ts           # the newest reading for a club, and the face-to-path verdict
       coverage.ts         # drills done vs what the plan scheduled
       feel.ts             # mean feel per drill per arc phase
+      courses.ts          # the Top 100 registry: rank, location, access, fee, logo
+      destinations.ts     # per-state bounding boxes and the slug lookup
     storage/
       repository.ts       # the interface — the seam
       local.ts            # LocalStorageRepo implementation
@@ -140,6 +142,15 @@ runs and which imports from `lib/ingest/` so the rules exist in one place, plus
 `PlanView`, `LogView` and `ProgressView` live in `src/routes/`, switched by `router.svelte.ts` at
 `/practice`, `/practice/log` and `/practice/progress`. The paths they held before Phase 9 — `/`,
 `/log` and `/progress` — redirect to them (D32).
+
+`courses.ts` and `destinations.ts` are built (Phase 10, issue #31) and have no consumer yet — the
+map is issue #32. `courses.ts` is the registry: 100 entries in rank order, with the ranking article
+linked once as `RANKING_SOURCE` rather than repeated per course. Every `summary` is prose written
+for this site; the article's panel commentary is deliberately not reproduced, because `dist/` is
+publicly readable on a real domain. `destinations.ts` holds only what the dataset's own test needs
+— `STATE_BOUNDS`, `isWithinState()` and `courseBySlug()`. The boxes are loose and exist to catch a
+research error, a course in the wrong state or the wrong hemisphere, not to adjudicate a border.
+No filtering, sorting or grouping helper was written: the map will add what it actually needs.
 
 The plan and drill *content* becomes data (`plan.ts`, `drills.ts`) rather than hand-written
 markup. This is the single biggest structural change: the current page repeats the same card
