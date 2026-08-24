@@ -10,8 +10,9 @@ and deployed — no phase ends with something half-migrated on `golf.whitfield.l
 ## Where things stand
 
 - Svelte 5 + Vite + TypeScript, built by GitHub Actions and published to Pages.
-- Three views behind the router: `/` (the plan), `/log` (the practice log) and `/progress`
-  (the charts). Deep links depend on a generated `dist/404.html`.
+- Three views behind the router: `/practice` (the plan), `/practice/log` (the practice log) and
+  `/practice/progress` (the charts), with the paths they used to hold redirected. Deep links
+  depend on a generated `dist/404.html`.
 - Practice **and Trackman** sessions live in **DynamoDB** behind the async repository seam at
   `schemaVersion` 4, with JSON export/import. `localStorage` is a read cache, so the same history
   is on the phone and the laptop.
@@ -354,9 +355,12 @@ behind an uncertain one, which principle 1 below does not require and principle 
 
 `/practice`, `/practice/log`, `/practice/progress`, with `/`, `/log` and `/progress` **redirected**
 rather than broken — the daily entry point is a bookmark. Redirects use `replaceState`, as the
-router already does for unrecognised paths, so Back does not bounce off them. `SiteNav` becomes
-two levels. **No new content:** the phase exists so the reshuffle can be verified on its own,
-on the deployed site.
+router already does for unrecognised paths, so Back does not bounce off them. **No new content:**
+the phase exists so the reshuffle can be verified on its own, on the deployed site.
+
+The two-level `SiteNav` moved to Phase 11. A primary row reading `Practice | Destinations` is
+incoherent while Destinations does not exist, and building the second level inert is speculative
+machinery. Here the three nav items simply repoint.
 
 ### Phase 10 · The Top 100 course dataset
 
@@ -380,7 +384,9 @@ domain. Facts are stored; the summary is written here and links back to the sour
 
 Leaflet with CARTO dark tiles, 44px marker chips carrying each club's favicon and falling back to
 the rank number, clustered because fifteen of the hundred sit in greater Melbourne. Course detail
-at `/destinations/<slug>`.
+at `/destinations/<slug>`. `SiteNav` becomes two levels here — `Practice | Destinations` as peers,
+with `Plan | Log | Progress` beneath — because this is the phase that gives the primary row a
+second entry to point at. The sub-nav must not push the Today panel down by more than one row.
 
 **This is the first external runtime dependency in the bundle and the first third-party request on
 load**, so the ranked list is the primary content and the map is drawn over it. Blocking the tile

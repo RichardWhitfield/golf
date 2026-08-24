@@ -152,10 +152,11 @@ and one collapse point is a large part of why this stays maintainable.
 `.sec-head` — a mono index (`01`, `02`…) in `--ball` sitting on the baseline beside the `h2`.
 Every numbered section uses this. New sections continue the numbering.
 
-**A conditional section renumbers the ones after it; it never leaves a gap.** `/progress`'s
-"Why the ball curves" only appears once a session carries the wider metric set, so the indices
-on that view are derived rather than written into the markup — with the section hidden, coverage
-is `02` and not `03`. A visible `01, 03, 04` reads as a broken page, not as an absent section.
+**A conditional section renumbers the ones after it; it never leaves a gap.**
+`/practice/progress`'s "Why the ball curves" only appears once a session carries the wider metric
+set, so the indices on that view are derived rather than written into the markup — with the
+section hidden, coverage is `02` and not `03`. A visible `01, 03, 04` reads as a broken page, not
+as an absent section.
 
 ### Group label
 `.group-label` — mono, uppercase, `--dim`, followed by a rule that fills remaining width

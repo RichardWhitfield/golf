@@ -73,8 +73,8 @@ dropped below `+3.61 m`. There is no session on record where the driver did not 
 That is not a face problem. The face is square; the path is so far left that square *is* open
 relative to it. **Fix the path and the curve goes with it.** The face needs nothing.
 
-This is the KPI confirmed by the data rather than by argument, and it is why `/progress` leads
-its driver section with path and face to path side by side.
+This is the KPI confirmed by the data rather than by argument, and it is why `/practice/progress`
+leads its driver section with path and face to path side by side.
 
 ### Swing plane was the wrong suspect
 

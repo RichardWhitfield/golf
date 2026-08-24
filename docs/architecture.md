@@ -29,7 +29,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D21 | Validation | **The Lambda validates bodies but does not authenticate them** | Anyone may write; nobody may write a shape the client cannot parse. Bounds D19 to "a valid session replaced by a different valid session" — recoverable — rather than a store that no longer loads. |
 | D22 | Ingest credentials | **None. The workflow `PUT`s to the same public endpoint the browser uses** | A dividend of D19: no OIDC role, no IAM user, no new secret. `TRACKMAN_REFRESH_TOKEN` remains the only secret in the repo. |
 | D23 | Local storage role | **Read cache, written through on save** | The page paints instantly on cold start and still renders with the store unreachable. Only the *remote's* fault state gates writes. |
-| D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~731 KB total, up from ~125 KB before the metric set widened from twelve to forty-three — see §"What gets stored" below). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is **in use** from Phase 7; nothing on `/progress` reads it. |
+| D24 | Item granularity | **Session aggregates and per-shot data are separate items** | Aggregates are what every current view reads (~731 KB total, up from ~125 KB before the metric set widened from twelve to forty-three — see §"What gets stored" below). Embedding shots would force a multi-megabyte download on every load to render charts that do not use them. `SHOTS#<id>` is **in use** from Phase 7; nothing on `/practice/progress` reads it. |
 | D25 | Infrastructure as code | **CloudFormation/SAM templates in `infra/`, deployed by hand** | Deploying from a public repo's CI needs AWS credentials — the one thing D22 otherwise avoids. The SAM CLI is not required; the transform expands server-side. |
 | D26 | Sort key | **The session id alone**, never `<date>#<id>` | `saveSession` is upsert-by-id and the date is editable. A mutable key makes an edited date insert a duplicate instead of updating in place. Ordering is done client-side; at ~250 items it is free. |
 | D27 | Shot counts | **`n` is per metric, not per club row** | Null rates span 52 points among the metrics stored — 0% for the ball-flight fields down to 52.2% for `dynamicLie`/`impactOffset`/`impactHeight`, with `clubPath` itself at 14.5%. A shared count would size a 349-shot reading like a 730-shot one, and the error is silent. |
@@ -37,6 +37,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D29 | Targets | **`better: 'none'` is a first-class answer** | `attackAngle` wants opposite signs for a driver and an iron. Inventing a shared band would be worse than recording that there is not one. |
 | D30 | Axes | **Fixed domains authored per metric from driver session means** | Per-shot ranges are far wider and would huddle every point mid-panel. A second club needs its domain authored, never derived. |
 | D31 | Session payload | **Widen the aggregate, not scope it** (Phase 8) | A `MetricReading` serialises to 43.4 bytes; 379 club rows across 88 sessions take the document from 40 KB to ~731 KB. Accepted: the connection this site is used on makes the size a non-issue, and scoping aggregates to a subset would buy a second rule in `aggregate.ts` plus a class of question that needs a per-shot fetch to answer. |
+| D32 | URL scheme | **Nested paths**, `/practice/*`, with `/`, `/log` and `/progress` redirected by `replaceState` | Log and Progress only make sense inside Practice, and `/destinations` is a peer of the section rather than a fourth tab beside them. Redirects rather than breakage because the daily entry point is a bookmark; `replaceState` rather than `pushState` because a push makes Back bounce off the old URL. |
 
 ### Deliberately excluded (YAGNI)
 
@@ -136,7 +137,9 @@ would be quoting a number the page cannot reproduce, and would keep quoting it a
 had changed. `scripts/` holds three Node entry points: `trackman-ingest.ts`, which the workflow
 runs and which imports from `lib/ingest/` so the rules exist in one place, plus
 `trackman-introspect.ts` and `trackman-probe.ts`, the two verification scripts described in §4.
-`PlanView`, `LogView` and `ProgressView` live in `src/routes/`, switched by `router.svelte.ts`.
+`PlanView`, `LogView` and `ProgressView` live in `src/routes/`, switched by `router.svelte.ts` at
+`/practice`, `/practice/log` and `/practice/progress`. The paths they held before Phase 9 — `/`,
+`/log` and `/progress` — redirect to them (D32).
 
 The plan and drill *content* becomes data (`plan.ts`, `drills.ts`) rather than hand-written
 markup. This is the single biggest structural change: the current page repeats the same card
