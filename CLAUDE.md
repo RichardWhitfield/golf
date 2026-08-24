@@ -56,6 +56,14 @@ Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/d
 `coverage.ts` (done vs scheduled) and `feel.ts` (feel per arc phase). **Components render; they
 never calculate.**
 
+The **Top 100 course dataset** is built (Phase 10, issue #31) and has no consumer yet — the map is
+issue #32. `lib/domain/courses.ts` is the registry: 100 entries in rank order, holding rank, name,
+location, coordinates, architects, an original `summary`, the club's own URLs, `access`, an
+optional `greenFee` and an optional `logo`. `lib/domain/destinations.ts` holds only
+`STATE_BOUNDS`, `isWithinState()` and `courseBySlug()` — no filtering, sorting or grouping helper,
+because nothing consumes one yet. Logos are committed under `public/logos/<slug>.png`; ImageMagick
+normalised them once by hand and is **not** a build or test dependency.
+
 Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
 read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 4.
 **Reach either only through `lib/stores/sessions.svelte.ts`** — that file constructs the only
@@ -147,6 +155,20 @@ so a scoped base rule outranks a global override and the override silently loses
   string returns `null` and is reported, never guessed at.
 - **`n` (shot count) is absent, never zero, on hand-typed readings.** Don't fabricate a default —
   a chart would weight the guess as though it were measured.
+- **`domain/courses.ts` is the single source of truth for course data**, as `drills.ts` is for
+  drills. The ranking article is linked once as `RANKING_SOURCE`, never repeated per entry, and
+  **its panel commentary is never reproduced** — every `summary` is prose written for this site,
+  and `dist/` is publicly readable on a real domain.
+- **A course whose access could not be confirmed is `'unknown'`, never `'members'`.** That is the
+  same rule as `better: 'none'` in `metrics.ts` and "never scheduled" in `coverage.ts`: rounding
+  an unconfirmed club up to members-only invents a finding. The `accessNote` must not assert
+  either — it may say what is believed, and that it is unverified.
+- **A `greenFee` is absent, never `0`.** An absent fee renders as a dash; a `0` renders as free,
+  which is wrong in the most expensive possible direction. Only a fee read off the club's own site
+  is stored. `access` and `greenFee` are a dated snapshot (D37), stamped with `checkedOn` and
+  refreshed by hand, never automatically.
+- **A `logo` path is written only where the file exists** under `public/`. A path with no file
+  behind it is a broken marker, and `courses.test.ts` checks every one against `node:fs`.
 - **`domain/metrics.ts` is the single source of truth for metric field names, axes and bands.**
   Every `field` was read from the live schema via `npm run introspect`, never from memory. The
   GraphQL selection set is built from it, so a wire name exists in exactly one place.
