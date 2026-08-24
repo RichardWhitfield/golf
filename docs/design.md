@@ -88,6 +88,51 @@ All three pass AA on `--bg` (9.9 / 10.0 / 7.0) and on `--card` (7.4 / 7.5 / 5.2)
 that keeps it from rounding to members-only. Colour is never the only signal either way: the pill
 always spells the state out in words.
 
+### State identity
+
+Seven tokens, added 2026-08-24 with list filtering. A **third** vocabulary, separate again from
+`--ball`/`--flag` and from the access ramp — a hundred rows in rank order give no way to answer
+"what's in Victoria" by eye, and the state was already on every row in `--dim`.
+
+| State | Token | Value | AA on `--card` | Reading |
+|---|---|---|---|---|
+| NSW | `--st-nsw` | `#7FC4E8` | 6.55 | Sky blue — the Blues |
+| VIC | `--st-vic` | `#9AA8E8` | 5.46 | The Big V's navy, lifted enough to be legible on dark |
+| QLD | `--st-qld` | `#E08BA0` | 5.00 | Maroon, lifted |
+| SA | `--st-sa` | `#E0A07A` | 5.66 | Terracotta — red, shifted clear of `--flag` |
+| WA | `--st-wa` | `#C596EE` | 5.36 | Violet — gold *is* `--ball` |
+| TAS | `--st-tas` | `#6FD4C8` | 7.12 | Teal — bottle green would vanish into `--bg` |
+| ACT | `--st-act` | `#C6C9D2` | 7.57 | Slate |
+
+**The literal sporting colours could not be used as authored, and that is the interesting part.**
+Three of the seven land on top of something that already means something: WA gold *is* `--ball`,
+which means the goal; SA red *is* `--flag`, which means the fault this entire site is built
+around; and TAS bottle green *is* the page background. Recognisable where it is free, shifted
+where it is not. Do not "fix" WA back to gold.
+
+The remaining tension is between hues, not against tokens. WA sits at hue 275° — the **maximum
+separation point** between VIC at 229° and QLD at 345°, so it cannot be moved either way without
+colliding with one of them. It was originally `#C9A9E0` and read as pale pink beside QLD's rose;
+the fix was **saturation, not hue** (47% → 72% at the same 275°), which is why the token moved and
+the angle did not.
+
+**There is no `--st-nt`.** No NT course is in the Top 100, and a colour with no referent is one
+that gets used wrongly the day one appears. A row with an unmapped state falls back to a `--line`
+spine and a `--dim` code, which reads as *no state colour* rather than as a wrong one.
+
+Two places carry it, both in `DestinationsView`: a **4px left spine** on the row — a thickened
+left border rather than a pseudo-element, so it follows the card's radius for free — and the
+**state code alone** in the `SUBURB · VIC` line. The suburb stays `--dim`; tinting it too would
+spend `--dim`'s role on decoration, and the suburb is not what the colour encodes.
+
+Both read one local custom property, `--st`, set per state from a `data-state` attribute, so no
+colour is named in markup — the same rule that took the hardcoded hexes out of the hero SVG. Note
+that `border-color` is a **shorthand and resets all four sides**, so the row's `:hover` restates
+the spine explicitly; without that, hovering a row greys out its state.
+
+**Colour is never the only signal.** Every row still spells the state out in words, exactly as it
+did before it was tinted.
+
 ### Destination marks
 
 **No new tokens.** A course marked *want to play* takes `--ball` and one marked *played* takes

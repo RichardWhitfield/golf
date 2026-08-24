@@ -46,8 +46,11 @@
   <ol class="courses">
     {#each COURSES as course (course.slug)}
       <li>
+        <!-- `data-state` drives both the spine and the tinted code from CSS, so no colour is
+             named in markup — the same rule that took the hardcoded hexes out of the hero SVG. -->
         <a
           class="course"
+          data-state={course.state}
           href={router.href('course', course.slug)}
           onclick={(event) => router.onNavClick(event, 'course', course.slug)}
         >
@@ -61,7 +64,9 @@
                 <DestinationMark status={marks[course.slug].status} />
               {/if}
             </span>
-            <span class="where">{course.suburb} · {course.state}</span>
+            <!-- Only the state code takes the hue. Tinting the suburb too would spend `--dim`'s
+                 role on decoration, and the suburb is not what the colour encodes. -->
+            <span class="where">{course.suburb} · <span class="st">{course.state}</span></span>
           </span>
           <AccessTag access={course.access} />
           <!-- A dash, never "Free" and never "$0" — 40 of the hundred publish no visitor rate. -->
@@ -91,8 +96,29 @@
     background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
     text-decoration:none;color:var(--chalk);
     transition:border-color .18s ease,transform .18s ease;
+    /* The state spine. A thickened left border rather than a pseudo-element, so it follows the
+       card's radius for free and cannot drift out of alignment with it. */
+    border-left-width:4px;border-left-color:var(--st,var(--line));
   }
-  .course:hover{border-color:var(--line-hover);transform:translateY(-2px)}
+  /* `border-color` is a shorthand and resets all four sides, so the spine has to be restated
+     here or hovering a row would grey it out. */
+  .course:hover{
+    border-color:var(--line-hover);border-left-color:var(--st,var(--line-hover));
+    transform:translateY(-2px);
+  }
+
+  /* One local custom property per state, read by both the spine and the code below it. Each
+     token is defined in app.css and documented in design.md §1 — never a literal here. */
+  .course[data-state='NSW']{--st:var(--st-nsw)}
+  .course[data-state='VIC']{--st:var(--st-vic)}
+  .course[data-state='QLD']{--st:var(--st-qld)}
+  .course[data-state='SA']{--st:var(--st-sa)}
+  .course[data-state='WA']{--st:var(--st-wa)}
+  .course[data-state='TAS']{--st:var(--st-tas)}
+  .course[data-state='ACT']{--st:var(--st-act)}
+  /* No NT rule and no --st-nt. No NT course is in the Top 100; the fallback above leaves such a
+     row with a --line spine and a --dim code, which reads as "no state colour" rather than as a
+     wrong one. */
 
   .rank{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--ball);text-align:right}
   .who{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -104,6 +130,9 @@
     font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.08em;
     text-transform:uppercase;color:var(--dim);
   }
+  /* Colour is never the only signal — the code still spells the state out, exactly as it did
+     before it was tinted. See design.md §6. */
+  .st{color:var(--st,var(--dim))}
   .fee{
     font-family:'Space Mono',monospace;font-size:.72rem;color:var(--chalk);
     text-align:right;line-height:1.35;
