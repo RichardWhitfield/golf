@@ -4,6 +4,7 @@ import {
   ACCESS_LABELS,
   checkedLabel,
   clusterProjected,
+  courseInitials,
   feeLabel,
   spreadCoincident,
   type MapPin,
@@ -263,5 +264,72 @@ describe('ACCESS_LABELS', () => {
     expect(ACCESS_LABELS.unknown.toLowerCase()).toContain('unknown')
     expect(ACCESS_LABELS.unknown).not.toBe(ACCESS_LABELS.members)
     expect(ACCESS_LABELS.unknown).not.toBe(ACCESS_LABELS.public)
+  })
+})
+
+describe('courseInitials', () => {
+  it('takes the first letter of the first two significant words', () => {
+    expect(courseInitials('Kingston Heath')).toBe('KH')
+    expect(courseInitials('Seven Mile Beach')).toBe('SM')
+    expect(courseInitials('Barnbougle Lost Farm')).toBe('BL')
+  })
+
+  it('drops the club type, wherever in the name it sits', () => {
+    expect(courseInitials('Narooma GC')).toBe('NA')
+    expect(courseInitials('Mt Lawley GC')).toBe('ML')
+    expect(courseInitials('Magenta Shores G&CC')).toBe('MS')
+    expect(courseInitials('Peninsula Kingswood CGC')).toBe('PK')
+    expect(courseInitials('Port Fairy GL')).toBe('PF')
+    expect(courseInitials('Mt Compass Golf Course')).toBe('MC')
+    // `Links` leads this one and trails the next. Both are the club type.
+    expect(courseInitials('Links Kennedy Bay')).toBe('KB')
+    expect(courseInitials('Cape Wickham Links')).toBe('CW')
+  })
+
+  it('drops a leading "The"', () => {
+    // Dropped unconditionally, so `The Lakes GC` is `LA` rather than `TL`. Two letters is not
+    // enough room to spend one on an article that a third of the registry shares.
+    expect(courseInitials('The Dunes Links')).toBe('DU')
+    expect(courseInitials('The Lakes GC')).toBe('LA')
+    expect(courseInitials('The Australian GC')).toBe('AU')
+    expect(courseInitials('The Links Hope Island')).toBe('HI')
+  })
+
+  it('drops the sub-course suffix after the en dash', () => {
+    // The separator in `courses.ts` is an en dash, not a bracket. Without this, every Royal
+    // Melbourne chip would read the same two letters as every other course whose name starts
+    // `Royal M` — and worse, `West Course` would be treated as significant.
+    expect(courseInitials('Royal Melbourne GC – West Course')).toBe('RM')
+    expect(courseInitials('Royal Melbourne GC – East Course')).toBe('RM')
+    expect(courseInitials('The National GC – Gunnamatta Course')).toBe('NA')
+    // Two dashes. Only the first matters.
+    expect(courseInitials('Indooroopilly GC – The West Course – Red/Gold')).toBe('IN')
+  })
+
+  it('takes two letters from the only word when just one survives', () => {
+    expect(courseInitials('Tasmania GC')).toBe('TA')
+    expect(courseInitials('The Grand GC')).toBe('GR')
+    expect(courseInitials('Sandringham Golf Links')).toBe('SA')
+  })
+
+  it('falls back to the raw name when every word is a club type', () => {
+    // No such course exists, and that is the point: the function must not return '' if one
+    // ever does. An empty chip is indistinguishable from a chip that failed to render. The
+    // fallback re-runs the same two-word rule over the words it had just rejected.
+    expect(courseInitials('The Golf Club')).toBe('TG')
+  })
+
+  it('returns two characters for every course in the registry', () => {
+    for (const course of COURSES) {
+      expect(courseInitials(course.name), course.name).toMatch(/^[A-Z0-9]{2}$/)
+    }
+  })
+
+  it('gives the two logo-less courses readable initials', () => {
+    // Rank 28 and rank 87 are the only two with no logo committed, so these are the only
+    // initials anyone should ever see on a healthy map.
+    const logoless = COURSES.filter((c) => c.logo === undefined).map((c) => c.name)
+    expect(logoless).toEqual(['The Dunes Links', 'Narooma GC'])
+    expect(logoless.map(courseInitials)).toEqual(['DU', 'NA'])
   })
 })
