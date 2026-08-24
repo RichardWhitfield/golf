@@ -1,9 +1,15 @@
 <script lang="ts">
   import type { Map as LeafletMap, Marker } from 'leaflet'
-  import { clusterProjected, type MapPin, type ProjectedPin } from '../domain/destinations'
+  import {
+    DESTINATION_TAGS,
+    clusterProjected,
+    type MapPin,
+    type ProjectedPin,
+  } from '../domain/destinations'
+  import type { DestinationNotes, DestinationStatus } from '../domain/types'
   import { router } from '../stores/router.svelte'
 
-  let { pins }: { pins: MapPin[] } = $props()
+  let { pins, marks }: { pins: MapPin[]; marks: DestinationNotes } = $props()
 
   /**
    * The map is drawn **over** a list that already works. Nothing here may block or blank the
@@ -43,9 +49,12 @@
    * The `/` is load-bearing. `course.logo` is root-relative without one, and a bare `logos/x.png`
    * on `/destinations/kingston-heath` would resolve against `/destinations/`.
    */
-  function chip(pin: MapPin): HTMLElement {
+  function chip(pin: MapPin, status: DestinationStatus | undefined): HTMLElement {
     const el = document.createElement('span')
-    el.className = 'chip'
+    // The ring, and nothing else about the chip changes: a marked course is still the same club
+    // in the same place. `--ball` for one you mean to play — the token means the goal — and
+    // `--home` for one already behind you. **Never `--flag`**; nothing in a wishlist is a fault.
+    el.className = status ? `chip chip-${status}` : 'chip'
 
     const rank = document.createElement('span')
     rank.className = 'chip-rank'
@@ -75,6 +84,10 @@
   $effect(() => {
     // `pins` is read here so the effect re-runs if the registry ever becomes reactive.
     const current = pins
+    // Read here, synchronously, so the effect depends on it: the marks arrive from the store
+    // after first paint, and the map has to be rebuilt once when they do. Reading them inside
+    // `draw()` instead would silently not track, because that runs after an `await`.
+    const currentMarks = marks
     const target = container
     if (!target) return
 
@@ -140,13 +153,19 @@
         for (const cluster of clusterProjected(projected, CELL_PX)) {
           const at = map.containerPointToLatLng([cluster.x, cluster.y])
           const single = cluster.pins.length === 1 ? cluster.pins[0] : undefined
+          const status = single ? currentMarks[single.course.slug]?.status : undefined
+          // The mark is in the name as well as in the ring. A ring is colour alone, and colour is
+          // never the only signal — design.md §6. A cluster carries no ring: which of the courses
+          // under it is marked is a question only opening it can answer.
           const label = single
-            ? `${single.course.name}, ${single.course.suburb}`
+            ? `${single.course.name}, ${single.course.suburb}${
+                status ? ` · ${DESTINATION_TAGS[status]}` : ''
+              }`
             : `${cluster.pins.length} courses`
 
           const marker: Marker = L.marker(at, {
             icon: L.divIcon({
-              html: single ? chip(single) : countChip(cluster.pins.length),
+              html: single ? chip(single, status) : countChip(cluster.pins.length),
               className: 'chip-wrap',
               iconSize: [44, 44],
               iconAnchor: [22, 22],
@@ -241,6 +260,12 @@
     background:var(--card);border:1px solid var(--line);padding:4px;
   }
   .map-frame :global(.chip-wrap:hover .chip){border-color:var(--ball-dim)}
+
+  /* A ring outside the chip, so the 44px hit target and the logo inside it are untouched.
+     `box-shadow` rather than a wider border for the same reason — a border would eat the padding
+     the logo sits in. */
+  .map-frame :global(.chip-want){box-shadow:0 0 0 2px var(--ball)}
+  .map-frame :global(.chip-played){box-shadow:0 0 0 2px var(--home)}
 
   /* A cluster count and a rank are both bare numbers, so the difference cannot be carried by a
      background tint alone. The second concentric ring is a shape signal: several, stacked. */

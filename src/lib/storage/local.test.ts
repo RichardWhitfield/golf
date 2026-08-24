@@ -127,6 +127,50 @@ describe('settings', () => {
   })
 })
 
+describe('destinations', () => {
+  it('has no marks until one is made', async () => {
+    expect(await repo.getDestinations()).toEqual({})
+  })
+
+  it('round-trips a mark with its date and note', async () => {
+    await repo.saveDestinations({
+      'kingston-heath': { status: 'played', playedOn: '2026-03-11', note: 'Windy.' },
+    })
+    expect(await repo.getDestinations()).toEqual({
+      'kingston-heath': { status: 'played', playedOn: '2026-03-11', note: 'Windy.' },
+    })
+  })
+
+  it('un-marks by writing a map without the key, never a third status', async () => {
+    await repo.saveDestinations({ 'kingston-heath': { status: 'want' }, 'ocean-dunes': { status: 'want' } })
+    await repo.saveDestinations({ 'ocean-dunes': { status: 'want' } })
+    expect(await repo.getDestinations()).toEqual({ 'ocean-dunes': { status: 'want' } })
+  })
+
+  it('hands back a copy, so a caller cannot edit a mark in place', async () => {
+    await repo.saveDestinations({ 'kingston-heath': { status: 'want' } })
+    const notes = await repo.getDestinations()
+    notes['kingston-heath'].status = 'played'
+    notes['barnbougle-dunes'] = { status: 'want' }
+    expect(await repo.getDestinations()).toEqual({ 'kingston-heath': { status: 'want' } })
+  })
+
+  it('leaves sessions and settings untouched', async () => {
+    await repo.saveSession(session('a'))
+    await repo.saveSettings({ blockStart: '2026-08-03' })
+    await repo.saveDestinations({ 'kingston-heath': { status: 'want' } })
+    expect(await repo.listSessions()).toHaveLength(1)
+    expect(await repo.getSettings()).toEqual({ blockStart: '2026-08-03' })
+  })
+
+  it('refuses to write when the stored data could not be read', async () => {
+    // The same rule every other write here follows: unreadable data is not overwritten, and a
+    // save that silently did nothing is worse than one that says it failed.
+    storage.setItem(STORAGE_KEY, '{ not json')
+    await expect(repo.saveDestinations({ 'kingston-heath': { status: 'want' } })).rejects.toThrow()
+  })
+})
+
 describe('exportDocument', () => {
   it('returns the whole document, sessions and settings together', async () => {
     await repo.saveSession(session('a'))
@@ -140,6 +184,7 @@ describe('exportDocument', () => {
   it('exports an empty document from an untouched store', async () => {
     expect(await repo.exportDocument()).toEqual({
       schemaVersion: SCHEMA_VERSION,
+      destinations: {},
       sessions: [],
       settings: {},
     })

@@ -1,11 +1,13 @@
 <script lang="ts">
   import AccessTag from '../lib/components/AccessTag.svelte'
   import CourseMap from '../lib/components/CourseMap.svelte'
+  import DestinationMark from '../lib/components/DestinationMark.svelte'
   import SectionHead from '../lib/components/SectionHead.svelte'
   import SiteFooter from '../lib/components/SiteFooter.svelte'
   import { COURSES, RANKING_SOURCE } from '../lib/domain/courses'
   import { feeLabel, spreadCoincident } from '../lib/domain/destinations'
   import { router } from '../lib/stores/router.svelte'
+  import { sessions } from '../lib/stores/sessions.svelte'
 
   // `COURSES` is authored in rank order, so there is nothing to sort. The fee wording — and in
   // particular the dash that an absent fee renders as — comes from `feeLabel`, not from here.
@@ -16,6 +18,13 @@
    * fabricated latitude beside researched ones is indistinguishable from them six months later.
    */
   const pins = spreadCoincident(COURSES)
+
+  /**
+   * The marks, straight from the store that owns the app's only `Repository` — no component
+   * reaches storage itself. Empty until the first load resolves, and empty again if the store
+   * could not be asked, so the hundred always render; they simply carry no tags.
+   */
+  const marks = $derived(sessions.destinations)
 </script>
 
 <section class="dest reveal" aria-labelledby="dest-title">
@@ -32,7 +41,7 @@
 
   <!-- Drawn over the list, and it hides itself if Leaflet or the tile host fails. The list below
        is the primary content and does not know or care whether the map arrived. -->
-  <CourseMap {pins} />
+  <CourseMap {pins} {marks} />
 
   <ol class="courses">
     {#each COURSES as course (course.slug)}
@@ -44,7 +53,14 @@
         >
           <span class="rank">{course.rank}</span>
           <span class="who">
-            <span class="name">{course.name}</span>
+            <span class="named">
+              <span class="name">{course.name}</span>
+              <!-- Rendered only where a mark exists. "No opinion" is an absent key, so it has
+                   nothing to say and takes no space. -->
+              {#if marks[course.slug]}
+                <DestinationMark status={marks[course.slug].status} />
+              {/if}
+            </span>
             <span class="where">{course.suburb} · {course.state}</span>
           </span>
           <AccessTag access={course.access} />
@@ -80,6 +96,9 @@
 
   .rank{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--ball);text-align:right}
   .who{display:flex;flex-direction:column;gap:2px;min-width:0}
+  /* Wraps rather than squeezing the name: the tag is the answer to "which ones have I picked",
+     and a hundred-row list on a phone has no spare width to give it. */
+  .named{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;min-width:0}
   .name{font-size:.98rem;line-height:1.25}
   .where{
     font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.08em;

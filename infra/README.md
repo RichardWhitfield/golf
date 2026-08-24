@@ -121,6 +121,24 @@ message, then `{"ok":true}`.
 The fourth call is the one worth watching. Writes are unauthenticated, so that rejection is
 the only thing stopping an open endpoint being used to store a shape the app cannot parse.
 
+Then the destinations pair, added in Phase 12. **A 404 on the first call means the function
+still holds the old code** — the site will render the hundred without ticks and refuse every
+mark until this deploy has run:
+
+    curl -sS "$API/destinations"
+    curl -sS -X PUT "$API/destinations" -H 'content-type: application/json' \
+      -d '{"kingston-heath":{"status":"want"}}'
+    curl -sS "$API/destinations"
+    curl -sS -X PUT "$API/destinations" -H 'content-type: application/json' \
+      -d '{"kingston-heath":{"status":"maybe"}}'
+    curl -sS -X PUT "$API/destinations" -H 'content-type: application/json' -d '{}'
+
+Expected: `{"destinations":{}}`, `{"ok":true}`, the mark listed, a **400** reading
+`A marked course must be "want" or "played".`, then `{"ok":true}` clearing it again.
+
+The last call matters: the smoke test writes a real mark into the real store, and the empty
+object is what removes it. Un-marking is a map without the key — there is no `DELETE`.
+
 If the first call returns a 500 mentioning module resolution, the runtime does not ship
 `@aws-sdk/client-dynamodb`. Add an `infra/function/package.json` depending on it, run
 `npm install` in that directory, and repackage — `aws cloudformation package` zips whatever

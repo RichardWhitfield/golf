@@ -57,7 +57,7 @@ function decodeId(raw) {
 }
 
 /** Kept in step with `SCHEMA_VERSION` in `src/lib/storage/migrations.ts`. */
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 /** Rejected before anything reaches DynamoDB. The message is shown to the user as-is. */
 export class BadRequest extends Error {
@@ -80,6 +80,10 @@ export function route(method, path) {
   if (path === '/sessions' && method === 'GET') return { kind: 'listSessions' }
   if (path === '/settings' && method === 'GET') return { kind: 'getSettings' }
   if (path === '/settings' && method === 'PUT') return { kind: 'putSettings' }
+  // A sibling of the settings pair, not a route per course (D38). One small document, read
+  // whole and written whole.
+  if (path === '/destinations' && method === 'GET') return { kind: 'getDestinations' }
+  if (path === '/destinations' && method === 'PUT') return { kind: 'putDestinations' }
 
   // `[^/]+` deliberately: an encoded slash (`%2F`) stays inside one segment and decodes back to
   // a literal slash, which is fine as an identifier because it only ever becomes a sort key.
@@ -180,6 +184,70 @@ export function validateShots(raw) {
     }
   }
   return raw.shots
+}
+
+/**
+ * Bounds on the destinations document, so one request cannot approach DynamoDB's 400 KB item
+ * limit. The ranking is a hundred courses; 200 leaves room for a future one without pretending
+ * this endpoint knows how long the list is.
+ *
+ * At the ceiling — 200 entries, each with a 128-character slug, a 500-character note and a date
+ * — the item is roughly 135 KB, comfortably inside the limit.
+ */
+const MAX_DESTINATIONS = 200
+const MAX_SLUG = 128
+const MAX_DESTINATION_NOTE = 500
+
+/** The only fields a mark carries. See the note on unknown keys in `validateDestinations`. */
+const DESTINATION_FIELDS = new Set(['status', 'playedOn', 'note'])
+
+/**
+ * Structural only — a gate against shapes the client cannot parse, not a second authority.
+ *
+ * **Slugs are not checked against the course list, deliberately.** This function has no business
+ * knowing the hundred: it would have to be redeployed by hand every time the ranking moved, and a
+ * ranking that dropped a course would strand marks somebody had made against it. Shape, not
+ * membership.
+ *
+ * **Unknown keys are rejected**, unlike the client's importer which drops them. That asymmetry is
+ * what actually bounds the item: caps on the note, the slug and the entry count mean nothing if
+ * an arbitrary field can carry a megabyte beside them, and writes here are unauthenticated
+ * (D19). The client is bumped in the same commit as `SCHEMA_VERSION`, so a field this does not
+ * know is a field nothing should be sending.
+ */
+export function validateDestinations(raw) {
+  if (!isRecord(raw)) throw new BadRequest('Destinations must be a JSON object.')
+  const entries = Object.entries(raw)
+  if (entries.length > MAX_DESTINATIONS) {
+    throw new BadRequest(`No more than ${MAX_DESTINATIONS} courses may be marked.`)
+  }
+  for (const [slug, mark] of entries) {
+    if (slug.length === 0 || slug.length > MAX_SLUG) {
+      throw new BadRequest(`A course name must be 1 to ${MAX_SLUG} characters.`)
+    }
+    if (!isRecord(mark)) throw new BadRequest('Every marked course must carry an object.')
+    for (const key of Object.keys(mark)) {
+      if (!DESTINATION_FIELDS.has(key)) {
+        throw new BadRequest(`A marked course cannot carry a "${key}" field.`)
+      }
+    }
+    // There is no third status: an absent key is "no opinion", so un-marking deletes the key.
+    if (mark.status !== 'want' && mark.status !== 'played') {
+      throw new BadRequest('A marked course must be "want" or "played".')
+    }
+    if (mark.playedOn !== undefined) {
+      if (typeof mark.playedOn !== 'string' || !ISO_DATE.test(mark.playedOn)) {
+        throw new BadRequest('A played-on date must be in YYYY-MM-DD form.')
+      }
+    }
+    if (mark.note !== undefined) {
+      if (typeof mark.note !== 'string') throw new BadRequest('A course note must be text.')
+      if (mark.note.length > MAX_DESTINATION_NOTE) {
+        throw new BadRequest(`A course note may not exceed ${MAX_DESTINATION_NOTE} characters.`)
+      }
+    }
+  }
+  return raw
 }
 
 function json(statusCode, body) {
@@ -309,6 +377,24 @@ export function makeHandler(client, tableName) {
           if (!isRecord(body)) return json(400, { message: 'Settings must be a JSON object.' })
           await client.send(
             new PutItemCommand({ TableName: tableName, Item: item('SETTINGS', 'v1', body) }),
+          )
+          return json(200, { ok: true })
+        }
+
+        case 'getDestinations': {
+          const out = await client.send(
+            new GetItemCommand({
+              TableName: tableName,
+              Key: { pk: { S: 'DESTINATIONS' }, sk: { S: 'v1' } },
+            }),
+          )
+          return json(200, { destinations: out.Item ? JSON.parse(out.Item.doc.S) : {} })
+        }
+
+        case 'putDestinations': {
+          const notes = validateDestinations(body)
+          await client.send(
+            new PutItemCommand({ TableName: tableName, Item: item('DESTINATIONS', 'v1', notes) }),
           )
           return json(200, { ok: true })
         }

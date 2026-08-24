@@ -2,8 +2,10 @@
   import AccessTag from '../lib/components/AccessTag.svelte'
   import SiteFooter from '../lib/components/SiteFooter.svelte'
   import { RANKING_SOURCE } from '../lib/domain/courses'
-  import { courseBySlug, feeLabel } from '../lib/domain/destinations'
+  import { DESTINATION_ACTIONS, courseBySlug, feeLabel } from '../lib/domain/destinations'
+  import type { DestinationStatus } from '../lib/domain/types'
   import { router } from '../lib/stores/router.svelte'
+  import { sessions } from '../lib/stores/sessions.svelte'
 
   let { slug }: { slug: string } = $props()
 
@@ -16,6 +18,40 @@
    * and throwing would blank a page that has something useful to say.
    */
   const course = $derived(courseBySlug(slug))
+
+  /**
+   * The mark on this course, or `undefined` for no opinion. Read through the store, which owns
+   * the app's only `Repository` — no component reaches `localStorage` or `fetch` itself.
+   */
+  const marked = $derived(sessions.destinationStatus(slug))
+
+  let saving = $state(false)
+  let saveError = $state<string | null>(null)
+
+  /**
+   * Pressing the status a course already has removes the mark: un-marking **deletes the key**,
+   * rather than storing a third "none" status that would then have to be kept in step with it.
+   *
+   * The failure is shown, never swallowed. A write that silently did nothing is the failure mode
+   * this whole storage layer exists to prevent, and between merging this and redeploying
+   * `infra/` by hand it is exactly what `PUT /destinations` does — so the message has to reach
+   * the person tapping the button.
+   */
+  async function toggle(status: DestinationStatus): Promise<void> {
+    if (saving) return
+    saving = true
+    saveError = null
+    try {
+      await sessions.setDestination(slug, marked === status ? null : status)
+    } catch (error) {
+      saveError =
+        error instanceof Error
+          ? `That mark did not save. ${error.message}`
+          : 'That mark did not save.'
+    } finally {
+      saving = false
+    }
+  }
 </script>
 
 {#if course === undefined}
@@ -43,6 +79,24 @@
     <span class="eyebrow">No. {course.rank} · {course.state}</span>
     <h1 id="course-title">{course.name}</h1>
     <p class="where">{course.suburb}, {course.state}</p>
+
+    <div class="mark" role="group" aria-label="Your mark on this course">
+      {#each ['want', 'played'] as const as status (status)}
+        <button
+          type="button"
+          class="mark-btn"
+          data-status={status}
+          aria-pressed={marked === status}
+          disabled={saving}
+          onclick={() => toggle(status)}
+        >
+          {DESTINATION_ACTIONS[status]}
+        </button>
+      {/each}
+    </div>
+    {#if saveError}
+      <p class="mark-error" role="alert">{saveError}</p>
+    {/if}
 
     <p class="summary">{course.summary}</p>
 
@@ -127,6 +181,31 @@
     font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.16em;
     text-transform:uppercase;color:var(--dim);
   }
+  /* Nothing here is a fault, so `--flag` appears nowhere. `--ball` means the goal, and a course
+     you intend to play is exactly that; `--home` is the one green that carries meaning rather
+     than depth. The pressed state is a fill, not a tint — colour is never the only signal, and
+     `aria-pressed` carries it for anyone not seeing either. */
+  .mark{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .mark-btn{
+    font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    /* 44px, because this gets used outdoors, one-handed — design.md §6. */
+    min-height:44px;padding:0 20px;border-radius:100px;
+    background:transparent;color:var(--dim);border:1px solid var(--line);
+    transition:color .18s ease,border-color .18s ease,background-color .18s ease;
+  }
+  .mark-btn:hover:not(:disabled){color:var(--chalk);border-color:var(--line-hover)}
+  .mark-btn:disabled{opacity:.6;cursor:default}
+  .mark-btn[data-status='want'][aria-pressed='true']{
+    background:var(--ball);border-color:var(--ball);color:var(--bg);
+  }
+  .mark-btn[data-status='played'][aria-pressed='true']{
+    background:var(--home);border-color:var(--home);color:var(--bg);
+  }
+  /* `--flag` here and nowhere else on this page: a save that did not happen IS a fault. */
+  .mark-error{margin-top:10px;font-size:.88rem;color:var(--flag);max-width:60ch}
+
   .summary{margin-top:18px;max-width:60ch}
 
   .facts{margin-top:32px;display:grid;gap:16px}
@@ -153,6 +232,6 @@
   .links a:hover{color:var(--chalk);border-color:var(--line-hover)}
 
   @media (prefers-reduced-motion:reduce){
-    .links a{transition:none}
+    .links a,.mark-btn{transition:none}
   }
 </style>

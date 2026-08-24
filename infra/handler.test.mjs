@@ -7,6 +7,7 @@ import {
   route,
   validateSession,
   validateShots,
+  validateDestinations,
   makeHandler,
 } from './function/handler.mjs'
 
@@ -18,6 +19,19 @@ describe('route', () => {
     expect(route('PUT', '/sessions/a1')).toEqual({ kind: 'putSession', id: 'a1' })
     expect(route('DELETE', '/sessions/a1')).toEqual({ kind: 'deleteSession', id: 'a1' })
     expect(route('GET', '/settings')).toEqual({ kind: 'getSettings' })
+  })
+
+  it('routes the destinations pair, mirroring settings', () => {
+    expect(route('GET', '/destinations')).toEqual({ kind: 'getDestinations' })
+    expect(route('PUT', '/destinations')).toEqual({ kind: 'putDestinations' })
+  })
+
+  it('has no per-course destinations route', () => {
+    // One small document, read whole and written whole (D38). A route per course would buy write
+    // granularity a single user does not need.
+    expect(route('PUT', '/destinations/kingston-heath')).toBeNull()
+    expect(route('DELETE', '/destinations')).toBeNull()
+    expect(route('POST', '/destinations')).toBeNull()
   })
 
   it('returns null for anything else, including path traversal', () => {
@@ -151,6 +165,82 @@ describe('validateShots', () => {
   })
 })
 
+describe('validateDestinations', () => {
+  it('accepts the two statuses, with and without a date and a note', () => {
+    const notes = {
+      'kingston-heath': { status: 'played', playedOn: '2026-03-11', note: 'Windy.' },
+      'barnbougle-dunes': { status: 'want' },
+    }
+    expect(validateDestinations(notes)).toEqual(notes)
+  })
+
+  it('accepts an empty map — every course un-marked', () => {
+    expect(validateDestinations({})).toEqual({})
+  })
+
+  it('does not check a slug against the course list', () => {
+    // This function has no business knowing the hundred. A ranking that dropped a course would
+    // otherwise strand every mark made against it, and the list would have to be redeployed by
+    // hand each time it moved. Shape, not membership.
+    expect(validateDestinations({ 'a-course-that-is-not-in-the-top-100': { status: 'want' } })).toEqual(
+      { 'a-course-that-is-not-in-the-top-100': { status: 'want' } },
+    )
+  })
+
+  it('rejects a body that is not an object', () => {
+    expect(() => validateDestinations([])).toThrow(BadRequest)
+    expect(() => validateDestinations('want')).toThrow(BadRequest)
+    expect(() => validateDestinations(undefined)).toThrow(BadRequest)
+  })
+
+  it('rejects a mark that is not an object', () => {
+    expect(() => validateDestinations({ 'kingston-heath': 'want' })).toThrow(BadRequest)
+    expect(() => validateDestinations({ 'kingston-heath': null })).toThrow(BadRequest)
+  })
+
+  it('rejects any status but the two, including a third meaning "no opinion"', () => {
+    // An absent key is how a course carries no opinion. A `'none'` status would be a second way
+    // to say it, and the two would have to be kept in step everywhere a mark is read.
+    expect(() => validateDestinations({ 'kingston-heath': {} })).toThrow(BadRequest)
+    expect(() => validateDestinations({ 'kingston-heath': { status: 'none' } })).toThrow(BadRequest)
+    expect(() => validateDestinations({ 'kingston-heath': { status: 1 } })).toThrow(BadRequest)
+  })
+
+  it('rejects a played-on date that is not YYYY-MM-DD', () => {
+    expect(() =>
+      validateDestinations({ 'kingston-heath': { status: 'played', playedOn: '11/03/2026' } }),
+    ).toThrow(BadRequest)
+  })
+
+  it('rejects a note that is not text, and one that is too long', () => {
+    expect(() => validateDestinations({ 'kingston-heath': { status: 'want', note: 7 } })).toThrow(
+      BadRequest,
+    )
+    expect(() =>
+      validateDestinations({ 'kingston-heath': { status: 'want', note: 'x'.repeat(501) } }),
+    ).toThrow(BadRequest)
+  })
+
+  it('rejects an over-long slug and an empty one', () => {
+    expect(() => validateDestinations({ ['x'.repeat(129)]: { status: 'want' } })).toThrow(BadRequest)
+    expect(() => validateDestinations({ '': { status: 'want' } })).toThrow(BadRequest)
+  })
+
+  it('rejects more marks than there are courses to mark', () => {
+    const many = {}
+    for (let i = 0; i < 201; i++) many[`course-${i}`] = { status: 'want' }
+    expect(() => validateDestinations(many)).toThrow(BadRequest)
+  })
+
+  it('rejects an unknown field, which is what actually bounds the item', () => {
+    // Caps on the note, the slug and the count mean nothing if an arbitrary field can carry a
+    // megabyte beside them, and writes here are unauthenticated (D19).
+    expect(() =>
+      validateDestinations({ 'kingston-heath': { status: 'want', padding: 'x'.repeat(100000) } }),
+    ).toThrow(BadRequest)
+  })
+})
+
 describe('handler', () => {
   /** Records commands instead of calling AWS. `reply` is what `send` resolves to. */
   function fakeClient(reply = {}) {
@@ -194,7 +284,7 @@ describe('handler', () => {
 
   it('reports the current version for an empty table, which is a first run, not v0', async () => {
     const res = await makeHandler(fakeClient({ Items: [] }), 'golf')(event('GET', '/sessions'))
-    expect(JSON.parse(res.body)).toEqual({ sessions: [], schemaVersion: 4 })
+    expect(JSON.parse(res.body)).toEqual({ sessions: [], schemaVersion: 5 })
   })
 
   it('rejects an invalid body with 400 and writes nothing', async () => {
@@ -229,6 +319,37 @@ describe('handler', () => {
     )
     expect(res.statusCode).toBe(200)
     expect(JSON.parse(res.body)).toEqual({ skipped: true })
+  })
+
+  it('reads the destinations singleton, and an absent item is an empty map', async () => {
+    const empty = await makeHandler(fakeClient({}), 'golf')(event('GET', '/destinations'))
+    expect(JSON.parse(empty.body)).toEqual({ destinations: {} })
+
+    const stored = fakeClient({ Item: { doc: { S: '{"kingston-heath":{"status":"want"}}' } } })
+    const res = await makeHandler(stored, 'golf')(event('GET', '/destinations'))
+    expect(JSON.parse(res.body)).toEqual({ destinations: { 'kingston-heath': { status: 'want' } } })
+    expect(stored.sent[0].input.Key).toEqual({ pk: { S: 'DESTINATIONS' }, sk: { S: 'v1' } })
+  })
+
+  it('writes the whole map to one item beside settings', async () => {
+    const client = fakeClient()
+    const notes = { 'kingston-heath': { status: 'played', playedOn: '2026-03-11' } }
+    const res = await makeHandler(client, 'golf')(event('PUT', '/destinations', notes))
+    expect(res.statusCode).toBe(200)
+    expect(client.sent[0].input.Item.pk).toEqual({ S: 'DESTINATIONS' })
+    expect(client.sent[0].input.Item.sk).toEqual({ S: 'v1' })
+    expect(JSON.parse(client.sent[0].input.Item.doc.S)).toEqual(notes)
+    expect(client.sent[0].input.Item.schemaVersion).toEqual({ N: '5' })
+  })
+
+  it('rejects a malformed destinations body with 400 and writes nothing', async () => {
+    const client = fakeClient()
+    const res = await makeHandler(client, 'golf')(
+      event('PUT', '/destinations', { 'kingston-heath': { status: 'maybe' } }),
+    )
+    expect(res.statusCode).toBe(400)
+    expect(JSON.parse(res.body).message).toMatch(/want.*played/)
+    expect(client.sent).toHaveLength(0)
   })
 
   it('404s an unknown route', async () => {

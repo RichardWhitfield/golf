@@ -1,5 +1,8 @@
 import type {
   ClubPath,
+  DestinationNote,
+  DestinationNotes,
+  DestinationStatus,
   DrillId,
   ExtraMetricId,
   ISODate,
@@ -205,6 +208,49 @@ function checkPracticeSession(raw: Record<string, unknown>, where: string): Prac
   return session
 }
 
+const STATUSES = new Set<string>(['want', 'played'] satisfies DestinationStatus[])
+
+/**
+ * Validate the destination marks in an imported file.
+ *
+ * **Slugs are not checked against `COURSES`, and that is deliberate twice over.** A ranking that
+ * renamed or dropped a course would otherwise make a backup unrestorable for the marks against
+ * it; and importing the registry here would pull 95 kB of course data into the chunk `/practice`
+ * loads, which D33 exists to prevent. The Lambda refuses the membership check for the first
+ * reason alone.
+ *
+ * Unknown *fields* on a mark are dropped rather than rejected — an export from a newer build may
+ * carry one, and refusing the whole document over it would turn a forward-compatible addition
+ * into a failed restore. That is `checkMetrics`'s rule. An unknown **status** still rejects: it
+ * is the fact the mark exists to record, so guessing there loses the mark's meaning.
+ */
+function checkDestinations(raw: unknown): DestinationNotes {
+  if (raw === undefined) return {}
+  if (!isRecord(raw)) reject('it has a malformed destinations map.')
+
+  const out: DestinationNotes = {}
+  for (const [slug, value] of Object.entries(raw)) {
+    const where = `the mark on "${slug}"`
+    if (!isRecord(value)) reject(`${where} is not an object.`)
+    if (typeof value.status !== 'string' || !STATUSES.has(value.status)) {
+      reject(`${where} has an unknown status "${String(value.status)}".`)
+    }
+    const note: DestinationNote = { status: value.status as DestinationStatus }
+    if (value.playedOn !== undefined) {
+      if (typeof value.playedOn !== 'string' || parseISODate(value.playedOn) === null) {
+        reject(`${where} has an invalid played-on date.`)
+      }
+      note.playedOn = value.playedOn as ISODate
+    }
+    if (value.note !== undefined) {
+      if (typeof value.note !== 'string') reject(`${where} has an invalid note.`)
+      note.note = value.note as string
+    }
+    out[slug] = note
+  }
+  return out
+}
+
 /**
  * Validate an imported file. **All or nothing** — one bad record rejects the whole file.
  * A partial import leaves the store in a state nobody chose, with no way to tell afterwards
@@ -227,7 +273,12 @@ export function parseDocument(raw: unknown): StoreDocument {
     ids.add(s.id)
   }
 
-  return { schemaVersion: SCHEMA_VERSION, sessions, settings: migrated.settings }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    sessions,
+    settings: migrated.settings,
+    destinations: checkDestinations(migrated.destinations),
+  }
 }
 
 /**
@@ -236,6 +287,11 @@ export function parseDocument(raw: unknown): StoreDocument {
  *
  * Settings are taken from the file only where the store has nothing — importing must not
  * silently move a block start that is already set on this device.
+ *
+ * **Destination marks follow the same rule, per slug.** A mark the store already holds wins over
+ * the file's, so restoring a backup taken before a course was marked played cannot quietly put
+ * it back to "want to play". Slugs the store has never seen are taken from the file, which is
+ * what makes a restore a restore.
  */
 export function mergeDocuments(
   current: StoreDocument,
@@ -258,6 +314,10 @@ export function mergeDocuments(
       settings: {
         ...incoming.settings,
         ...current.settings,
+      },
+      destinations: {
+        ...incoming.destinations,
+        ...current.destinations,
       },
     },
     summary: { added, updated },

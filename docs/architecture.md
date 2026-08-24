@@ -41,6 +41,7 @@ an unmarked section is still the plan being built towards. See `roadmap.md` for 
 | D33 | Course data | **A static typed registry in `lib/domain/courses.ts`**, in a **lazy route chunk** | The same class of content as `drills.ts` and `plan.ts`: it changes rarely, it belongs in version control, and it must render with the store unreachable. It is 95.0 kB raw / 27.2 kB gzip — too much to put on `/practice`, which is opened daily, outdoors, on a phone and never reads a course. D1 chose this stack for a small bundle at the range, so `App.svelte` imports both destinations views dynamically and the data travels with them. |
 | D34 | Map | **Leaflet + CARTO dark raster tiles, dynamically imported**, degrading to the ranked list | Real pan/zoom for ~43 kB gzipped against a bespoke SVG map that would need hand-built drill-down to separate the Sandbelt. The first external runtime dependency in the bundle. The import is dynamic and that is **not** a size optimisation: a static import puts Leaflet in the chunk that renders the list, so a Leaflet that failed to parse would take the list down with it. |
 | D35 | Markers | **A club logo in a fixed 44px chip**, falling back to the rank number | Recognition without a hundred mismatched crests, and the chip is the hit target. The rank is drawn *underneath* the logo always and uncovered when the image errors, so the missing-logo case and the failed-decode case are one code path rather than two. Two courses have no logo; a broken-image icon on a map is worse than a number. |
+| D38 | Wishlist storage | **A singleton item beside settings**, `pk: 'DESTINATIONS'` / `sk: 'v1'`, with `GET`/`PUT /destinations` and two methods on the `Repository` interface | It is one small document read and written whole, exactly like `settings`. Per-course items would buy write granularity a single user does not need, and a per-course route would multiply the surface an unauthenticated endpoint (D19) exposes. On the interface rather than on `RemoteRepo` alone: D28 keeps shots off it because they are megabytes, and a hundred short marks are not. The read degrades to an empty map and the write throws — a list without ticks is a cosmetic loss, a mark that never saved is a real one. |
 | D39 | Clustering | **Written here, in `domain/destinations.ts`, on already-projected pixels** | `leaflet.markercluster` would be a second runtime dependency to do arithmetic this repo's rules already place in `lib/domain/`. Taking pixels rather than a map makes it testable without a browser or a tile server. **D36–D38 are allocated by the destinations spec §7** (unknowns, fee freshness, wishlist storage) and are not yet transcribed into this ledger; this takes the next free number rather than colliding with them. |
 
 ### Deliberately excluded (YAGNI)
@@ -224,6 +225,14 @@ interface TrackmanSession {
 
 type Session = PracticeSession | TrackmanSession
 
+/** Phase 12: a mark on a Top 100 course. Absent key = no opinion; there is no 'none'. */
+interface DestinationNote {
+  status: 'want' | 'played'
+  playedOn?: ISODate     // absent unless known — never today's date standing in for a round
+  note?: string
+}
+type DestinationNotes = Record<CourseSlug, DestinationNote>
+
 /** Phase 7: one measured stroke. Stored under `SHOTS#<sessionId>`, never on the session. */
 interface Shot {
   club: Club
@@ -284,7 +293,7 @@ interface Shot {
 
 ### Persistence
 
-One `localStorage` key, `golf:store`, holding one JSON document with `schemaVersion: 4`. At a few
+One `localStorage` key, `golf:store`, holding one JSON document with `schemaVersion: 5`. At a few
 sessions a week that is simpler and safer than key-per-record, and it makes export trivial.
 Migrations live in `storage/migrations.ts`, keyed by the version being migrated *from*.
 
@@ -309,6 +318,16 @@ export/import round trip. As at v2 → v3, this protection is real for the cache
 remote store: `handler.mjs` reports `Math.min(...)` across stored items, so `/sessions` keeps
 reporting `2` for as long as any untouched pre-Phase-7 session exists.
 
+**`4 → 5` is the first migration here that is not the identity function.** Destination notes join
+the document, `destinations` is *required* on a v5 one, and a v4 document has no such key — so the
+step adds it, empty. Nobody can have marked a course before the version that stores marks existed,
+which is why an empty map is the correct and total answer for every v4 document. It is additive
+and pure: a new object, every existing field carried through, months of sessions untouched.
+
+The bump still does what the previous three did as well. The build currently deployed assembles
+its result from the keys it knows, so it would drop every mark on an export/import round trip;
+meeting a v5 document it refuses outright and says "update the site".
+
 `infra/function/handler.mjs` carries its own `SCHEMA_VERSION` constant, stamped on every item it
 writes. **It is bumped in the same commit as `migrations.ts`** — the two are kept in step by
 discipline, since the Lambda has no build step and shares no code with the client.
@@ -318,6 +337,27 @@ same `StoreDocument` — taking the document version as the *lowest* `schemaVers
 a part-migrated table cannot claim to be current — and runs the identical migration chain.
 Migrations still operate on whole documents, which is the shape they are written and tested
 against.
+
+The routes the Function URL answers, in full:
+
+| Method | Path | Item | Notes |
+|---|---|---|---|
+| `GET` | `/sessions` | `SESSION` (query) | Sorted newest first; reports the **lowest** `schemaVersion` present. |
+| `PUT` | `/sessions/{id}` | `SESSION` / `<id>` | `?ifNotManual=1` adds the condition the ingest relies on. |
+| `DELETE` | `/sessions/{id}` | `SESSION` / `<id>` | Leaves `SHOTS#<id>` behind — orphaned, not retired. |
+| `PUT` | `/shots/{id}` | `SHOTS#<id>` / `v1` | Ingest only; not on the `Repository` interface (D28). |
+| `GET` | `/shots/{id}` | `SHOTS#<id>` / `v1` | Exists so the write is verifiable. No `DELETE`. |
+| `GET` | `/settings` | `SETTINGS` / `v1` | Absent item is `{}`. |
+| `PUT` | `/settings` | `SETTINGS` / `v1` | Written whole. |
+| `GET` | `/destinations` | `DESTINATIONS` / `v1` | Phase 12 (D38). Absent item is `{}`. |
+| `PUT` | `/destinations` | `DESTINATIONS` / `v1` | Written whole; structural validation, never slug membership. |
+
+**The destinations pair is younger than the deployed function.** `infra/` is deployed by hand, so
+between merging Phase 12 and running that deploy `GET /destinations` is a 404 on every load. That
+is why the read degrades to an empty map inside `CachedRepo` rather than throwing, why it is read
+*separately* from sessions in `refresh()` — folding it in would abort the whole refresh and stop
+the practice history syncing — and why it does not set `stale`, which drives a notice saying
+nothing you log will save. Nothing about the practice log is stale in that window.
 
 `localStorage` keeps the same key and the same document, now as a cache. The three guards below
 were written for when it was the only copy; the first two still apply to the store, and

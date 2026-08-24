@@ -1,4 +1,4 @@
-import type { Session, TrackmanSession } from '../domain/types'
+import type { DestinationNotes, Session, TrackmanSession } from '../domain/types'
 import { mergeTrackmanSessions, type TrackmanMergeResult } from '../ingest/merge'
 import type { ImportSummary, Repository, Settings, StoreDocument } from './repository'
 import { emptyDocument } from './repository'
@@ -79,6 +79,21 @@ export class LocalStorageRepo implements Repository {
   async saveSettings(settings: Settings): Promise<void> {
     const doc = this.read()
     doc.settings = { ...settings }
+    this.write(doc)
+  }
+
+  async getDestinations(): Promise<DestinationNotes> {
+    // Cloned one level down as well: the values are objects, and a caller handed the stored ones
+    // could edit a mark in place without ever calling `saveDestinations`.
+    const notes = this.read().destinations
+    return Object.fromEntries(Object.entries(notes).map(([slug, note]) => [slug, { ...note }]))
+  }
+
+  async saveDestinations(notes: DestinationNotes): Promise<void> {
+    const doc = this.read()
+    // Written whole, like `settings`. The caller decides what the map is; deleting a key here is
+    // simply a map that no longer has it.
+    doc.destinations = { ...notes }
     this.write(doc)
   }
 

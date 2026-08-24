@@ -1,8 +1,8 @@
-import type { Session } from '../domain/types'
+import type { DestinationNotes, Session } from '../domain/types'
 import type { Settings, StoreDocument } from './repository'
 
 /** Bump this and add a migration below for **any** change to the stored shape. */
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 /** Stable across schema versions — the version lives inside the document, not in the key. */
 export const STORAGE_KEY = 'golf:store'
@@ -76,6 +76,33 @@ const MIGRATIONS: Record<number, Migration> = {
    * pre-Phase-7 session exists.
    */
   3: (doc) => doc,
+
+  /**
+   * v4 → v5: destination notes join the document. **This one actually transforms.** The three
+   * steps above are identity because every earlier document was already valid at the next
+   * version; a v4 document is not, because `destinations` is required on a v5 one and a v4
+   * document has no such key. So it is added, empty — nobody can have marked a course before the
+   * version that stores marks existed.
+   *
+   * Additive, pure and total: a new object each time, every existing field carried through
+   * untouched, and every v4 document — including one with months of sessions in it — comes out
+   * a valid v5 one.
+   *
+   * **The key order below is load-bearing.** The default is written first and `...doc` last, so
+   * a document that arrives already carrying `destinations` keeps it: this migration can add a
+   * key and cannot alter one. Additive *in fact*, not only in intent. No caller reaches here
+   * with marks on a v4 document today — `exportDocument()` stamps the current version directly
+   * and `listSessions()` migrates a sessions-only document — but a JSON export is hand-editable
+   * and is this app's documented escape hatch, so "a file with the wrong version stamp" is not
+   * an absurd input for the one function whose contract is never to lose data. A `destinations`
+   * that is present and *malformed* still reaches the corruption check below and throws, rather
+   * than being quietly replaced with an empty map.
+   *
+   * The bump still does the job the previous three did as well. The **build currently deployed**
+   * assembles its result from the keys it knows, so it would drop every mark on an export/import
+   * round trip; meeting a v5 document it now refuses outright and says "update the site".
+   */
+  4: (doc) => ({ destinations: {}, ...doc }),
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -127,10 +154,14 @@ export function migrate(raw: unknown): StoreDocument {
   if (doc.settings !== undefined && !isRecord(doc.settings)) {
     throw new UnreadableStoreError('The stored data has a malformed "settings" field.')
   }
+  if (doc.destinations !== undefined && !isRecord(doc.destinations)) {
+    throw new UnreadableStoreError('The stored data has a malformed "destinations" field.')
+  }
 
   return {
     schemaVersion: SCHEMA_VERSION,
     sessions: (doc.sessions as Session[] | undefined) ?? [],
     settings: (doc.settings as Settings | undefined) ?? {},
+    destinations: (doc.destinations as DestinationNotes | undefined) ?? {},
   }
 }

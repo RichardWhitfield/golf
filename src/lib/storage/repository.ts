@@ -1,4 +1,4 @@
-import type { ISODate, Session, TrackmanSession } from '../domain/types'
+import type { DestinationNotes, ISODate, Session, TrackmanSession } from '../domain/types'
 import type { TrackmanMergeResult } from '../ingest/merge'
 import { SCHEMA_VERSION } from './migrations'
 
@@ -13,6 +13,8 @@ export interface StoreDocument {
   schemaVersion: number
   sessions: Session[]
   settings: Settings
+  /** schemaVersion 5. Required on the document; `{}` is the empty answer, never `undefined`. */
+  destinations: DestinationNotes
 }
 
 export interface ImportSummary {
@@ -36,6 +38,25 @@ export interface Repository {
   deleteSession(id: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
+  /**
+   * The whole map, read whole and written whole — the same singleton-document shape as
+   * `settings`, and on this interface rather than on `RemoteRepo` alone. D28 keeps shots off it
+   * because they are megabytes; a hundred short marks are not.
+   *
+   * **A failed read degrades to an empty map**, and that is honoured by `CachedRepo` — the
+   * implementation the app actually holds. The route is younger than the deployed function, so
+   * `GET /destinations` 404s until `infra/` is redeployed by hand, which is the normal state
+   * between merge and deploy. An empty map is the right answer to "which courses are marked"
+   * when the store cannot say; a throw would reach a render.
+   *
+   * `RemoteRepo` still throws, deliberately. It is a thin HTTP client, and the difference
+   * between "the store says nothing is marked" and "the store could not be asked" is exactly
+   * what stops `CachedRepo` overwriting cached marks with an empty map it never received.
+   */
+  getDestinations(): Promise<DestinationNotes>
+  /** **A failed write throws**, always. Silently losing a mark is the failure mode
+   *  `localStorage` never had, and the whole reason writes go remote-first. */
+  saveDestinations(notes: DestinationNotes): Promise<void>
   exportDocument(): Promise<StoreDocument>
   /** Merges by session id. Adds and updates; never drops. */
   importDocument(raw: unknown): Promise<ImportSummary>
@@ -56,5 +77,5 @@ export interface Repository {
 }
 
 export function emptyDocument(): StoreDocument {
-  return { schemaVersion: SCHEMA_VERSION, sessions: [], settings: {} }
+  return { schemaVersion: SCHEMA_VERSION, sessions: [], settings: {}, destinations: {} }
 }

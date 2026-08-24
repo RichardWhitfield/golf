@@ -8,7 +8,7 @@ import {
 } from './transfer'
 import { SCHEMA_VERSION } from './migrations'
 import { emptyDocument, type StoreDocument } from './repository'
-import type { PracticeSession, Session, TrackmanSession } from '../domain/types'
+import type { DestinationNotes, PracticeSession, Session, TrackmanSession } from '../domain/types'
 
 const session = (id: string, over: Partial<PracticeSession> = {}): PracticeSession => ({
   id,
@@ -21,10 +21,15 @@ const session = (id: string, over: Partial<PracticeSession> = {}): PracticeSessi
 
 // `unknown[]` in, `Session[]` out: half these tests deliberately pass malformed records, which is
 // the point — `parseDocument` is the thing that decides whether they are sessions at all.
-const doc = (sessions: unknown[], settings = {}): StoreDocument => ({
+const doc = (
+  sessions: unknown[],
+  settings = {},
+  destinations: DestinationNotes = {},
+): StoreDocument => ({
   schemaVersion: SCHEMA_VERSION,
   sessions: sessions as Session[],
   settings,
+  destinations,
 })
 
 const trackman = (over: Record<string, unknown> = {}) => ({
@@ -244,6 +249,65 @@ describe('parseDocument', () => {
   })
 })
 
+describe('parseDocument · destination marks', () => {
+  it('carries marks through, with their optional date and note', () => {
+    const parsed = parseDocument(
+      doc([], {}, {
+        'kingston-heath': { status: 'played', playedOn: '2026-03-11', note: 'Windy.' },
+        'barnbougle-dunes': { status: 'want' },
+      }),
+    )
+    expect(parsed.destinations).toEqual({
+      'kingston-heath': { status: 'played', playedOn: '2026-03-11', note: 'Windy.' },
+      'barnbougle-dunes': { status: 'want' },
+    })
+  })
+
+  it('accepts a document written before marks existed', () => {
+    expect(parseDocument({ schemaVersion: 4, sessions: [], settings: {} }).destinations).toEqual({})
+  })
+
+  it('keeps a slug that names no course in the current ranking', () => {
+    // Never checked against `COURSES`. A ranking that renamed a course would otherwise make a
+    // backup unrestorable for exactly the marks somebody had bothered to make.
+    expect(
+      parseDocument(doc([], {}, { 'a-course-that-was-dropped': { status: 'want' } })).destinations,
+    ).toEqual({ 'a-course-that-was-dropped': { status: 'want' } })
+  })
+
+  it('rejects an unknown status rather than guessing at it', () => {
+    expect(() =>
+      parseDocument(doc([], {}, { 'kingston-heath': { status: 'maybe' } as never })),
+    ).toThrow(InvalidImportError)
+  })
+
+  it('rejects a malformed played-on date', () => {
+    expect(() =>
+      parseDocument(
+        doc([], {}, { 'kingston-heath': { status: 'played', playedOn: '11/03/2026' as never } }),
+      ),
+    ).toThrow(InvalidImportError)
+  })
+
+  it('rejects a mark that is not an object, and a map that is not one either', () => {
+    expect(() => parseDocument(doc([], {}, { 'kingston-heath': 'want' as never }))).toThrow(
+      InvalidImportError,
+    )
+    expect(() =>
+      parseDocument({ schemaVersion: SCHEMA_VERSION, sessions: [], settings: {}, destinations: 4 }),
+    ).toThrow()
+  })
+
+  it('drops a field it does not know rather than refusing the file', () => {
+    // The forward-compatible half of `checkMetrics`'s rule: a newer build's extra field must not
+    // turn a restore into a failure. The status is the one thing that cannot be guessed at.
+    const parsed = parseDocument(
+      doc([], {}, { 'kingston-heath': { status: 'want', rating: 9 } as never }),
+    )
+    expect(parsed.destinations).toEqual({ 'kingston-heath': { status: 'want' } })
+  })
+})
+
 describe('mergeDocuments', () => {
   it('adds sessions that are not already stored', () => {
     const { doc: merged, summary } = mergeDocuments(doc([session('a')]), doc([session('b')]))
@@ -277,6 +341,41 @@ describe('mergeDocuments', () => {
       doc([], { blockStart: '2026-01-01' }),
     )
     expect(merged.settings.blockStart).toBe('2026-08-03')
+  })
+
+  it('takes a mark the store has never seen', () => {
+    const { doc: merged } = mergeDocuments(doc([]), doc([], {}, { 'kingston-heath': { status: 'want' } }))
+    expect(merged.destinations).toEqual({ 'kingston-heath': { status: 'want' } })
+  })
+
+  it('never clobbers a mark the store already holds', () => {
+    // Restoring a backup taken before a course was played must not quietly put it back to
+    // "want to play". Per slug, the store wins — the rule settings already follow.
+    const { doc: merged } = mergeDocuments(
+      doc([], {}, { 'kingston-heath': { status: 'played', playedOn: '2026-03-11' } }),
+      doc([], {}, { 'kingston-heath': { status: 'want' }, 'cape-wickham-links': { status: 'want' } }),
+    )
+    expect(merged.destinations).toEqual({
+      'kingston-heath': { status: 'played', playedOn: '2026-03-11' },
+      'cape-wickham-links': { status: 'want' },
+    })
+  })
+
+  it('never drops a mark the file does not mention', () => {
+    const { doc: merged } = mergeDocuments(doc([], {}, { 'kingston-heath': { status: 'want' } }), doc([]))
+    expect(merged.destinations).toEqual({ 'kingston-heath': { status: 'want' } })
+  })
+
+  it('round-trips marks through serialise, parse and merge', () => {
+    // The done-when on the issue, end to end: export the document, read it back, merge it into
+    // an empty store, and the marks are the ones that were exported.
+    const original = doc([session('a')], { blockStart: '2026-08-03' }, {
+      'kingston-heath': { status: 'played', playedOn: '2026-03-11', note: 'Windy.' },
+      'barnbougle-dunes': { status: 'want' },
+    })
+    const restored = parseDocument(JSON.parse(serialiseDocument(original)))
+    const { doc: merged } = mergeDocuments(emptyDocument(), restored)
+    expect(merged.destinations).toEqual(original.destinations)
   })
 
   it('does not mutate either input', () => {
