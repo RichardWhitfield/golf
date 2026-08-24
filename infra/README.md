@@ -43,6 +43,20 @@ too large for an inline `ZipFile`:
 
 Then, to deploy or redeploy:
 
+    npm run deploy:infra
+
+That wraps exactly the commands below, behind three guards: it refuses to run in CI (D25), it
+asserts the AWS account before uploading anything, and it asserts `SCHEMA_VERSION` parity
+between `src/lib/storage/migrations.ts` and `function/handler.mjs`. It then checks the deployed
+routes answer `200`. `AWS_PROFILE` overrides the profile it uses.
+
+**The account guard is the one that matters.** Credentials are ambient, and the wrong ones fail
+in a way that does not name the real problem: a read-only user on a different account reports
+`Stack with id golf-store does not exist`, which reads like the stack was deleted rather than
+like you are looking in the wrong place.
+
+The commands it runs, if you would rather run them yourself:
+
     cd infra
     aws cloudformation package \
       --template-file template.yaml \
