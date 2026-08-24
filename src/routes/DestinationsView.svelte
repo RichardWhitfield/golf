@@ -1,23 +1,19 @@
 <script lang="ts">
   import AccessTag from '../lib/components/AccessTag.svelte'
   import CourseMap from '../lib/components/CourseMap.svelte'
+  import DestinationFilters from '../lib/components/DestinationFilters.svelte'
   import DestinationMark from '../lib/components/DestinationMark.svelte'
   import SectionHead from '../lib/components/SectionHead.svelte'
   import SiteFooter from '../lib/components/SiteFooter.svelte'
   import { COURSES, RANKING_SOURCE } from '../lib/domain/courses'
+  import { countOptions, emptyFilter, filterCourses } from '../lib/domain/courseFilter'
   import { feeLabel, spreadCoincident } from '../lib/domain/destinations'
   import { router } from '../lib/stores/router.svelte'
   import { sessions } from '../lib/stores/sessions.svelte'
 
-  // `COURSES` is authored in rank order, so there is nothing to sort. The fee wording — and in
-  // particular the dash that an absent fee renders as — comes from `feeLabel`, not from here.
-
-  /**
-   * Display positions, derived every render. Seven courses share three coordinates, so without
-   * this the chips underneath cannot be clicked. `courses.ts` is never edited to fix that — a
-   * fabricated latitude beside researched ones is indistinguishable from them six months later.
-   */
-  const pins = spreadCoincident(COURSES)
+  // `COURSES` is authored in rank order and nothing here sorts. The fee wording — and in
+  // particular the dash that an absent fee renders as — comes from `feeLabel`, not from here;
+  // every filtering decision comes from `courseFilter.ts`. This file renders.
 
   /**
    * The marks, straight from the store that owns the app's only `Repository` — no component
@@ -25,6 +21,32 @@
    * could not be asked, so the hundred always render; they simply carry no tags.
    */
   const marks = $derived(sessions.destinations)
+
+  /**
+   * Every group starts empty, which means **no constraint** rather than "match nothing", so the
+   * page opens on all one hundred. Held here and not in the URL or the store: query parameters
+   * would reach `resolvePath()` and the generated `dist/404.html`, which is its own change with
+   * its own deploy risk.
+   */
+  let filter = $state(emptyFilter())
+
+  const visible = $derived(filterCourses(COURSES, marks, filter))
+
+  /**
+   * Counted against the **whole** hundred, not against `visible` — each group is blind to its own
+   * selection, so picking TAS does not drop every other state to zero.
+   */
+  const counts = $derived(countOptions(COURSES, marks, filter))
+
+  /**
+   * Display positions for whatever survived the filter, so the map and the list can never
+   * disagree about which courses exist.
+   *
+   * Seven courses share three coordinates, so without this the chips underneath cannot be
+   * clicked. `courses.ts` is never edited to fix that — a fabricated latitude beside researched
+   * ones is indistinguishable from them six months later.
+   */
+  const pins = $derived(spreadCoincident(visible))
 </script>
 
 <section class="dest reveal" aria-labelledby="dest-title">
@@ -39,12 +61,15 @@
 <section id="courses">
   <SectionHead idx="01" title="The hundred" />
 
+  <DestinationFilters bind:filter {counts} shown={visible.length} total={COURSES.length} />
+
   <!-- Drawn over the list, and it hides itself if Leaflet or the tile host fails. The list below
-       is the primary content and does not know or care whether the map arrived. -->
+       is the primary content and does not know or care whether the map arrived. Same `pins` the
+       list is built from, so the two can never disagree. -->
   <CourseMap {pins} {marks} />
 
   <ol class="courses">
-    {#each COURSES as course (course.slug)}
+    {#each visible as course (course.slug)}
       <li>
         <!-- `data-state` drives both the spine and the tinted code from CSS, so no colour is
              named in markup — the same rule that took the hardcoded hexes out of the hero SVG. -->
@@ -75,6 +100,15 @@
       </li>
     {/each}
   </ol>
+
+  <!-- An empty result is a real answer, and the filter bar above stays on screen so there is
+       always a way back. A blank page with no controls is the failure mode. -->
+  {#if visible.length === 0}
+    <p class="none">
+      No course matches every filter you've set. Loosen one — the number on each option says how
+      many you would get back.
+    </p>
+  {/if}
 
   <p class="aid-note">
     Ranking from <a href={RANKING_SOURCE} rel="noreferrer">Golf Australia's Top 100 for 2026</a>.
@@ -139,6 +173,13 @@
   }
   /* The dash is an absence, not a price. It should not read with the weight of one. */
   .fee.none{color:var(--dim)}
+
+  /* An absence of results, not an error: `--dim` and the panel surface, never `--flag`. Nothing
+     about a narrow filter is a fault. */
+  .none{
+    background:var(--card);border:1px dashed var(--line);border-radius:12px;
+    padding:20px 18px;color:var(--dim);font-size:.92rem;max-width:60ch;
+  }
 
   .aid-note a{color:var(--ball)}
 

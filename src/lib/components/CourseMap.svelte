@@ -81,13 +81,33 @@
     return el
   }
 
+  /**
+   * Everything the drawing effect needs, published once the map is alive.
+   *
+   * `$state.raw` on purpose: this holds a Leaflet `Map`, a `LayerGroup` and the Leaflet module
+   * itself. A deep proxy over that wrapper buys nothing and the objects inside it are not plain,
+   * so the reactivity that matters is the whole-value reassignment — which is exactly what raw
+   * state gives.
+   */
+  interface Live {
+    L: typeof import('leaflet')
+    map: LeafletMap
+    layer: import('leaflet').LayerGroup
+    /** `prefers-reduced-motion`, read once with `matchMedia` and reused by `setView`. */
+    still: boolean
+  }
+  let live = $state.raw<Live | undefined>(undefined)
+
+  /**
+   * **Build the map once.** This effect reads `container` and nothing else, so it does not re-run
+   * when the filter changes the pins.
+   *
+   * That separation is the whole point of splitting it from the drawing effect below. A single
+   * effect reading `pins` would tear the map down and rebuild it on every filter toggle, throwing
+   * away the reader's zoom and pan — zoom into the Sandbelt, untick a state, and you are looking
+   * at the whole continent again.
+   */
   $effect(() => {
-    // `pins` is read here so the effect re-runs if the registry ever becomes reactive.
-    const current = pins
-    // Read here, synchronously, so the effect depends on it: the marks arrive from the store
-    // after first paint, and the map has to be rebuilt once when they do. Reading them inside
-    // `draw()` instead would silently not track, because that runs after an `await`.
-    const currentMarks = marks
     const target = container
     if (!target) return
 
@@ -134,66 +154,16 @@
           // edge of the world. Hide the map; the list below has lost nothing.
           if (tilesLoaded === 0 && tileErrors >= 4) {
             failed = true
+            // Cleared before the map is removed, so the drawing effect stops before its `map`
+            // becomes a corpse rather than after.
+            live = undefined
             map?.remove()
             map = undefined
           }
         })
         .addTo(map)
 
-      const layer = L.layerGroup().addTo(map)
-
-      const draw = () => {
-        if (!map) return
-        const projected: ProjectedPin[] = current.map((pin) => {
-          const point = map!.latLngToContainerPoint([pin.lat, pin.lon])
-          return { pin, x: point.x, y: point.y }
-        })
-
-        layer.clearLayers()
-        for (const cluster of clusterProjected(projected, CELL_PX)) {
-          const at = map.containerPointToLatLng([cluster.x, cluster.y])
-          const single = cluster.pins.length === 1 ? cluster.pins[0] : undefined
-          const status = single ? currentMarks[single.course.slug]?.status : undefined
-          // The mark is in the name as well as in the ring. A ring is colour alone, and colour is
-          // never the only signal — design.md §6. A cluster carries no ring: which of the courses
-          // under it is marked is a question only opening it can answer.
-          const label = single
-            ? `${single.course.name}, ${single.course.suburb}${
-                status ? ` · ${DESTINATION_TAGS[status]}` : ''
-              }`
-            : `${cluster.pins.length} courses`
-
-          const marker: Marker = L.marker(at, {
-            icon: L.divIcon({
-              html: single ? chip(single, status) : countChip(cluster.pins.length),
-              className: 'chip-wrap',
-              iconSize: [44, 44],
-              iconAnchor: [22, 22],
-            }),
-            // Focusable, and Enter fires the click. Leaflet gives this for free; the accessible
-            // name does not come free, so it is set on the element below.
-            keyboard: true,
-            title: label,
-          })
-
-          marker.on('click', () => {
-            if (single) router.go('course', single.course.slug)
-            // A cluster is a request to see what is under it. `animate` off under reduced
-            // motion for the same reason the constructor options are.
-            else map?.setView(at, Math.min(map.getZoom() + 2, 14), { animate: !still })
-          })
-
-          marker.addTo(layer)
-          const element = marker.getElement()
-          if (element) {
-            element.setAttribute('role', 'button')
-            element.setAttribute('aria-label', label)
-          }
-        }
-      }
-
-      draw()
-      map.on('moveend zoomend resize', draw)
+      live = { L, map, layer: L.layerGroup().addTo(map), still }
     }
 
     build().catch((error) => {
@@ -205,10 +175,86 @@
 
     return () => {
       cancelled = true
+      live = undefined
       map?.remove()
       map = undefined
     }
   })
+
+  /**
+   * **Draw the markers.** Re-runs when the pins change, when the marks arrive, and when the map
+   * is first built — never rebuilding the map itself, so a filter toggle leaves the view where
+   * the reader put it.
+   *
+   * `pins` and `marks` are read synchronously at the top so the effect actually depends on them.
+   * Reading either inside `draw()` would silently not track: `draw` runs from a Leaflet event,
+   * long after this function returned.
+   */
+  $effect(() => {
+    const current = pins
+    const currentMarks = marks
+    const active = live
+    if (!active) return
+    const { L, map, layer, still } = active
+
+    const draw = () => {
+      const projected: ProjectedPin[] = current.map((pin) => {
+        const point = map.latLngToContainerPoint([pin.lat, pin.lon])
+        return { pin, x: point.x, y: point.y }
+      })
+
+      layer.clearLayers()
+      for (const cluster of clusterProjected(projected, CELL_PX)) {
+        const at = map.containerPointToLatLng([cluster.x, cluster.y])
+        const single = cluster.pins.length === 1 ? cluster.pins[0] : undefined
+        const status = single ? currentMarks[single.course.slug]?.status : undefined
+        // The mark is in the name as well as in the ring. A ring is colour alone, and colour is
+        // never the only signal — design.md §6. A cluster carries no ring: which of the courses
+        // under it is marked is a question only opening it can answer.
+        const label = single
+          ? `${single.course.name}, ${single.course.suburb}${
+              status ? ` · ${DESTINATION_TAGS[status]}` : ''
+            }`
+          : `${cluster.pins.length} courses`
+
+        const marker: Marker = L.marker(at, {
+          icon: L.divIcon({
+            html: single ? chip(single, status) : countChip(cluster.pins.length),
+            className: 'chip-wrap',
+            iconSize: [44, 44],
+            iconAnchor: [22, 22],
+          }),
+          // Focusable, and Enter fires the click. Leaflet gives this for free; the accessible
+          // name does not come free, so it is set on the element below.
+          keyboard: true,
+          title: label,
+        })
+
+        marker.on('click', () => {
+          if (single) router.go('course', single.course.slug)
+          // A cluster is a request to see what is under it. `animate` off under reduced
+          // motion for the same reason the constructor options are.
+          else map.setView(at, Math.min(map.getZoom() + 2, 14), { animate: !still })
+        })
+
+        marker.addTo(layer)
+        const element = marker.getElement()
+        if (element) {
+          element.setAttribute('role', 'button')
+          element.setAttribute('aria-label', label)
+        }
+      }
+    }
+
+    draw()
+    map.on('moveend zoomend resize', draw)
+    // Only the listener is removed. The map and its layer outlive this effect — they belong to
+    // the effect above, and tearing them down here is what would reset the view.
+    return () => {
+      map.off('moveend zoomend resize', draw)
+    }
+  })
+
 </script>
 
 {#if !failed}
