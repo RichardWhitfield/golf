@@ -473,6 +473,31 @@ logo that failed to decode are one path, not two. A cluster of more than one dra
 with the **count**, distinguished from a rank by a second concentric ring — a shape signal, since
 both are bare numbers and a background tint alone could not carry the difference.
 
+### Expanding the map
+
+An **Expand map** / **Collapse map** button sits top-right of the frame, styled like the zoom
+control beside it and at the same `44px`.
+
+**It is CSS, not the Fullscreen API.** iOS Safari does not support the Fullscreen API on a `<div>`
+— only on `<video>` — so a native implementation would have to hide its own button on the iPhone,
+which is the device most likely to be holding this map. Expanded is `position:fixed; inset:0` with
+the body locked against scrolling, which behaves identically on desktop, Android and iPhone.
+
+The button is a **sibling of the map, not a Leaflet control**, so Leaflet's drag and zoom handlers
+never see it and focus management stays in Svelte. **Escape collapses**, and focus returns to the
+button — otherwise it would be left on whichever marker the reader had tabbed to, in a map that
+just shrank. The label always names the state the button will move *to*, in words, never an icon
+alone.
+
+`invalidateSize()` runs on the next animation frame after the class changes. Without it Leaflet
+keeps rendering tiles for the old box and expanding leaves a grey band.
+
+**There is no transition**, on purpose: a `position` change cannot be animated meaningfully, so
+the swap is instant and `prefers-reduced-motion` has nothing to suppress.
+
+A `failed` map hides the whole frame, button included — adding a control must not create a second
+way for the map to break the page.
+
 Leaflet's own stylesheet is light-themed and is restyled to tokens in full: container, zoom
 controls (grown from Leaflet's `26px` to `44px`), and the attribution box, which is **required and
 always rendered**. `.leaflet-bar a:focus` paints `#f4f4f4` in Leaflet's CSS, so the zoom control's
