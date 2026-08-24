@@ -330,7 +330,16 @@ npm test           # Vitest, domain logic only
 npm run ingest     # pull Trackman sessions — needs TRACKMAN_REFRESH_TOKEN and API_URL
 npm run introspect # print the Measurement schema — no credential needed
 npm run probe      # print null rates, ranges and correlations — needs TRACKMAN_REFRESH_TOKEN
+npm run deploy:infra # deploy the golf-store stack — by hand only, needs the right AWS account
 ```
+
+`deploy:infra` wraps the commands in `infra/README.md` behind three guards, each of which has
+already caught something: it **refuses to run in CI** (D25 as code, not prose), it **asserts the
+AWS account** before uploading anything — the wrong credentials otherwise report "stack does not
+exist", which reads like deletion rather than like looking in the wrong account — and it
+**asserts `SCHEMA_VERSION` parity** between `migrations.ts` and `handler.mjs`, because a deploy
+is the moment that drift starts doing damage. It then verifies the deployed routes answer `200`
+rather than assuming they do.
 
 `introspect` and `probe` are the two halves of "verify before designing": the schema says what
 exists, the probe says what is populated. Neither runs in CI — the branch-triggered probe
