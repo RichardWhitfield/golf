@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolvePath, router, type Route } from './router.svelte'
+import { pathFor, resolvePath, router, type Route } from './router.svelte'
 
-const ROUTES: Route[] = ['plan', 'log', 'progress']
+/** Every route served at a fixed path. `course` is excluded — its path carries a slug. */
+const ROUTES: Route[] = ['plan', 'log', 'progress', 'destinations']
 
 describe('resolvePath', () => {
   it('serves the three views under /practice', () => {
@@ -81,13 +82,88 @@ describe('resolvePath', () => {
 
   it('falls back to the plan for anything unrecognised', () => {
     // Including a path that only looks nested: /practice/nope is no more a route than /nope.
-    for (const unknown of ['/nope', '/practice/nope', '/log/extra', '/destinations']) {
+    for (const unknown of ['/nope', '/practice/nope', '/log/extra', '/destination']) {
       expect(resolvePath(unknown)).toEqual({
         route: 'plan',
         canonical: '/practice',
         redirect: true,
       })
     }
+  })
+
+  it('serves the destinations index', () => {
+    expect(resolvePath('/destinations')).toEqual({
+      route: 'destinations',
+      canonical: '/destinations',
+      redirect: false,
+    })
+  })
+
+  it('resolves a course to its slug', () => {
+    expect(resolvePath('/destinations/kingston-heath')).toEqual({
+      route: 'course',
+      slug: 'kingston-heath',
+      canonical: '/destinations/kingston-heath',
+      redirect: false,
+    })
+  })
+
+  it('resolves a slug it has never heard of, because it resolves shape and not existence', () => {
+    // Deliberate. This module does not import `courses.ts`: a router holding the hundred slugs
+    // would need editing every time the registry moved, and a retired course would land silently
+    // on the plan page instead of being told what happened to it. CourseView answers that.
+    expect(resolvePath('/destinations/not-a-real-course')).toEqual({
+      route: 'course',
+      slug: 'not-a-real-course',
+      canonical: '/destinations/not-a-real-course',
+      redirect: false,
+    })
+  })
+
+  it('rejects a slug that is really a path', () => {
+    // `/destinations/a/b` is no more a course than `/nope` is. The slash fails the shape test
+    // rather than being swallowed into a slug that could never match anything.
+    for (const nested of ['/destinations/a/b', '/destinations/a/b/c']) {
+      expect(resolvePath(nested)).toEqual({
+        route: 'plan',
+        canonical: '/practice',
+        redirect: true,
+      })
+    }
+  })
+
+  it('rejects a slug outside the URL-safe alphabet', () => {
+    for (const bad of ['/destinations/kingston heath', '/destinations/kingston_heath']) {
+      expect(resolvePath(bad).route).toBe('plan')
+    }
+  })
+
+  it('strips a trailing slash from a course path and rewrites it', () => {
+    expect(resolvePath('/destinations/kingston-heath/')).toEqual({
+      route: 'course',
+      slug: 'kingston-heath',
+      canonical: '/destinations/kingston-heath',
+      redirect: true,
+    })
+    expect(resolvePath('/destinations/')).toEqual({
+      route: 'destinations',
+      canonical: '/destinations',
+      redirect: true,
+    })
+  })
+
+  it('folds a hand-typed course path to its lowercase slug', () => {
+    expect(resolvePath('/Destinations/Kingston-Heath')).toEqual({
+      route: 'course',
+      slug: 'kingston-heath',
+      canonical: '/destinations/kingston-heath',
+      redirect: true,
+    })
+  })
+
+  it('carries no slug on any route but course', () => {
+    // `slug` is absent rather than undefined, so a view cannot read one off the plan page.
+    for (const route of ROUTES) expect('slug' in resolvePath(router.href(route))).toBe(false)
   })
 
   it('reports no redirect for the path each nav link points at', () => {
@@ -100,5 +176,20 @@ describe('resolvePath', () => {
         redirect: false,
       })
     }
+  })
+
+  it('round-trips the href of a course link', () => {
+    const href = router.href('course', 'royal-melbourne-gc-west-course')
+    expect(href).toBe('/destinations/royal-melbourne-gc-west-course')
+    expect(resolvePath(href).redirect).toBe(false)
+    expect(resolvePath(href).slug).toBe('royal-melbourne-gc-west-course')
+  })
+})
+
+describe('pathFor', () => {
+  it('sends a course with no slug to the index rather than to /destinations/undefined', () => {
+    // The one URL a template typo would otherwise produce, and it would 404 on Pages.
+    expect(pathFor('course')).toBe('/destinations')
+    expect(resolvePath(pathFor('course')).route).toBe('destinations')
   })
 })

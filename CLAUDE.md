@@ -56,6 +56,14 @@ Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/d
 `coverage.ts` (done vs scheduled) and `feel.ts` (feel per arc phase). **Components render; they
 never calculate.**
 
+The **Top 100 course dataset** is built (Phase 10, issue #31) and has no consumer yet — the map is
+issue #32. `lib/domain/courses.ts` is the registry: 100 entries in rank order, holding rank, name,
+location, coordinates, architects, an original `summary`, the club's own URLs, `access`, an
+optional `greenFee` and an optional `logo`. `lib/domain/destinations.ts` holds only
+`STATE_BOUNDS`, `isWithinState()` and `courseBySlug()` — no filtering, sorting or grouping helper,
+because nothing consumes one yet. Logos are committed under `public/logos/<slug>.png`; ImageMagick
+normalised them once by hand and is **not** a build or test dependency.
+
 Practice data lives in **DynamoDB** behind a Lambda Function URL (Phase 6). `localStorage` is a
 read cache under the key `golf:store`, holding the same versioned document at `schemaVersion` 4.
 **Reach either only through `lib/stores/sessions.svelte.ts`** — that file constructs the only
@@ -81,6 +89,12 @@ best-populated fields in the dataset, `0%` null on the driver where `clubPath` i
 `readingFor` returns **`Reading`**, whose `n` is optional — distinct from the stored
 `MetricReading`, whose `n` is required. A hand-typed club-path row genuinely has no count, and
 the widened type is what makes the compiler enforce "absent, never zero" rather than a comment.
+
+**Destinations** is built (Phase 11, issue #32). `lib/domain/courses.ts` is the Top 100 registry
+and `lib/domain/destinations.ts` is its maths: bounding boxes, the slug lookup, `spreadCoincident`
+(seven courses share three coordinates), `clusterProjected` (grid clustering on already-projected
+pixels), and the `feeLabel`/`ACCESS_LABELS` wording. `CourseMap.svelte` is the **only** file that
+touches Leaflet — the repo's first and only runtime dependency (D34).
 
 Infrastructure lives in `infra/` and is deployed by hand, never from CI — see `infra/README.md`.
 **Writes are unauthenticated by explicit decision (D19):** the bounds are point-in-time recovery,
@@ -147,6 +161,20 @@ so a scoped base rule outranks a global override and the override silently loses
   string returns `null` and is reported, never guessed at.
 - **`n` (shot count) is absent, never zero, on hand-typed readings.** Don't fabricate a default —
   a chart would weight the guess as though it were measured.
+- **`domain/courses.ts` is the single source of truth for course data**, as `drills.ts` is for
+  drills. The ranking article is linked once as `RANKING_SOURCE`, never repeated per entry, and
+  **its panel commentary is never reproduced** — every `summary` is prose written for this site,
+  and `dist/` is publicly readable on a real domain.
+- **A course whose access could not be confirmed is `'unknown'`, never `'members'`.** That is the
+  same rule as `better: 'none'` in `metrics.ts` and "never scheduled" in `coverage.ts`: rounding
+  an unconfirmed club up to members-only invents a finding. The `accessNote` must not assert
+  either — it may say what is believed, and that it is unverified.
+- **A `greenFee` is absent, never `0`.** An absent fee renders as a dash; a `0` renders as free,
+  which is wrong in the most expensive possible direction. Only a fee read off the club's own site
+  is stored. `access` and `greenFee` are a dated snapshot (D37), stamped with `checkedOn` and
+  refreshed by hand, never automatically.
+- **A `logo` path is written only where the file exists** under `public/`. A path with no file
+  behind it is a broken marker, and `courses.test.ts` checks every one against `node:fs`.
 - **`domain/metrics.ts` is the single source of truth for metric field names, axes and bands.**
   Every `field` was read from the live schema via `npm run introspect`, never from memory. The
   GraphQL selection set is built from it, so a wire name exists in exactly one place.
@@ -177,6 +205,33 @@ so a scoped base rule outranks a global override and the override silently loses
   There is no `DELETE` either: the ingest is the only writer and nothing reads shots back, so an
   orphaned item costs a few KB and nothing else. **Deleting a session leaves its shots behind** —
   the `SHOTS#<id>` item is orphaned, not retired.
+- **`courses.ts` is never edited to make a map look right.** Seven courses genuinely share three
+  coordinates — one clubhouse, several courses — so `spreadCoincident` returns a **derived display
+  position** and the researched pair stays untouched. A fabricated latitude sitting beside verified
+  ones is indistinguishable from them six months later, and the dataset's credibility rests on
+  nothing being guessed.
+- **An absent `greenFee` is a dash, never "Free" and never `$0`**, and a fee that is present
+  **always carries its `checkedOn` date** (`$395 · checked Aug 2026`). It is a hand-checked
+  snapshot (D37), and a stale figure that reads as current is what dating it prevents. Both rules
+  live in `feeLabel`, not in a template, so neither can be got wrong twice. Forty of the hundred
+  have no fee; eight have `access: 'unknown'`, which must never round to public or members-only.
+- **The two destinations views are imported dynamically in `App.svelte`, and must stay that way.**
+  `courses.ts` is ~95 kB raw of travel-planning data. A static import puts every byte of it in the
+  chunk `/practice` loads — the page opened daily, outdoors, on a phone, that never reads a
+  course. D1 chose this stack for a small bundle at the range, and making the daily page 70%
+  larger to carry a trip planner inverts that. The practice routes stay synchronous, with no
+  wrapper and no pending state; only the destinations branches are lazy, and a chunk that fails to
+  arrive renders an honest message beside the nav rather than throwing.
+- **The map must never block or blank the page.** The ranked list is the primary content and the
+  map is drawn over it. Leaflet is **dynamically imported**, and that is not a size optimisation:
+  a static import would put it in the chunk that renders the list, so a Leaflet that failed to
+  parse would take the list down with it. Construction failure, and a tile host that never paints
+  a single tile, both hide the map and leave the list.
+- **Leaflet animates from JS options, not CSS.** A stylesheet `prefers-reduced-motion` rule cannot
+  reach it. Read the query with `matchMedia` and pass `zoomAnimation`/`fadeAnimation`/
+  `markerZoomAnimation` to the constructor — and `animate` to any `setView`.
+- **No second map dependency.** Clustering is maths, so it lives in `lib/domain/` where it can be
+  tested without a browser. `leaflet.markercluster` is not installed and should not be.
 - Plan and drill content lives in `lib/domain/` as data, not in markup.
 - Bump `schemaVersion` and write a migration for any stored-shape change. The Lambda handler
   carries its own `SCHEMA_VERSION` constant, and it is bumped in the same commit.
