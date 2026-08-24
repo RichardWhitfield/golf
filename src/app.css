@@ -34,6 +34,20 @@
   --access-limited:#D6C79E;  /* sand — visitor times exist, but conditions apply */
   --access-members:#7FB2A0;  /* deeper, cooler, receding — the door is shut */
 
+  /* State identity, for scanning a hundred rows in rank order. A third vocabulary, separate
+     again from --ball/--flag and from the access ramp. Sporting colours where they are free and
+     shifted where they are not: WA gold *is* --ball, SA red *is* --flag, and TAS bottle green
+     is --bg. All seven pass AA on --bg and on --card. There is no --st-nt: no NT course is in
+     the Top 100, and a colour with no referent is one that gets used wrongly the day one is.
+     See docs/design.md §1. */
+  --st-nsw:#7FC4E8;  /* sky blue — the Blues */
+  --st-vic:#9AA8E8;  /* the Big V's navy, lifted far enough to be legible on dark */
+  --st-qld:#E08BA0;  /* maroon, lifted */
+  --st-sa:#E0A07A;   /* terracotta — red, shifted clear of --flag */
+  --st-wa:#C596EE;   /* violet — gold would be indistinguishable from --ball */
+  --st-tas:#6FD4C8;  /* teal — bottle green would vanish into --bg */
+  --st-act:#C6C9D2;  /* slate */
+
   --maxw:900px;
 }
 
