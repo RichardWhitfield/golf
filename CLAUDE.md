@@ -43,10 +43,13 @@ workflow runs. It imports from `lib/ingest/` and `lib/storage/`, so the null-fil
 Sydney-date and merge rules exist once and are shared with the browser. That is why `tsx` is a
 devDependency.
 
-The site has three views behind a History-API router: `/` (the plan page), `/log` and
-`/progress`. Deep links depend on `dist/404.html`, generated from the built `index.html` by the
-`pages-spa-fallback` plugin in `vite.config.ts` and asserted by the deploy workflow alongside
-`CNAME`.
+The site has three views behind a History-API router: `/practice` (the plan page), `/practice/log`
+and `/practice/progress`. The paths they used to hold — `/`, `/log`, `/progress` — **redirect**
+with `replaceState`, never `pushState`: a push would leave the old URL one Back away, redirecting
+forward again, and the daily entry point is a phone bookmark on `/`. `resolvePath()` in
+`stores/router.svelte.ts` owns that map, is pure and is tested. Deep links depend on
+`dist/404.html`, generated from the built `index.html` by the `pages-spa-fallback` plugin in
+`vite.config.ts` and asserted by the deploy workflow alongside `CNAME`.
 
 Progress charts are built (Phase 4, issue #5). Every calculation lives in `lib/domain/` —
 `scale.ts` (fixed chart axes, against any authored domain), `series.ts` (per-club series),
@@ -68,8 +71,8 @@ call rather than rendering an undefined one. Each club row gains `metrics`, a ma
 own dedicated fields. The shot-by-shot record lives in its own item under `SHOTS#<sessionId>`,
 written by the ingest and reachable only from `RemoteRepo`. `lib/domain/relate.ts` correlates two
 metrics for one club, `lib/domain/latest.ts` picks the newest reading for a club and reads the
-face-to-path verdict, and `/progress` gained a driver section — "Why the ball curves" — rendered
-by `SlicePanel` and `RelationPanel`.
+face-to-path verdict, and `/practice/progress` gained a driver section — "Why the ball curves" —
+rendered by `SlicePanel` and `RelationPanel`.
 
 **Carrying is the default; charting is the deliberate decision.** Phase 7 applied one test to
 both and dropped `ballSpeed`, `smashFactor`, `spinRate`, `launchAngle` and `total` — the

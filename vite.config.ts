@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 /**
- * GitHub Pages serves static files only, so `GET /log` is a hard 404 without a shim.
+ * GitHub Pages serves static files only, so `GET /practice/log` is a hard 404 without a shim.
  *
  * The shim must be **copied from the build output**, never hand-written into `public/`: Vite
  * hashes asset filenames, so a static copy would point at a stale bundle after the next build
