@@ -1,6 +1,6 @@
 # Roadmap & Open Questions
 
-**Last updated:** 2026-08-18
+**Last updated:** 2026-08-24
 
 Sequencing for the move from static page to practice tracker. Each phase leaves the site working
 and deployed — no phase ends with something half-migrated on `golf.whitfield.life`.
@@ -335,6 +335,71 @@ registry.
 
 ---
 
+## Destinations · Phases 9–12 — **designed 2026-08-24, not started**
+
+Design in `docs/superpowers/specs/2026-08-24-destinations-design.md`. Records D32–D38.
+
+The site does one thing: it tracks a swing change against a single KPI. This adds a second thing
+that is not practice at all — **where to play** — and separates the two in the URL scheme so
+neither has to pretend to be the other. The plan is explicitly three weeks and ends before a trip
+(OQ-2); the trip is the point of the practice, and the repo currently has nothing to say about it.
+
+**Four phases, kept apart on purpose.** Phase 10 is slow, research-bound work with an uncertain
+yield; Phase 9 is a small change to a router. Sequencing them together would hold a certain change
+behind an uncertain one, which principle 1 below does not require and principle 3 argues against.
+
+### Phase 9 · Move the practice site under /practice
+
+[#30](https://github.com/RichardWhitfield/golf/issues/30)
+
+`/practice`, `/practice/log`, `/practice/progress`, with `/`, `/log` and `/progress` **redirected**
+rather than broken — the daily entry point is a bookmark. Redirects use `replaceState`, as the
+router already does for unrecognised paths, so Back does not bounce off them. `SiteNav` becomes
+two levels. **No new content:** the phase exists so the reshuffle can be verified on its own,
+on the deployed site.
+
+### Phase 10 · The Top 100 course dataset
+
+[#31](https://github.com/RichardWhitfield/golf/issues/31)
+
+Golf Australia's Top 100 for 2026 as a typed registry in `lib/domain/courses.ts` — the same class
+of content as `drills.ts` and `plan.ts` — widened by research into access, visitor green fee, site
+and coordinates. No UI.
+
+**Three rules carried over rather than re-argued:** `greenFee` is absent, never `0`;
+`access: 'unknown'` is a real answer, as `better: 'none'` is in `metrics.ts`; and nothing is
+guessed, as `clubs.ts` refuses to guess a club spelling. Sixty confirmed fees and forty dashes is
+a better dataset than a hundred plausible ones.
+
+The ranking page's judge commentary is **not reproduced** — `dist/` is publicly readable on a real
+domain. Facts are stored; the summary is written here and links back to the source.
+
+### Phase 11 · The destinations map and course detail
+
+[#32](https://github.com/RichardWhitfield/golf/issues/32) · blocked on #30 and #31
+
+Leaflet with CARTO dark tiles, 44px marker chips carrying each club's favicon and falling back to
+the rank number, clustered because fifteen of the hundred sit in greater Melbourne. Course detail
+at `/destinations/<slug>`.
+
+**This is the first external runtime dependency in the bundle and the first third-party request on
+load**, so the ranked list is the primary content and the map is drawn over it. Blocking the tile
+host must still leave the page usable — verified by blocking it.
+
+### Phase 12 · Wishlist — want to play, played
+
+[#34](https://github.com/RichardWhitfield/golf/issues/34) · blocked on #32
+
+A singleton item beside settings, reusing the `GET`/`PUT /settings` pattern rather than inventing
+an item type. `schemaVersion` 4 → 5 with the handler's constant bumped in the same commit, and
+`infra/` redeployed by hand.
+
+**Deliberately not merged with OQ-6** ([#11](https://github.com/RichardWhitfield/golf/issues/11)).
+A wishlist tick records an intention; a round is a third session type with a score and a
+relationship to the KPI. Widening the session model to satisfy a bookmark is the wrong trade.
+
+---
+
 ## Open questions
 
 ### OQ-1 · Is TrackMan data programmatically accessible? — **resolved 2026-07-31**
@@ -478,6 +543,32 @@ and buy nothing.
 **Phase 8 carries `swingDirection` without charting it** — the carried/charted split means storing
 the reading no longer requires deciding it deserves a panel. When this question is revisited, the
 data will already be there rather than starting from the point of revisit forward.
+
+---
+
+### OQ-9 · Should green fees be re-checked automatically?
+
+[#33](https://github.com/RichardWhitfield/golf/issues/33)
+
+Raised while designing Phase 10 and **deliberately not built.** Phase 10 stores a dated snapshot —
+`checkedOn` per course, surfaced so a stale figure reads as stale rather than as current. The
+question is whether anything should refresh it.
+
+Two options were examined. **Change detection** — fetch each visitor-rates page, hash the relevant
+text, open an issue when it moves — is cheap and needs no credential, and tells you *what* to
+recheck rather than guessing the value. **Full agent-driven re-extraction** is hands-off but needs
+an `ANTHROPIC_API_KEY` in a public repo, costs money per run, and can silently commit a misread
+number.
+
+**Neither was built.** The Trackman ingest runs on a schedule because a structured API sits behind
+it — 43 field names read from a live schema. There is no equivalent here: a hundred unrelated club
+sites in a hundred layouts, no contract, nothing to introspect. Even the cheap option is a hundred
+fragile fetches to maintain for a dataset consulted a few times a year, against a repo that holds
+one secret and runs on about 3p a month.
+
+**Revisit when a stale fee misleads a real decision** — a course costs materially more than stored,
+or has closed to visitors. That is the same bar OQ-3 was held to before storage was allowed to
+leave the device.
 
 ---
 
