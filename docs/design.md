@@ -422,11 +422,30 @@ because an absence should not read with the weight of a price.
 
 ### Map chip
 `CourseMap.svelte` — a `44px` circular chip, which is also the minimum hit target, so the chip
-*is* the target. It carries the club's logo over a Space Mono rank number. **The rank is always in
-the DOM underneath**; the logo is layered over it and removed on `error`, so a missing logo and a
-logo that failed to decode are one path, not two. A cluster of more than one draws a single chip
-with the **count**, distinguished from a rank by a second concentric ring — a shape signal, since
-both are bare numbers and a background tint alone could not carry the difference.
+*is* the target.
+
+**A chip shows the club's logo or two Space Mono initials in `--dim` — never both.** Only two of
+the hundred have no logo committed, so the letters are a fallback and are dimmed accordingly:
+`--ball` means the goal, and a club whose mark could not be drawn is not one. The letters come
+from `courseInitials` in `domain/destinations.ts`; no component derives them.
+
+The two states are mutually exclusive, and that exclusivity is the point. This element used to
+hold the **rank**, layered permanently underneath the logo, and it was wrong twice over.
+Ninety-eight of the hundred logos are transparent PNGs, so the number showed straight through the
+club's mark. And a bare rank is the same shape as a cluster count — a chip reading `12` was either
+the 12th-ranked course or twelve courses stacked, with nothing on the marker to say which.
+
+**Layering the initials underneath instead would have fixed only the second half.**
+`links-lady-bay-resort` is a dark mark on a transparent ground, and letters bleed through it
+exactly as digits did. So the fallback is *appended when the logo gives up*, not hidden behind it.
+Both failures still run through one path: a course with no logo takes an early return, and a
+committed file that fails to decode takes the `error` listener, which swaps the broken image for
+the same letters.
+
+A cluster of more than one draws a single chip with the **count** in `--ball`, and it is now the
+only number anywhere on the map. It keeps its second concentric ring anyway: the ring is a shape
+signal — *several, stacked* — and shape survives a greyscale test that a background tint would
+not.
 
 Leaflet's own stylesheet is light-themed and is restyled to tokens in full: container, zoom
 controls (grown from Leaflet's `26px` to `44px`), and the attribution box, which is **required and

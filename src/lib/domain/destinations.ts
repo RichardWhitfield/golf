@@ -235,3 +235,71 @@ export function feeLabel(course: Course): string {
   const amount = `$${course.greenFee.amount.toLocaleString('en-AU')}`
   return course.checkedOn ? `${amount} · checked ${checkedLabel(course.checkedOn)}` : amount
 }
+
+/**
+ * Words that name what a place *is* rather than which place it is.
+ *
+ * Every one of these appears in the registry. Dropping them is what turns `Narooma GC` into `NA`
+ * rather than `NG`, and `Cape Wickham Links` into `CW` rather than `CL` — a golfer names a course
+ * by the distinctive part, and two letters is not enough room to spend one on `GC`.
+ *
+ * `links` is here twice over: it trails `Cape Wickham Links` and leads `Links Kennedy Bay`, and
+ * it is the club type in both. Position carries no information, so the rule does not read it.
+ */
+const CLUB_WORDS = new Set([
+  'the',
+  'gc',
+  'cc',
+  'cgc',
+  'gl',
+  'g&cc',
+  'golf',
+  'club',
+  'country',
+  'links',
+  'course',
+  'resort',
+  '&',
+])
+
+/**
+ * Two uppercase letters identifying a course, for a map chip with no logo behind it.
+ *
+ * This replaced the **rank** as the layer underneath the chip's logo. The rank did two jobs at
+ * once and did both badly: 98 of the hundred logos are transparent PNGs, so the number showed
+ * straight through the club's mark, and a bare rank is the same shape as a cluster count — a
+ * chip reading `12` was either the 12th course or twelve of them. Initials are neither a rank
+ * nor a count, so the only number left anywhere on the map is a cluster's, and it means one
+ * thing.
+ *
+ * It is still a **fallback**, not a label. Only two courses in the registry have no logo
+ * committed — The Dunes Links and Narooma GC — and for the other ninety-eight this shows only
+ * when a committed file fails to decode. A broken-image icon on a map says less than nothing.
+ *
+ * The rule: drop the sub-course suffix, drop the club-type words, then take the first letter of
+ * each of the first two words that remain — or the first two letters of the only one that does.
+ *
+ * ```
+ * Royal Melbourne GC – West Course  ->  RM
+ * The Dunes Links                   ->  DU
+ * Narooma GC                        ->  NA
+ * ```
+ *
+ * **The sub-course separator is an en dash, not a bracket.** `courses.ts` writes
+ * `Royal Melbourne GC – West Course`, so a rule written against `(` would leave `West Course`
+ * in the significant words and every multi-course club would collide with itself.
+ */
+export function courseInitials(name: string): string {
+  // Only the first dash matters: `Indooroopilly GC – The West Course – Red/Gold` has two.
+  const head = name.split('–')[0]
+  const words = head.split(/[\s/]+/).filter(Boolean)
+  const significant = words.filter((word) => !CLUB_WORDS.has(word.toLowerCase()))
+
+  // Never returns `''`. No course is named only for its club type, but an empty chip is
+  // indistinguishable from one that failed to render, so the raw name is the floor.
+  const source = significant.length > 0 ? significant : words
+
+  const letters =
+    source.length >= 2 ? `${source[0][0]}${source[1][0]}` : (source[0] ?? name).slice(0, 2)
+  return letters.toUpperCase()
+}

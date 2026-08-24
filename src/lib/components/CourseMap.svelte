@@ -3,6 +3,7 @@
   import {
     DESTINATION_TAGS,
     clusterProjected,
+    courseInitials,
     type MapPin,
     type ProjectedPin,
   } from '../domain/destinations'
@@ -41,10 +42,22 @@
    * The chip.
    *
    * Built as a real element rather than an HTML string so the logo's `error` listener is a
-   * listener, not an inline attribute. The rank sits underneath the logo **always**: if the image
-   * never arrives, removing it uncovers a number. That one path covers both failures — the two
-   * courses with no logo at all, and a committed file that fails to decode. A broken-image icon
-   * on a map is worse than a number.
+   * listener, not an inline attribute.
+   *
+   * **A chip shows a logo or two initials — never both.** The two are mutually exclusive, and
+   * that is the whole fix here. This element used to hold the course's *rank* layered
+   * permanently underneath the logo, which was wrong twice over. Ninety-eight of the hundred
+   * logos are transparent PNGs, so the number showed straight through the club's mark. And a
+   * bare rank is the same shape as a cluster count, so a chip reading `12` was either the
+   * 12th-ranked course or twelve courses stacked, with nothing on the marker to say which.
+   *
+   * Layering initials underneath instead would fix only the second half: `links-lady-bay-resort`
+   * is a dark mark on a transparent ground, and letters bleed through it exactly as digits did.
+   * So the fallback is *appended when the logo gives up*, not hidden behind it.
+   *
+   * Both failures still run through one path. The two courses with no logo committed take the
+   * early return; a committed file that fails to decode takes the `error` listener, which swaps
+   * the broken image for the same letters. A broken-image icon on a map says less than nothing.
    *
    * The `/` is load-bearing. `course.logo` is root-relative without one, and a bare `logos/x.png`
    * on `/destinations/kingston-heath` would resolve against `/destinations/`.
@@ -56,18 +69,29 @@
     // `--home` for one already behind you. **Never `--flag`**; nothing in a wishlist is a fault.
     el.className = status ? `chip chip-${status}` : 'chip'
 
-    const rank = document.createElement('span')
-    rank.className = 'chip-rank'
-    rank.textContent = String(pin.course.rank)
-    el.append(rank)
-
-    if (pin.course.logo) {
-      const img = document.createElement('img')
-      img.src = `/${pin.course.logo}`
-      img.alt = ''
-      img.addEventListener('error', () => img.remove())
-      el.append(img)
+    const initials = () => {
+      const span = document.createElement('span')
+      span.className = 'chip-initials'
+      // The letters come from the domain, never from markup.
+      span.textContent = courseInitials(pin.course.name)
+      return span
     }
+
+    if (!pin.course.logo) {
+      el.append(initials())
+      return el
+    }
+
+    const img = document.createElement('img')
+    img.alt = ''
+    // Listener before `src`: an image error is queued as a task rather than thrown inline, so
+    // the order does not matter today — but it is the order that stays correct if it ever does.
+    img.addEventListener('error', () => {
+      img.remove()
+      el.append(initials())
+    })
+    img.src = `/${pin.course.logo}`
+    el.append(img)
     return el
   }
 
@@ -75,7 +99,7 @@
     const el = document.createElement('span')
     el.className = 'chip chip-cluster'
     const n = document.createElement('span')
-    n.className = 'chip-rank'
+    n.className = 'chip-count'
     n.textContent = String(count)
     el.append(n)
     return el
@@ -267,16 +291,23 @@
   .map-frame :global(.chip-want){box-shadow:0 0 0 2px var(--ball)}
   .map-frame :global(.chip-played){box-shadow:0 0 0 2px var(--home)}
 
-  /* A cluster count and a rank are both bare numbers, so the difference cannot be carried by a
-     background tint alone. The second concentric ring is a shape signal: several, stacked. */
+  /* A count is now the only number on the map, so it no longer has to be told apart from a rank.
+     The second concentric ring stays anyway: it is a shape signal — several, stacked — and shape
+     survives the greyscale test that a background tint does not. */
   .map-frame :global(.chip-cluster){background:var(--panel-2);border-color:var(--ball-dim);position:relative}
   .map-frame :global(.chip-cluster::after){
     content:'';position:absolute;inset:-4px;border-radius:100px;border:1px solid var(--line);
   }
-
-  /* The rank sits under the logo and is uncovered when the image is removed. */
-  .map-frame :global(.chip-rank){
+  .map-frame :global(.chip-count){
     grid-area:1/1;font-family:'Space Mono',monospace;font-size:.76rem;color:var(--ball);
+  }
+
+  /* Shown only when there is no logo to show — never behind one. `--dim`, not `--ball`: this is a
+     fallback for a club whose mark could not be drawn, and `--ball` means the goal. Tighter
+     tracking than the count because two letters at .76rem otherwise touch the rim. */
+  .map-frame :global(.chip-initials){
+    grid-area:1/1;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:-.02em;
+    color:var(--dim);
   }
   /* Rounded and inset, so a logo drawn on its own white background reads as a chip with a mark
      in it rather than as a white dot. Several of the hundred are exactly that. */
