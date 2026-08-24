@@ -90,6 +90,12 @@ best-populated fields in the dataset, `0%` null on the driver where `clubPath` i
 `MetricReading`, whose `n` is required. A hand-typed club-path row genuinely has no count, and
 the widened type is what makes the compiler enforce "absent, never zero" rather than a comment.
 
+**Destinations** is built (Phase 11, issue #32). `lib/domain/courses.ts` is the Top 100 registry
+and `lib/domain/destinations.ts` is its maths: bounding boxes, the slug lookup, `spreadCoincident`
+(seven courses share three coordinates), `clusterProjected` (grid clustering on already-projected
+pixels), and the `feeLabel`/`ACCESS_LABELS` wording. `CourseMap.svelte` is the **only** file that
+touches Leaflet — the repo's first and only runtime dependency (D34).
+
 Infrastructure lives in `infra/` and is deployed by hand, never from CI — see `infra/README.md`.
 **Writes are unauthenticated by explicit decision (D19):** the bounds are point-in-time recovery,
 the handler's structural validation, and writing one item at a time.
@@ -199,6 +205,33 @@ so a scoped base rule outranks a global override and the override silently loses
   There is no `DELETE` either: the ingest is the only writer and nothing reads shots back, so an
   orphaned item costs a few KB and nothing else. **Deleting a session leaves its shots behind** —
   the `SHOTS#<id>` item is orphaned, not retired.
+- **`courses.ts` is never edited to make a map look right.** Seven courses genuinely share three
+  coordinates — one clubhouse, several courses — so `spreadCoincident` returns a **derived display
+  position** and the researched pair stays untouched. A fabricated latitude sitting beside verified
+  ones is indistinguishable from them six months later, and the dataset's credibility rests on
+  nothing being guessed.
+- **An absent `greenFee` is a dash, never "Free" and never `$0`**, and a fee that is present
+  **always carries its `checkedOn` date** (`$395 · checked Aug 2026`). It is a hand-checked
+  snapshot (D37), and a stale figure that reads as current is what dating it prevents. Both rules
+  live in `feeLabel`, not in a template, so neither can be got wrong twice. Forty of the hundred
+  have no fee; eight have `access: 'unknown'`, which must never round to public or members-only.
+- **The two destinations views are imported dynamically in `App.svelte`, and must stay that way.**
+  `courses.ts` is ~95 kB raw of travel-planning data. A static import puts every byte of it in the
+  chunk `/practice` loads — the page opened daily, outdoors, on a phone, that never reads a
+  course. D1 chose this stack for a small bundle at the range, and making the daily page 70%
+  larger to carry a trip planner inverts that. The practice routes stay synchronous, with no
+  wrapper and no pending state; only the destinations branches are lazy, and a chunk that fails to
+  arrive renders an honest message beside the nav rather than throwing.
+- **The map must never block or blank the page.** The ranked list is the primary content and the
+  map is drawn over it. Leaflet is **dynamically imported**, and that is not a size optimisation:
+  a static import would put it in the chunk that renders the list, so a Leaflet that failed to
+  parse would take the list down with it. Construction failure, and a tile host that never paints
+  a single tile, both hide the map and leave the list.
+- **Leaflet animates from JS options, not CSS.** A stylesheet `prefers-reduced-motion` rule cannot
+  reach it. Read the query with `matchMedia` and pass `zoomAnimation`/`fadeAnimation`/
+  `markerZoomAnimation` to the constructor — and `animate` to any `setView`.
+- **No second map dependency.** Clustering is maths, so it lives in `lib/domain/` where it can be
+  tested without a browser. `leaflet.markercluster` is not installed and should not be.
 - Plan and drill content lives in `lib/domain/` as data, not in markup.
 - Bump `schemaVersion` and write a migration for any stored-shape change. The Lambda handler
   carries its own `SCHEMA_VERSION` constant, and it is bumped in the same commit.

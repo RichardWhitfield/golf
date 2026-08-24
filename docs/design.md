@@ -64,6 +64,30 @@ core token used for exactly one job. **They are not a fourth surface level** —
 | `--flag-wash` | `rgba(224,83,59,.06)` | Watch-outs panel background, and both fault regions on the progress charts. `--flag` at 6%. |
 | `--ball-wash` | `rgba(239,198,75,.10)` | Target-band fill on the progress charts, and the block shading. `--ball` at 10%. |
 
+### Course access
+
+Three tokens, added 2026-08-24 with the destinations map. They are a **separate vocabulary** from
+`--ball`/`--flag`, and that separation is the whole reason they exist.
+
+| Token | Value | Purpose |
+|---|---|---|
+| `--access-public` | `#8ED6A8` | Sage green, advancing. A course a visitor can simply play. |
+| `--access-limited` | `#D6C79E` | Sand. Visitor times exist, but conditions apply — the sandbelt norm. |
+| `--access-members` | `#7FB2A0` | Deeper and cooler, receding. Members only. |
+
+**`--flag` is deliberately not reused for members-only**, though "you cannot play here" is
+superficially a problem. `--flag` means *the slice* — the fault this entire site is built around —
+and `--ball` means the target band. That one line in the KPI band teaches the reader the colour
+code for the whole page, and overloading it with an unrelated meaning costs more than three tokens
+do. Nothing about a private club is a swing fault.
+
+All three pass AA on `--bg` (9.9 / 10.0 / 7.0) and on `--card` (7.4 / 7.5 / 5.2).
+
+**`access: 'unknown'` gets no token.** It takes `--dim` and a **dashed** border, which reads as
+"not established" rather than as a fourth grade on the ramp — the visual equivalent of the rule
+that keeps it from rounding to members-only. Colour is never the only signal either way: the pill
+always spells the state out in words.
+
 **The hero SVG carries no colour of its own.** It used to hardcode `#294A3A`, `#E0533B`,
 `#EFC64B`, `#F4F2E9` and `#A9BEB0` as presentation attributes — literal copies of `--line`,
 `--flag`, `--ball`, `--chalk` and `--dim` that would silently desync the moment a token moved.
@@ -235,10 +259,26 @@ persistent condition, not an interruption. `order:-2` below the breakpoint so it
 nav rather than under the Today panel; a warning below the fold is a warning nobody reads.
 
 ### Site nav
-`.sitenav` — a mono pill row at the top of the page, above everything, with a hairline beneath.
-Active view carries `aria-current="page"` and renders in `--ball` with a `--ball-dim` border.
-Three views: Plan, Log and Progress. `44px` minimum, and `order:-2` below the breakpoint so the
-Today panel's `order:-1` cannot float above it.
+`.sitenav` — **two mono pill rows** at the top of the page, above everything, with a hairline
+beneath. The primary row is `Practice | Destinations`; the secondary row, `Plan | Log | Progress`,
+renders **only inside Practice**. `44px` minimum on both, and `order:-2` below the breakpoint so
+the Today panel's `order:-1` cannot float above it.
+
+The primary row uses the eyebrow size (`.72rem`); the sub-nav uses the tag size (`.62rem`), the
+smallest mono on the page, so the second row reads as subordinate without inventing a type size.
+Only the glyphs shrink — the hit target does not.
+
+**`aria-current="page"` belongs to the deepest link pointing at the current address, and exactly
+one link may claim it.** Inside Practice that is the sub-nav, so the primary row says
+`aria-current="true"` — current *section*, not current page — even on `/practice`, where both
+links share an href. Destinations has no second row, so its own link carries `page`. Colour marks
+either state; only `page` takes the `--ball-dim` border, so at a glance the outline still says
+"this one" rather than "one of these two".
+
+**Both rows live inside the one `.sitenav` element**, so the sub-nav sits under the primary row
+rather than competing with the Today panel for the top of a phone screen. Measured at 360px, it
+pushes the Today panel down **40px against a 44px row budget** — the bottom padding was trimmed
+from `20px` to `14px` below the breakpoint to pay for it.
 
 ### Form field
 `.lab` mono uppercase label above a `--card` control with a `--line` border and `10px` radius.
@@ -347,6 +387,36 @@ thin finding cannot present itself as a strong one.
 
 **No new colour token was added for either panel.** Both are built from `--card`, `--line`,
 `--ball`, `--ball-wash`, `--flag`, `--flag-wash`, `--chalk` and `--dim`.
+
+### Access tag
+`AccessTag.svelte` — a mono pill carrying one of the four `Access` values, wording taken from
+`ACCESS_LABELS` in `domain/destinations.ts` and never restated in markup. Three of the four take
+their own token above; `unknown` takes `--dim` with a dashed border.
+
+### Course row
+`DestinationsView`'s list — rank in `--ball`, name, suburb and state, the access tag, and the fee.
+**The fee always carries its date** (`$395 · checked Aug 2026`), because it is a hand-checked
+snapshot and a stale figure that reads as current is exactly the failure dating it prevents. **An
+absent fee is a dash in `--dim`, never "Free" and never `$0`** — forty of the hundred publish no
+visitor rate, and a `0` would be wrong in the most expensive possible direction. The dash is dimmed
+because an absence should not read with the weight of a price.
+
+### Map chip
+`CourseMap.svelte` — a `44px` circular chip, which is also the minimum hit target, so the chip
+*is* the target. It carries the club's logo over a Space Mono rank number. **The rank is always in
+the DOM underneath**; the logo is layered over it and removed on `error`, so a missing logo and a
+logo that failed to decode are one path, not two. A cluster of more than one draws a single chip
+with the **count**, distinguished from a rank by a second concentric ring — a shape signal, since
+both are bare numbers and a background tint alone could not carry the difference.
+
+Leaflet's own stylesheet is light-themed and is restyled to tokens in full: container, zoom
+controls (grown from Leaflet's `26px` to `44px`), and the attribution box, which is **required and
+always rendered**. `.leaflet-bar a:focus` paints `#f4f4f4` in Leaflet's CSS, so the zoom control's
+`:focus` is overridden alongside its `:hover` or a keyboard user gets a light-grey flash.
+
+**Leaflet animates from JS, not CSS.** `prefers-reduced-motion` is read with `matchMedia` and
+handed to the constructor as `zoomAnimation` / `fadeAnimation` / `markerZoomAnimation`; a
+stylesheet media query cannot reach it. Cluster zoom passes `animate` the same way.
 
 ### Coverage row
 `CoverageBars.svelte` — done against scheduled, one row per drill. Fill is `--ball`, sized to

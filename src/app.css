@@ -26,6 +26,14 @@
   --flag-wash:rgba(224,83,59,.06);
   --ball-wash:rgba(239,198,75,.10);  /* --ball at 10%; the target band's fill */
 
+  /* Course access. A separate vocabulary from --ball/--flag on purpose: --flag means the slice,
+     the fault this whole site is built around, and a members-only club is not a fault. See
+     docs/design.md §1. `unknown` is deliberately absent — it takes --dim and a dashed outline,
+     so it reads as "not established" rather than as a fourth rating on this ramp. */
+  --access-public:#8ED6A8;   /* sage green, advancing — you can just play here */
+  --access-limited:#D6C79E;  /* sand — visitor times exist, but conditions apply */
+  --access-members:#7FB2A0;  /* deeper, cooler, receding — the door is shut */
+
   --maxw:900px;
 }
 
