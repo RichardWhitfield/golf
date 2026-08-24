@@ -24,6 +24,17 @@
   let failed = $state(false)
   let container = $state<HTMLDivElement>()
 
+  /**
+   * Expanded fills the viewport with CSS rather than through the Fullscreen API.
+   *
+   * **iOS Safari does not support the Fullscreen API on a `<div>`** — only on `<video>`. A native
+   * implementation would have to hide its own button on the iPhone, which is the device most
+   * likely to be holding this map. One code path that behaves identically on desktop, Android and
+   * iPhone is worth more than true fullscreen on the two platforms that already have room.
+   */
+  let expanded = $state(false)
+  let expandButton = $state<HTMLButtonElement>()
+
   /** Australia, whole. Authored, not fitted: a domain derived from the data is a moving target. */
   const CENTRE: [number, number] = [-27.5, 134]
   const ZOOM = 4
@@ -255,6 +266,56 @@
     }
   })
 
+  /**
+   * Escape collapses, and the body cannot scroll underneath while expanded.
+   *
+   * Both are torn down by the same cleanup, so there is no state in which the listener outlives
+   * the expansion — a stray Escape handler that collapses an already-collapsed map is harmless,
+   * but a body left permanently unscrollable is not.
+   */
+  $effect(() => {
+    if (!expanded) return
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      expanded = false
+      // Focus would otherwise be left on whichever marker the reader tabbed to, somewhere in a
+      // map that just shrank. Put it back on the control that did it.
+      expandButton?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+
+    // Restored rather than cleared: something else may own it by the time this unwinds.
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previous
+    }
+  })
+
+  /**
+   * Tell Leaflet the box changed.
+   *
+   * Without this the map keeps rendering tiles for its old size and expanding leaves a grey band
+   * where the new space is. `requestAnimationFrame` so the measurement happens after the browser
+   * has applied the class, not in the same frame that set it.
+   */
+  $effect(() => {
+    const isExpanded = expanded
+    const active = live
+    if (!active) return
+
+    const frame = requestAnimationFrame(() => {
+      // `void` marks the read as deliberate: the effect depends on `expanded`, but the value is
+      // not needed here — only the fact that it changed.
+      void isExpanded
+      active.map.invalidateSize({ animate: false })
+    })
+    return () => cancelAnimationFrame(frame)
+  })
+
 </script>
 
 {#if !failed}
@@ -262,17 +323,51 @@
        control inside a hidden subtree is the worst of both: keyboard focus lands somewhere a
        screen reader has been told does not exist. The markers carry their own names instead, and
        clustering keeps the tab stops to the low dozens rather than a hundred. -->
-  <div class="map-frame">
+  <div class="map-frame" class:expanded>
     <div class="map" bind:this={container}></div>
+    <!-- A sibling of the map rather than a Leaflet control, so Leaflet's drag and zoom handlers
+         never see it and focus management stays in Svelte. The label always names the state the
+         button will move *to*, in words — never an icon alone. -->
+    <button
+      type="button"
+      class="expand"
+      bind:this={expandButton}
+      onclick={() => (expanded = !expanded)}
+    >
+      {expanded ? 'Collapse map' : 'Expand map'}
+    </button>
   </div>
 {/if}
 
 <style>
   .map-frame{
+    position:relative;
     border:1px solid var(--line);border-radius:14px;overflow:hidden;
     margin-bottom:26px;background:var(--panel);
   }
   .map{height:clamp(320px,52vh,460px);width:100%}
+
+  /* Fills the viewport. No transition anywhere in this block: a `position` change cannot be
+     animated meaningfully, so the swap is instant and there is nothing for
+     `prefers-reduced-motion` to suppress. */
+  .map-frame.expanded{
+    position:fixed;inset:0;z-index:900;
+    margin:0;border-radius:0;border-width:0;
+  }
+  .map-frame.expanded .map{height:100%}
+
+  /* Above Leaflet's own controls, which reach z-index 1000 inside the map. `.map-frame` is
+     positioned, so this is measured against it and not against the page. */
+  .expand{
+    position:absolute;top:10px;right:10px;z-index:1100;
+    font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.14em;
+    text-transform:uppercase;cursor:pointer;
+    display:inline-flex;align-items:center;
+    /* 44px, like every other control on this site. Used outdoors, one-handed — design.md §6. */
+    min-height:44px;padding:0 14px;border-radius:100px;
+    background:var(--card);color:var(--chalk);border:1px solid var(--line);
+  }
+  .expand:hover{background:var(--panel-2);color:var(--ball);border-color:var(--line-hover)}
 
   /* ---- Leaflet's own chrome, which ships light-themed ---- */
   .map-frame :global(.leaflet-container){background:var(--panel);font-family:'Inter',sans-serif}
